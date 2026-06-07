@@ -1,6 +1,6 @@
-# GPS Survey Stick
+# GPS Survey Staff
 
-A DIY RTK GNSS survey stick -- a handheld device for centimetre-level accurate position surveying.
+A DIY RTK GNSS survey staff -- a handheld device for centimetre-level accurate position surveying.
 
 ## What is this?
 

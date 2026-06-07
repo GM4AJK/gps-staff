@@ -1,8 +1,8 @@
-# GPS Survey Stick -- Project Context
+# GPS Survey Staff -- Project Context
 
 ## Overview
 
-A DIY RTK GNSS survey stick built around the u-blox ZED-F9P module on a custom carrier PCB.
+A DIY RTK GNSS survey staff built around the u-blox ZED-F9P module on a custom carrier PCB.
 The system consists of two identical PCBs -- one configured as base station, one as rover --
 communicating via LoRa. Centimetre-level relative accuracy is the target.
 
