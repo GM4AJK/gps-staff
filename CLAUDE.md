@@ -15,3 +15,7 @@
   3. Open a PR with `gh pr create`.
   4. Merge with `gh pr merge` once ready (or leave for the user to review/merge).
 - This applies to every change, however small — no exceptions for "quick fixes" or test commits.
+
+## Datasheets and reference documents
+
+- Component datasheets and other reference documents (e.g. dev board schematics) are stored in `docs/datasheets/`.
