@@ -19,3 +19,4 @@
 ## Datasheets and reference documents
 
 - Component datasheets and other reference documents (e.g. dev board schematics) are stored in `docs/datasheets/`.
+- `docs/README.md` is a catalog of these documents — update its table whenever a document is added, moved, or removed.
