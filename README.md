@@ -241,8 +241,8 @@ corrected_lon = gnss_lon + (offset x sin(tilt_azimuth + 180)) / (earth_radius x 
 ### Configuration Storage -- I2C EEPROM
 
 - **AT24C04 or M24C04** -- 4Kbit (512 bytes) I2C EEPROM
-- Shares I2C bus with SSD1309 display and LSM6DSO IMU -- no additional wiring
-- I2C address: 0x50-0x57 (set via A0/A1/A2 pins) -- no conflict with display (0x3C) or IMU (0x6A)
+- Shares I2C bus with SSD1309 display -- no additional wiring (IMU is on SPI, not I2C)
+- I2C address: 0x50-0x57 (set via A0/A1/A2 pins) -- no conflict with display (0x3C)
 - Supply: 1.8-5.5V -- 3.3V rail compatible
 - Write endurance: ~1,000,000 cycles -- effectively unlimited for config use
 - Byte-level write, no sector erase, no interrupt management required
