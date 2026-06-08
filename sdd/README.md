@@ -91,7 +91,25 @@ This document is a pre-design requirements and decisions capture, maintained as 
     - **OTA integration pattern**: `ArduinoOTA.handle()` is non-blocking (returns immediately when no upload is arriving) -- it drops straight into the normal Arduino `loop()` alongside application code; WiFi must stay connected for OTA to be reachable, which is a given since the NTRIP relay use case requires WiFi active anyway (add a `WiFi.reconnect()` watchdog in the loop)
     - **UART/OTA interaction**: during an actual OTA flash, `handle()` blocks until the upload completes and the module reboots -- the STM32 continues running independently, but RTCM bytes streaming in over UART will be dropped during the flash window; the STM32 protocol design should treat a silent/unresponsive XIAO as a transient fault and retry rather than hard-failing
   - Module also has Bluetooth -- a possible separate future project (e.g. phone/tablet pairing, wireless config)
-- **Side-effect on display planning**: OLED was not planned to be fitted on base-station builds (base needs no physical interaction once placed -- see remote-controlled startup sequence above), but WiFi setup/configuration may need an on-unit UI -- since base and rover share an identical PCB, populating the display on a base unit if/when needed is trivial
+- **Display planning**: OLED is rover-only -- base station builds are DNP. The rover acts as the UI "head" for the whole system even in the field (fix status, satellite count, survey-in progress, etc.); the base station only needs status LEDs. Internet/WiFi configuration is handled by the RPi companion (see "Base Station: Internet Relay and Operating Modes" below), so there is no remaining use case for a base-station display
+
+### Base Station: Internet Relay and Operating Modes
+
+The base station has two operating modes -- same hardware and firmware in both:
+
+- **Field / portable**: battery-powered, standalone -- surveys-in, enters fixed mode, broadcasts RTCM corrections to the rover over LoRa. No internet connection. All interaction is from the rover (display + controls); the base just does its job
+- **Fixed / gateway**: mains-powered via a Raspberry Pi companion connected over USB -- the RPi handles internet connectivity, NTRIP caster upload, WiFi management, and user credentials; can also power the base station over USB (check budget -- USB 2.0 host sources 500mA, USB 3.0 sources 900mA)
+
+**Internet relay -- USB CDC to Raspberry Pi (primary approach):**
+- STM32 presents a USB CDC virtual serial port (TinyUSB CDC device on the base station's USB-C connector)
+- RPi receives the RTCM stream on `/dev/ttyACM0` (or similar)
+- `str2str` from RTKLIB relays to an NTRIP caster in a single command, run as a `systemd` service:
+  ```
+  str2str -in serial://ttyACM0:115200 -out ntrips://user:pass@rtk2go.com:2101/mountpoint
+  ```
+- All TLS, WiFi reconnect, credential management, and NTRIP protocol handling lives on the RPi -- nothing of this complexity touches the STM32 firmware
+- RPi has HDMI + keyboard for easy initial WiFi and credential setup -- no on-unit display or config UI needed
+- XIAO ESP32-C3 daughter board (see "Future Expansion" above) is superseded for internet relay by this approach; it remains a possible future option for Bluetooth pairing, wireless config, or scenarios where a laptop/RPi companion is not available
 
 ### Antenna
 
@@ -407,7 +425,8 @@ BASE STATION                         ROVER
     - Right panel data fields: mode (base/rover), RTK fix status, satellite count, HDOP, tilt angle (degrees numeric), battery %, SD status/recording, LoRa link quality
 - [x] USB-C interface -- two connector footprints on PCB, one fitted per build
   - **USB-C #1 (base station build)**: D+/D- routed to STM32 OTG FS (PA11/PA12) -- internal PHY, 12 Mbps FS
-    - Base station power-only use: VBUS charging + EN1/EN2 current negotiation
+    - **Dual use**: VBUS charging (BQ24075 EN1/EN2 current negotiation as normal) + TinyUSB CDC device streaming RTCM corrections to an RPi companion for internet relay (see "Base Station: Internet Relay and Operating Modes")
+    - CDC throughput at 1Hz RTCM (~5 kbps) is trivially within FS USB bandwidth
     - Internal D+ pull-up on STM32F765 -- no external 1.5k ohm required
   - **USB-C #2 (rover build)**: D+/D- routed to external ULPI PHY -- STM32 OTG HS, 480 Mbps
     - ULPI PHY: **USB3300** (Microchip) -- well documented, widely used with STM32, QFN-32 (5x5x0.9mm)
@@ -429,6 +448,7 @@ BASE STATION                         ROVER
   - ESD protection: USBLC6-2SC6 per connector footprint -- DNP with connector
   - VBUS -> BQ24075 input + GPIO (voltage divider) for USB presence detection
   - USB stack: TinyUSB (not ST CubeMX middleware -- cleaner composite device support)
+    - **Used on all firmware builds** (base and rover) for consistency -- CubeMX configures the hardware layer (OTG clocks, GPIO, power enable), TinyUSB sits above it; no mixing of ST USB middleware and TinyUSB across builds
     - STM32F7 supported via TinyUSB DWC2 driver (same driver as Nucleo-F767ZI dev board)
     - STM32 port: https://github.com/lbthomsen/tinyusb
   - Composite CDC + MSC (rover):
@@ -490,7 +510,7 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 8. **SD card**: SDMMC1 4-bit bus on the fixed alternate-function pins, card-detect line to a GPIO, well-decoupled VCC for write-current spikes
 9. **STM32 backup domain (VBAT)**: 3.3V rail -> Schottky diode -> VBAT pin, 100nF VBAT-to-GND
 10. **Configuration EEPROM (AT24C04/M24C04)**: shares I2C1 with the display, A0/A1/A2 address pins set so it doesn't collide with the display's 0x3C/0x3D
-11. **Display (SSD1309 OLED)**: dedicated I2C1 bus, address 0x3C/0x3D -- footprint populated on both builds (base may run DNP unless/until a WiFi-setup UI is needed)
+11. **Display (SSD1309 OLED)**: dedicated I2C1 bus, address 0x3C/0x3D -- rover only; base station DNP (base uses status LEDs only; rover is the system UI head for both field and gateway operating modes)
 12. **Remote trigger input**: 3.5mm stereo jack (panel mount), GPIO with internal pull-up, 100nF + 10K RC hardware debounce
 13. **Buzzer**: PWM TIM-channel GPIO -> 1k resistor -> 2N7002 MOSFET gate, piezo between drain and 3.3V, source to GND
 14. **User input**: 4x momentary push buttons plus the KY-040 rotary encoder (A/B to TIMx CH1/CH2 in encoder mode, integrated push button as a 5th input) -- remember the bare EC11 needs pull-ups added on CLK/DT/SW that the KY-040 module provides onboard
