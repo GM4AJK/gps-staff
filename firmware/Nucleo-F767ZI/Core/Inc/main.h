@@ -41,7 +41,11 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+extern ETH_HandleTypeDef heth;
 
+extern UART_HandleTypeDef huart3;
+
+extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
