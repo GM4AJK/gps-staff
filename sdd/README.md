@@ -470,3 +470,28 @@ BASE STATION                         ROVER
 
 - [CEVA 1000-3927 v1.17] BNO08X datasheet -- 9-DOF IMU with onboard SH-2 fusion, 28-pin LGA
   https://www.ceva-ip.com/wp-content/uploads/BNO080_085-Datasheet.pdf
+
+---
+
+## Schematic-Stage Connection Checklist
+
+Consolidated list of every system that needs wiring up when the schematic is drawn -- a sanity check against the decisions above so nothing gets missed at the design stage.
+
+1. **GNSS module (ZED-F9P-05B)**: UART to STM32 (config out / RTCM-NMEA-UBX in), RF_IN to GNSS SMA via 50 ohm controlled-impedance trace, 1PPS to a STM32 GPIO (log timestamping), power + decoupling
+2. **GNSS antenna (ANN-MB-00)**: SMA female through-hole, bias-T 3.3V LNA feed on the RF line
+3. **LoRa module (Core1262-LF / SX1262)**: dedicated SPI bus (not shared with the IMU or SD), BUSY checked low before every transaction, DIO1/IRQ to a STM32 GPIO, NRESET, separate antenna SMA (433/434MHz, not the GNSS SMA)
+4. **MCU (STM32F765VIT6) peripheral pin assignment**: UART (F9P, plus a spare for the future daughter board), 2x dedicated SPI (LoRa, IMU), SDMMC1 4-bit (SD, fixed AF pins PC8-12/PD2), I2C1 (display + EEPROM), USB OTG FS (base build) or OTG HS + ULPI (rover build), ADC (battery divider), TIMx in encoder mode (rotary encoder A/B), PWM-capable TIMx_CHx pins (status LEDs + buzzer), SWD (program/debug) -- plus the many plain GPIOs enumerated below
+5. **Power supply chain**: TPS63020 buck-boost regulator with D1/C_SS soft-start network on the FB node, BQ24075 power-path management (EN1/EN2/SYSOFF/nCE control outputs and nPGOOD/nCHG status inputs all to STM32 GPIOs, TS pin tied to a fixed 10K resistor), 2-wire LP103454-PCM-LD battery connector, 100K/100K battery-voltage divider to an ADC pin
+6. **USB-C interfaces**: footprint #1 (base -- D+/D- direct to OTG FS PA11/PA12) and footprint #2 (rover -- via USB3300 ULPI PHY to OTG HS), CC1/CC2 5.1k pull-downs per footprint, USBLC6-2SC6 ESD protection per footprint, VBUS-presence sense divider to a GPIO, and for the rover's USB3300: 24MHz crystal, 12K RBIAS, full decoupling network, GND-flag via array, RESET to a STM32 GPIO
+7. **IMU (BNO085)**: SPI bus (SCK/MISO/MOSI/CS), NRST and H_INTN to STM32 GPIOs, PS1 and PS0/WAKE pulled high (SPI mode select), BOOTN pulled high, 100nF CAP-pin capacitor to GND
+8. **SD card**: SDMMC1 4-bit bus on the fixed alternate-function pins, card-detect line to a GPIO, well-decoupled VCC for write-current spikes
+9. **STM32 backup domain (VBAT)**: 3.3V rail -> Schottky diode -> VBAT pin, 100nF VBAT-to-GND
+10. **Configuration EEPROM (AT24C04/M24C04)**: shares I2C1 with the display, A0/A1/A2 address pins set so it doesn't collide with the display's 0x3C/0x3D
+11. **Display (SSD1309 OLED)**: dedicated I2C1 bus, address 0x3C/0x3D -- footprint populated on both builds (base may run DNP unless/until a WiFi-setup UI is needed)
+12. **Remote trigger input**: 3.5mm stereo jack (panel mount), GPIO with internal pull-up, 100nF + 10K RC hardware debounce
+13. **Buzzer**: PWM TIM-channel GPIO -> 1k resistor -> 2N7002 MOSFET gate, piezo between drain and 3.3V, source to GND
+14. **User input**: 4x momentary push buttons plus the KY-040 rotary encoder (A/B to TIMx CH1/CH2 in encoder mode, integrated push button as a 5th input) -- remember the bare EC11 needs pull-ups added on CLK/DT/SW that the KY-040 module provides onboard
+15. **Status LEDs**: 3x LEDs each on a PWM-capable (TIMx_CHx) GPIO with a current-limiting resistor
+16. **Mode-selection jumper**: GPIO with pull-up/pull-down, sampled once at boot to select base vs rover
+17. **BOOT0**: 2-pin jumper header with 10K pull-down to GND, for entering the STM32 DFU bootloader
+18. **WiFi/Bluetooth daughter-board header (XIAO ESP32-C3, future)**: spare UART, 3.3V-rail power tap through an MCU-controlled load switch, and `EN`/reset + `D9` (GPIO9 boot-strap) lines to STM32 GPIOs -- route these even on builds where the module isn't populated, so the option stays open
