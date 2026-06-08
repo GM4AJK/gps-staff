@@ -79,6 +79,15 @@ This document is a pre-design requirements and decisions capture, maintained as 
   - User never needs physical access to base station after placement -- fully remote controlled from rover
 - **Driver: [libdriver/sx1262](https://github.com/libdriver/sx1262)** -- we will drive the chip via its low-level primitives (`sx1262_set_tx`/`sx1262_set_rx` + `sx1262_irq_handler`-driven flags), not the high-level blocking wrappers (`sx1262_lora_transmit`/`sx1262_single_receive`), to fit our cooperative idle-loop-with-IRQ-flags architecture rather than pulling in an RTOS
 
+### Future Expansion: WiFi/Bluetooth Daughter Board (base station)
+
+- **Possible future project**: dock a Seeed XIAO ESP32-C3 module on the base station as a daughter board, fed correction data over UART (STM32F765 has spare UARTs) and relaying RTCM over WiFi to internet NTRIP casters / shared base-station services (e.g. RTK2GO, Emlid Caster)
+  - Base station runs from a permanent supply (not battery) -- the daughter board's extra current draw is not a battery-life concern
+  - Likely powered directly from the existing 3.3V rail (TPS63020 output) via the XIAO's `3V3` pin -- probably no new regulator needed; will require careful local bulk decoupling for WiFi TX current transients (~300-400mA bursts) and board partitioning to keep RF noise away from the GNSS/LoRa front ends
+  - MCU-controlled load switch (gated by an STM32 GPIO) to power the daughter board on/off as needed
+  - Module also has Bluetooth -- a possible separate future project (e.g. phone/tablet pairing, wireless config)
+- **Side-effect on display planning**: OLED was not planned to be fitted on base-station builds (base needs no physical interaction once placed -- see remote-controlled startup sequence above), but WiFi setup/configuration may need an on-unit UI -- since base and rover share an identical PCB, populating the display on a base unit if/when needed is trivial
+
 ### Antenna
 
 - **u-blox ANN-MB-00** (UBX-18049862) -- designed to pair with u-blox F9P modules -- [DigiKey Link](https://www.digikey.co.uk/en/products/detail/u-blox/ANN-MB-00/9817928), Mass Production status
