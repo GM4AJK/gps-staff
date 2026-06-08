@@ -41,17 +41,7 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-extern SD_HandleTypeDef hsd1;
-extern DMA_HandleTypeDef hdma_sdmmc1_tx;
-extern DMA_HandleTypeDef hdma_sdmmc1_rx;
-
-extern SPI_HandleTypeDef hspi1;
-
-extern UART_HandleTypeDef huart1;
-extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
-
-extern PCD_HandleTypeDef hpcd_USB_OTG_HS;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -67,26 +57,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define F9P_TX_Pin GPIO_PIN_2
-#define F9P_TX_GPIO_Port GPIOA
-#define F9P_RX_Pin GPIO_PIN_3
-#define F9P_RX_GPIO_Port GPIOA
-#define LORA_SPI_SCK_Pin GPIO_PIN_5
-#define LORA_SPI_SCK_GPIO_Port GPIOA
-#define LORA_SPI_MISO_Pin GPIO_PIN_6
-#define LORA_SPI_MISO_GPIO_Port GPIOA
-#define LORA_SPI_MOSI_Pin GPIO_PIN_7
-#define LORA_SPI_MOSI_GPIO_Port GPIOA
-#define LORA_SPI_CS_Pin GPIO_PIN_4
-#define LORA_SPI_CS_GPIO_Port GPIOC
-#define ESP32_TX_Pin GPIO_PIN_10
-#define ESP32_TX_GPIO_Port GPIOB
-#define ESP32_RX_Pin GPIO_PIN_11
-#define ESP32_RX_GPIO_Port GPIOB
-#define DEBUG_UART_TX_Pin GPIO_PIN_9
-#define DEBUG_UART_TX_GPIO_Port GPIOA
-#define DEBUG_UART_RX_Pin GPIO_PIN_10
-#define DEBUG_UART_RX_GPIO_Port GPIOA
+#define DEBUG_TX_Pin GPIO_PIN_10
+#define DEBUG_TX_GPIO_Port GPIOB
+#define DEBUG_RX_Pin GPIO_PIN_11
+#define DEBUG_RX_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
