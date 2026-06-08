@@ -486,7 +486,7 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
   - ESD protection: USBLC6-2SC6 per connector footprint -- DNP with connector
   - VBUS -> BQ24075 input + GPIO (voltage divider) for USB presence detection
   - USB stack: TinyUSB (not ST CubeMX middleware -- cleaner composite device support)
-    - **Used on all firmware builds** (base and rover) for consistency -- CubeMX configures the hardware layer (OTG clocks, GPIO, power enable), TinyUSB sits above it; no mixing of ST USB middleware and TinyUSB across builds
+    - **Used on all firmware builds** (base and rover) for consistency -- TinyUSB handles USB OTG hardware bring-up directly via its own DWC2 driver (`dcd_synopsys.c`), without CubeMX-generated init; no mixing of ST USB middleware and TinyUSB across builds
     - STM32F7 supported via TinyUSB DWC2 driver (same driver as Nucleo-F767ZI dev board)
     - STM32 port: https://github.com/lbthomsen/tinyusb
   - Composite CDC + MSC (rover):
