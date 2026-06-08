@@ -81,7 +81,7 @@ This document is a pre-design requirements and decisions capture, maintained as 
 
 ### Future Expansion: WiFi/Bluetooth Daughter Board (base station)
 
-- **Possible future project**: dock a Seeed XIAO ESP32-C3 module on the base station as a daughter board, fed correction data over UART (STM32F765 has spare UARTs) and relaying RTCM over WiFi to internet NTRIP casters / shared base-station services (e.g. RTK2GO, Emlid Caster)
+- **Possible future project**: dock a [Seeed XIAO ESP32-C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) module on the base station as a daughter board, fed correction data over UART (STM32F765 has spare UARTs) and relaying RTCM over WiFi to internet NTRIP casters / shared base-station services (e.g. RTK2GO, Emlid Caster)
   - Base station runs from a permanent supply (not battery) -- the daughter board's extra current draw is not a battery-life concern
   - Likely powered directly from the existing 3.3V rail (TPS63020 output) via the XIAO's `3V3` pin -- probably no new regulator needed; will require careful local bulk decoupling for WiFi TX current transients (~300-400mA bursts) and board partitioning to keep RF noise away from the GNSS/LoRa front ends
   - MCU-controlled load switch (gated by an STM32 GPIO) to power the daughter board on/off as needed
