@@ -77,6 +77,7 @@ This document is a pre-design requirements and decisions capture, maintained as 
   - Base responses: STATUS (survey-in progress/variance/time, fixed mode, idle), BASE_POSITION
   - Startup sequence: rover sends HELLO -> base responds STATUS -> rover triggers survey-in if needed -> rover displays survey-in progress -> base enters fixed mode -> RTCM stream begins
   - User never needs physical access to base station after placement -- fully remote controlled from rover
+- **Driver: [libdriver/sx1262](https://github.com/libdriver/sx1262)** -- we will drive the chip via its low-level primitives (`sx1262_set_tx`/`sx1262_set_rx` + `sx1262_irq_handler`-driven flags), not the high-level blocking wrappers (`sx1262_lora_transmit`/`sx1262_single_receive`), to fit our cooperative idle-loop-with-IRQ-flags architecture rather than pulling in an RTOS
 
 ### Antenna
 
