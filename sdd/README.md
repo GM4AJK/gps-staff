@@ -85,6 +85,8 @@ This document is a pre-design requirements and decisions capture, maintained as 
   - Base station runs from a permanent supply (not battery) -- the daughter board's extra current draw is not a battery-life concern
   - Likely powered directly from the existing 3.3V rail (TPS63020 output) via the XIAO's `3V3` pin -- probably no new regulator needed; will require careful local bulk decoupling for WiFi TX current transients (~300-400mA bursts) and board partitioning to keep RF noise away from the GNSS/LoRa front ends
   - MCU-controlled load switch (gated by an STM32 GPIO) to power the daughter board on/off as needed
+  - **Programming plan**: initial firmware flashed via the XIAO's own USB port *before* it's docked to the main board (avoids ever back-feeding its onboard 3V3 LDO from our rail while USB is connected); subsequent updates via OTA over WiFi
+    - Still route `EN`/reset and `D9` (GPIO9, boot-mode strap) from the STM32 to the daughter board as a recovery fallback -- lets the F7 force the module into its UART serial bootloader (and reset it independently of the power switch) if OTA ever fails or the stack hangs, without needing to undock and re-flash over USB
   - Module also has Bluetooth -- a possible separate future project (e.g. phone/tablet pairing, wireless config)
 - **Side-effect on display planning**: OLED was not planned to be fitted on base-station builds (base needs no physical interaction once placed -- see remote-controlled startup sequence above), but WiFi setup/configuration may need an on-unit UI -- since base and rover share an identical PCB, populating the display on a base unit if/when needed is trivial
 
