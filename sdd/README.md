@@ -332,11 +332,20 @@ BASE STATION                         ROVER
          | UART                      +--------+-----------+
 +--------v---------+  LoRa RTCM -> +--------v-----------+
 |   STM32F7        | <- LoRa CMD   |   STM32F7           |
-|   STM32F7        |               |   STM32F7           |
 |   reads RTCM     |               |   feeds RTCM->F9P   |
 |   forwards via   |               |   logs position     |
 |   LoRa           |               |   to SD card        |
-+------------------+               +---------------------+
++--------+---------+               +---------------------+
+         | USB CDC (RTCM)
+         | [gateway mode only]
++--------v---------+
+|  Raspberry Pi    |
+|  str2str relay   |
++--------+---------+
+         |
+         v
+  NTRIP caster
+  (RTK2GO, Emlid, etc.)
 ```
 
 - Single PCB design, identical firmware flashed to both units, mode (base/rover) selected by hardware jumper read at boot
