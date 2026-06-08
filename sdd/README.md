@@ -16,7 +16,7 @@ This document is a pre-design requirements and decisions capture, maintained as 
 
 - Nucleo-F767ZI -- STM32F7 development board for firmware bring-up before PCB
 - UNI-T UDP3305S -- professional programmable bench PSU (current limiting for safe bring-up)
-- Ellisys USB Explorer 100 -- USB protocol analyser (enumeration verification, CDC/MSC composite debugging, 100mA->500mA current transition validation)
+- Ellisys USB Explorer 200 -- USB protocol analyser (enumeration verification, CDC/MSC composite debugging, 100mA->500mA current transition validation)
 - Hot plate / hot air reflow station
 - 3D printer (enclosure prototyping)
 
