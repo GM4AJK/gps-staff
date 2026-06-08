@@ -354,6 +354,35 @@ BASE STATION                         ROVER
 
 ---
 
+## Firmware Architecture
+
+### Project Structure
+
+Three CubeIDE projects in `firmware/`:
+
+| Project | Target | Role |
+|---|---|---|
+| `rtk-base` | STM32F765VIT6 (custom PCB) | **Real firmware** — the only project ever flashed. Mode (base/rover) selected by hardware jumper at boot; all code paths compiled in |
+| `rtk-sandbox` | STM32F765VIT6 (custom PCB) | **CubeMX code reference** — never flashed. Used to see what CubeMX generates for a given peripheral on the exact target MCU; useful for deriving register sequences and pin AF assignments before writing register-level driver code |
+| `Nucleo-F767ZI` | STM32F767ZI (Nucleo-144 dev board) | **Physical hardware sandbox** — actually flashable. Used to develop and bench-test peripheral modules on real STM32F7 hardware before porting to the custom PCB; F767ZI is register-compatible with F765VIT6 |
+
+### Peripheral Initialisation Approach
+
+CubeMX owns a minimal set only:
+- **Clock tree (RCC)** — full PLL/bus divider setup; managed by CubeMX
+- **Mode-select GPIO** — hardware jumper distinguishing base/rover at boot
+- **Debug UART** — one UART kept under HAL / `HAL_UART_xxx` permanently for bring-up debug output
+- **SWO** — SWD trace output for ITM debug
+
+**Everything else is application-owned, initialised at the register level:**
+- Application code enables each peripheral's RCC clock gate (and any DMA/bus clock requirements) before touching its control registers
+- TinyUSB handles USB OTG hardware bring-up via its own `dcd_synopsys.c` driver — fits naturally since it was never going to use CubeMX's USB middleware
+- No `MX_*_Init()` calls in `main.c` beyond the four items above
+
+This cleanly solves the single-firmware / dual-hardware problem: there is no CubeMX-generated init for USB_OTG_FS (base) or USB_OTG_HS (rover). The application reads the mode jumper at boot and brings up whichever peripherals the physical assembly actually has.
+
+---
+
 ## RTK Concepts Established
 
 - **Code-phase** (consumer GPS): ~1-5 m accuracy -- noise floor cannot be corrected below ~1 m
