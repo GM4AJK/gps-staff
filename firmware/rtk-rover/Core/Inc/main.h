@@ -41,7 +41,16 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+extern SD_HandleTypeDef hsd1;
+extern DMA_HandleTypeDef hdma_sdmmc1_tx;
+extern DMA_HandleTypeDef hdma_sdmmc1_rx;
 
+extern SPI_HandleTypeDef hspi1;
+
+extern UART_HandleTypeDef huart1;
+extern UART_HandleTypeDef huart2;
+
+extern PCD_HandleTypeDef hpcd_USB_OTG_HS;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
