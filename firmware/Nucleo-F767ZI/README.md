@@ -44,3 +44,6 @@ Required jumper state before applying power:
 
 Set bench PSU to **5.0 V, 300 mA** current limit. The green LED LD6
 lights when the board is correctly powered.
+
+Full reference: UM1974 STM32 Nucleo-144 boards user manual,
+Section 7.4 — `docs/datasheets/um1974-stm32-nucleo144-boards-mb1137-stmicroelectronics-3.pdf`
