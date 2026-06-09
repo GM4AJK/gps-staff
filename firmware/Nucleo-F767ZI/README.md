@@ -13,6 +13,7 @@ is wired directly to the Morpho headers instead:
 
 | MCU Pin | Signal | Role | Header / Pin | Prog |
 |---|---|---|---|---|
+| 3V3  | PWR         | Power      | CN11 pin 12 | CN2 Pin 1 |
 | PA13 | SWDIO (TMS) | SWD data | CN11 pin 13 | CN2 Pin 7 |
 | PA14 | SWCLK (TCK) | SWD clock | CN11 pin 15 | CN2 Pin 9 |
 | NRST | Reset | SWD reset | CN11 pin 14 | CN2 Pin 15 |
