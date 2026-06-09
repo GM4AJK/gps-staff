@@ -35,14 +35,16 @@ options (UM1974 Table 7):
 | E5V | CN11 pin 6 | 4.75–5.25 V | 500 mA | Pins 1–2 bridged |
 | V_IN | CN8 pin 15 | 7–12 V | 800 mA @ 7 V | Pins 5–6 bridged |
 
-**Use E5V (CN11 pin 6)** — bench PSU provides clean regulated 5 V and
-GND is already on CN11 pin 20 (same connector).
+**Use V_IN (CN8 pin 15)** — JP3 pins 5–6 are already bridged on this board
+(confirmed from physical inspection), and CN8 pin 15 is the pin that has
+previously been used.
 
 Required jumper state before applying power:
-- **JP3**: move jumper to pins 1–2 (E5V position; factory default is pins 3–4 for USB)
+- **JP3**: pins 5–6 bridged (V_IN position — already set)
 - **JP1**: remove jumper (OFF)
 
-Set bench PSU to **5.0 V, 300 mA** current limit. The green LED LD6
+Set bench PSU to **7.0 V, 500 mA** current limit. The onboard LD1117
+regulates this to 5 V, which then feeds the 3.3 V LDO. The green LED LD6
 lights when the board is correctly powered.
 
 Full reference: UM1974 STM32 Nucleo-144 boards user manual,
