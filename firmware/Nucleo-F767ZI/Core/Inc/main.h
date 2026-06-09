@@ -41,11 +41,11 @@ extern "C" {
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-extern ETH_HandleTypeDef heth;
+//extern ETH_HandleTypeDef heth;
 
 extern UART_HandleTypeDef huart3;
 
-extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
+//extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -63,8 +63,6 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
-#define MCO_Pin GPIO_PIN_0
-#define MCO_GPIO_Port GPIOH
 #define RMII_MDC_Pin GPIO_PIN_1
 #define RMII_MDC_GPIO_Port GPIOC
 #define RMII_REF_CLK_Pin GPIO_PIN_1
