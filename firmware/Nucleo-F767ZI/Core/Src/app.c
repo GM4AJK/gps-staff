@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 #include "main.h"
 #include "flags.h"
@@ -31,11 +32,17 @@ void app_init(void)
 void app_loop(void)
 {
 	bool flipper = false;
+	uint32_t loop_count = 0;
+	char buf[48];
 
 	while(true) {
 		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
 		flipper = !flipper;
+
+		int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
 		HAL_Delay(500);
 	}
 }
