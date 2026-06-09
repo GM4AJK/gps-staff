@@ -13,11 +13,11 @@ is wired directly to the Morpho headers instead:
 
 | MCU Pin | Signal | Role | Header / Pin | Prog |
 |---|---|---|---|---|
-| PA13 | SWDIO (TMS) | SWD data | CN11 pin 13 | STDC14 Pin 4 |
-| PA14 | SWCLK (TCK) | SWD clock | CN11 pin 15 | STDC14 Pin 6 |
-| NRST | Reset | SWD reset | CN11 pin 14 | STDC14 Pin 12 |
-| PD8  | USART3_TX → ST-LINK RX | VCP UART, MCU TX -> probe RX | CN12 pin 10 | STDC14 Pin 13 |
-| PD9  | USART3_RX ← ST-LINK TX | VCP UART, probe TX -> MCU RX | CN11 pin 67 | STDC14 Pin 14 |
+| PA13 | SWDIO (TMS) | SWD data | CN11 pin 13 | CN2 Pin 7 |
+| PA14 | SWCLK (TCK) | SWD clock | CN11 pin 15 | CN2 Pin 9 |
+| NRST | Reset | SWD reset | CN11 pin 14 | CN2 Pin 15 |
+| PD8  | USART3_TX → ST-LINK RX | VCP UART, MCU TX -> probe RX | CN12 pin 10 | CN3 Pin 2 |
+| PD9  | USART3_RX ← ST-LINK TX | VCP UART, probe TX -> MCU RX | CN11 pin 67 | CN3 Pin 1 |
 
 PA13/PA14/NRST are the MCU's native SWD pins; PD8/PD9 are the Nucleo-144's
 standard Virtual COM Port (USART3) pins, so the same connection also
