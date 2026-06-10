@@ -11,22 +11,25 @@ TLV records, enumerating the advertised SHTP channels/apps (e.g.
 ### Requirement: Read the full SHTP advertisement
 The driver SHALL provide `bno085_read_advertisement()`, which performs
 the same `RST` pulse and `INT`-wait sequence as `bno085_bringup()`,
-then performs a single `BNO085_ADVERT_BUF_SIZE`-byte full-duplex SPI
-transfer (transmitting all-zero bytes) with `CS` asserted, then
-releases `CS` high. The first 4 received bytes SHALL be parsed as the
-SHTP header (as in `bno085_bringup()`), and the resulting `shtp_length`
-(capped to `BNO085_ADVERT_BUF_SIZE`) SHALL be stored as `advert_len`.
-The full received buffer SHALL be stored in `advert_buf`.
+then asserts `CS`, performs a 4-byte full-duplex SPI transfer
+(transmitting all-zero bytes) to read the SHTP header, computes
+`advert_len = min(shtp_length, BNO085_ADVERT_BUF_SIZE)` from it, and
+then performs a second full-duplex SPI transfer of exactly
+`advert_len - 4` more bytes (if any) before releasing `CS` high. Only
+`advert_buf[0 .. advert_len)` is written by this call; bytes beyond
+`advert_len` are not written.
 
 #### Scenario: Successful advertisement read
 - **WHEN** `bno085_read_advertisement()` is called, `INT` goes low
-  within `BNO085_INT_TIMEOUT_MS` of releasing `RST`, and the SPI
-  transfer succeeds
+  within `BNO085_INT_TIMEOUT_MS` of releasing `RST`, and both SPI
+  transfers succeed
 - **THEN** `bno085_read_advertisement()` returns `HAL_OK`
-- **AND** `advert_buf` contains all `BNO085_ADVERT_BUF_SIZE` bytes
-  received over SPI
-- **AND** `advert_len` equals the SHTP header's length field, capped to
-  `BNO085_ADVERT_BUF_SIZE`
+- **AND** `advert_buf[0 .. advert_len)` contains the received SHTP
+  header and payload, where `advert_len` equals the SHTP header's
+  length field, capped to `BNO085_ADVERT_BUF_SIZE`
+- **AND** exactly `advert_len` bytes total are clocked over SPI (no
+  more, no fewer), so the device's queue is not left misaligned for
+  subsequent reads
 
 #### Scenario: INT timeout returns an error without an SPI transaction
 - **WHEN** `bno085_read_advertisement()` is called and `INT` does not go
@@ -36,8 +39,9 @@ The full received buffer SHALL be stored in `advert_buf`.
 - **AND** `CS` remains high (deasserted)
 
 #### Scenario: SPI failure during the read is propagated
-- **WHEN** `INT` goes low within the timeout, but the
-  `HAL_SPI_TransmitReceive()` call fails (error or timeout)
+- **WHEN** `INT` goes low within the timeout, but either the
+  header-read or the payload-read `HAL_SPI_TransmitReceive()` call
+  fails (error or timeout)
 - **THEN** `bno085_read_advertisement()` returns the corresponding
   non-`HAL_OK` `HAL_StatusTypeDef`
 - **AND** `CS` is released high (deasserted) before returning
