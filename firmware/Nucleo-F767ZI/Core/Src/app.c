@@ -143,6 +143,14 @@ void app_init(void)
 			len = snprintf(buf, sizeof(buf), "%s: bno085_get_feature failed: %d\r\n", sensors[i].name, feature_status);
 		}
 		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+		len = snprintf(buf, sizeof(buf), "  cmd_buf:");
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+		for (int j = 0; j < BNO085_CMD_BUF_SIZE; j++) {
+			len = snprintf(buf, sizeof(buf), " %02X", bno.cmd_buf[j]);
+			HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+		}
+		HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, 100);
 	}
 }
 
