@@ -590,6 +590,52 @@ void ssd1309_draw_rect(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t
 	}
 }
 
+void ssd1309_draw_circle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t r, bool fill, uint8_t color)
+{
+	int16_t f = (int16_t)(1 - r);
+	int16_t ddF_x = 1;
+	int16_t ddF_y = (int16_t)(-2 * r);
+	int16_t x = 0;
+	int16_t y = r;
+
+	if (fill) {
+		ssd1309_draw_line(p, x0, (int16_t)(y0 - r), x0, (int16_t)(y0 + r), color);
+		ssd1309_draw_line(p, (int16_t)(x0 - r), y0, (int16_t)(x0 + r), y0, color);
+	} else {
+		ssd1309_set_pixel(p, x0, (int16_t)(y0 + r), color);
+		ssd1309_set_pixel(p, x0, (int16_t)(y0 - r), color);
+		ssd1309_set_pixel(p, (int16_t)(x0 + r), y0, color);
+		ssd1309_set_pixel(p, (int16_t)(x0 - r), y0, color);
+	}
+
+	while (x < y) {
+		if (f >= 0) {
+			y--;
+			ddF_y = (int16_t)(ddF_y + 2);
+			f = (int16_t)(f + ddF_y);
+		}
+		x++;
+		ddF_x = (int16_t)(ddF_x + 2);
+		f = (int16_t)(f + ddF_x);
+
+		if (fill) {
+			ssd1309_draw_line(p, (int16_t)(x0 - x), (int16_t)(y0 + y), (int16_t)(x0 + x), (int16_t)(y0 + y), color);
+			ssd1309_draw_line(p, (int16_t)(x0 - x), (int16_t)(y0 - y), (int16_t)(x0 + x), (int16_t)(y0 - y), color);
+			ssd1309_draw_line(p, (int16_t)(x0 - y), (int16_t)(y0 + x), (int16_t)(x0 + y), (int16_t)(y0 + x), color);
+			ssd1309_draw_line(p, (int16_t)(x0 - y), (int16_t)(y0 - x), (int16_t)(x0 + y), (int16_t)(y0 - x), color);
+		} else {
+			ssd1309_set_pixel(p, (int16_t)(x0 + x), (int16_t)(y0 + y), color);
+			ssd1309_set_pixel(p, (int16_t)(x0 - x), (int16_t)(y0 + y), color);
+			ssd1309_set_pixel(p, (int16_t)(x0 + x), (int16_t)(y0 - y), color);
+			ssd1309_set_pixel(p, (int16_t)(x0 - x), (int16_t)(y0 - y), color);
+			ssd1309_set_pixel(p, (int16_t)(x0 + y), (int16_t)(y0 + x), color);
+			ssd1309_set_pixel(p, (int16_t)(x0 - y), (int16_t)(y0 + x), color);
+			ssd1309_set_pixel(p, (int16_t)(x0 + y), (int16_t)(y0 - x), color);
+			ssd1309_set_pixel(p, (int16_t)(x0 - y), (int16_t)(y0 - x), color);
+		}
+	}
+}
+
 void ssd1309_draw_char(ssd1309_t *p, const ssd1309_font_t *font, int16_t x, int16_t y, char c, uint8_t color)
 {
 	if (c < font->first_char || c > font->last_char) {
