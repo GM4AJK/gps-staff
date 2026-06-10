@@ -177,6 +177,25 @@ void ssd1309_draw_rect(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t
 void ssd1309_draw_circle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t r, bool fill, uint8_t color);
 
 /**
+ * ssd1309_draw_triangle
+ * @param p - Pointer to ssd1309_t struct
+ * @param x0 - Column of the first vertex
+ * @param y0 - Row of the first vertex
+ * @param x1 - Column of the second vertex
+ * @param y1 - Row of the second vertex
+ * @param x2 - Column of the third vertex
+ * @param y2 - Row of the third vertex
+ * @param fill - false: draw a 1px-wide outline only; true: fill the
+ *               triangle
+ * @param color - SSD1309_COLOR_OFF or SSD1309_COLOR_ON
+ *
+ * Draws a triangle with vertices (x0,y0), (x1,y1), (x2,y2), in any vertex
+ * order, using ssd1309_draw_line()/ssd1309_set_pixel() (so out-of-bounds
+ * points are clipped per ssd1309_set_pixel() semantics).
+ */
+void ssd1309_draw_triangle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool fill, uint8_t color);
+
+/**
  * ssd1309_draw_arrow
  * @param p - Pointer to ssd1309_t struct
  * @param x0 - Column of the shaft's start point

@@ -661,6 +661,79 @@ void ssd1309_draw_arrow(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_
 	}
 }
 
+void ssd1309_draw_triangle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t x2, int16_t y2, bool fill, uint8_t color)
+{
+	if (!fill) {
+		ssd1309_draw_line(p, x0, y0, x1, y1, color);
+		ssd1309_draw_line(p, x1, y1, x2, y2, color);
+		ssd1309_draw_line(p, x2, y2, x0, y0, color);
+		return;
+	}
+
+	/* Sort vertices by y ascending: (x0,y0), (x1,y1), (x2,y2) */
+	int16_t tmp;
+	if (y0 > y1) {
+		tmp = y0; y0 = y1; y1 = tmp;
+		tmp = x0; x0 = x1; x1 = tmp;
+	}
+	if (y1 > y2) {
+		tmp = y1; y1 = y2; y2 = tmp;
+		tmp = x1; x1 = x2; x2 = tmp;
+	}
+	if (y0 > y1) {
+		tmp = y0; y0 = y1; y1 = tmp;
+		tmp = x0; x0 = x1; x1 = tmp;
+	}
+
+	if (y0 == y2) {
+		/* Degenerate: all three vertices on one scanline */
+		int16_t min_x = x0;
+		int16_t max_x = x0;
+		if (x1 < min_x) min_x = x1; else if (x1 > max_x) max_x = x1;
+		if (x2 < min_x) min_x = x2; else if (x2 > max_x) max_x = x2;
+		ssd1309_draw_line(p, min_x, y0, max_x, y0, color);
+		return;
+	}
+
+	int16_t dx01 = (int16_t)(x1 - x0);
+	int16_t dy01 = (int16_t)(y1 - y0);
+	int16_t dx02 = (int16_t)(x2 - x0);
+	int16_t dy02 = (int16_t)(y2 - y0);
+	int16_t dx12 = (int16_t)(x2 - x1);
+	int16_t dy12 = (int16_t)(y2 - y1);
+	int32_t sa = 0;
+	int32_t sb = 0;
+	int16_t y;
+	int16_t last;
+
+	/* Upper part: scanlines from y0 to y1 (skipped if y0 == y1) */
+	last = (y1 == y2) ? y1 : (int16_t)(y1 - 1);
+	for (y = y0; y <= last; y++) {
+		int16_t a = (int16_t)(x0 + sa / dy01);
+		int16_t b = (int16_t)(x0 + sb / dy02);
+		sa = (int32_t)(sa + dx01);
+		sb = (int32_t)(sb + dx02);
+		if (a > b) {
+			tmp = a; a = b; b = tmp;
+		}
+		ssd1309_draw_line(p, a, y, b, y, color);
+	}
+
+	/* Lower part: scanlines from y1 (or y0+1) to y2 */
+	sa = (int32_t)dx12 * (int32_t)(y - y1);
+	sb = (int32_t)dx02 * (int32_t)(y - y0);
+	for (; y <= y2; y++) {
+		int16_t a = (int16_t)(x1 + sa / dy12);
+		int16_t b = (int16_t)(x0 + sb / dy02);
+		sa = (int32_t)(sa + dx12);
+		sb = (int32_t)(sb + dx02);
+		if (a > b) {
+			tmp = a; a = b; b = tmp;
+		}
+		ssd1309_draw_line(p, a, y, b, y, color);
+	}
+}
+
 void ssd1309_draw_char(ssd1309_t *p, const ssd1309_font_t *font, int16_t x, int16_t y, char c, uint8_t color)
 {
 	if (c < font->first_char || c > font->last_char) {
