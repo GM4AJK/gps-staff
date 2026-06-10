@@ -90,7 +90,8 @@ void app_init(void)
 	bno085_init(&bno, &hspi1,
 		BNO085_SPI_CS_GPIO_Port, BNO085_SPI_CS_Pin,
 		BNO085_RST_GPIO_Port, BNO085_RST_Pin,
-		BNO085_INT_GPIO_Port, BNO085_INT_Pin);
+		BNO085_INT_GPIO_Port, BNO085_INT_Pin,
+		BNO085_PS0_WAKE_GPIO_Port, BNO085_PS0_WAKE_Pin);
 
 	HAL_StatusTypeDef bno_status = bno085_bringup(&bno);
 	char buf[96];

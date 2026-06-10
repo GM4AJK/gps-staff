@@ -143,6 +143,43 @@ own outgoing sequence numbers.
   available on the handle for inspection/debugging via USART3 in the
   demo.
 
+- **PS0/WAKE pin added for waking the device before reads/writes**: bench
+  testing of the drain/retry loop above showed that only the very first
+  `bno085_get_feature()` call (Accelerometer, immediately after reset)
+  ever received a response - every subsequent call (Gyroscope onward)
+  timed out (`HAL_TIMEOUT`) waiting for `INT`, which never asserted
+  again. The BNO08x datasheet states that pin 6 (PS0/WAKE) "must be
+  connected to a GPIO so that the WAKE functionality can be performed":
+  after reset, pulling PS0/WAKE low asks the device to assert `INT` (it
+  asserts `INT` on its own only for its initial post-reset packet burst,
+  then goes idle). The bench board's PS0/WAKE was originally hardwired
+  high (tied for SPI mode select at reset, per the datasheet's "must be
+  high from before reset until after the first assertion of `INT`"
+  requirement), with no way to pulse it afterwards - hence the timeouts.
+  The board was reworked to route PS0/WAKE to a spare GPIO
+  (`BNO085_PS0_WAKE_Pin` = PF14, push-pull output, initially high to
+  satisfy the reset-time mode-select requirement). A new helper,
+  `bno085_wake_and_wait_int_low()`, is called at the start of both
+  `bno085_send_packet()` and `bno085_read_response()`: if `INT` is
+  already low it returns immediately, otherwise it pulses PS0/WAKE low,
+  waits for `INT` low (`bno085_wait_int_low()`,
+  `BNO085_INT_TIMEOUT_MS`), then returns PS0/WAKE high. This supersedes
+  the "`INT` wait before reads only, not writes" decision above:
+  `bno085_send_packet()` now also waits for `INT` (via the wake helper),
+  but does so by actively requesting it rather than passively polling,
+  so it no longer times out once the device's queue is drained.
+  `bno085_reset_and_wait()` also explicitly drives PS0/WAKE high at its
+  start, ahead of the `RST` pulse, to satisfy the reset-time
+  requirement regardless of the pin's prior state.
+- **Bench result**: with PS0/WAKE wired to PF14, all five queried
+  sensors (Accelerometer, Gyroscope, Magnetic Field, Rotation Vector,
+  Game Rotation Vector) return a correctly-framed Get Feature Response
+  (`cmd_len == 21`, `cmd_buf[4] == 0xFC`, `cmd_buf[5] == report_id`) on
+  the first attempt. All report `report_interval_us == 0` (supported but
+  not yet enabled via Set Feature, which is out of scope for this
+  change) - the fix is confirmed by the response framing/matching, not
+  by a non-zero interval.
+
 ## Risks / Trade-offs
 
 - [An unsolicited report (e.g. on `inputNormal`) could arrive and

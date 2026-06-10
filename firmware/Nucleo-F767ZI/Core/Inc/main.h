@@ -77,6 +77,8 @@ void Error_Handler(void);
 #define BNO085_INT_Pin GPIO_PIN_12
 #define BNO085_INT_GPIO_Port GPIOF
 #define BNO085_INT_EXTI_IRQn EXTI15_10_IRQn
+#define BNO085_PS0_WAKE_Pin GPIO_PIN_14
+#define BNO085_PS0_WAKE_GPIO_Port GPIOF
 #define STLK_RX_Pin GPIO_PIN_10
 #define STLK_RX_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14

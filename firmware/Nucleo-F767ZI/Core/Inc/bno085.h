@@ -57,6 +57,8 @@ typedef struct {
 	uint16_t rst_pin;
 	GPIO_TypeDef *int_port;
 	uint16_t int_pin;
+	GPIO_TypeDef *wake_port;
+	uint16_t wake_pin;
 	uint8_t rx_buf[BNO085_BRINGUP_BUF_SIZE];
 	uint16_t shtp_length;
 	uint8_t shtp_channel;
@@ -81,8 +83,13 @@ typedef struct {
  * @param rst_pin - GPIO pin for the RST pin
  * @param int_port - GPIO port for the INT pin
  * @param int_pin - GPIO pin for the INT pin
+ * @param wake_port - GPIO port for the PS0/WAKE pin
+ * @param wake_pin - GPIO pin for the PS0/WAKE pin
  *
- * Populates the handle - no SPI traffic or GPIO writes are performed.
+ * Populates the handle - no SPI traffic or GPIO writes are performed. The
+ * caller's GPIO init must configure wake_pin as an output, initially driven
+ * high (PS0/WAKE must be high from before reset until after the first
+ * assertion of INT, to select the SPI interface).
  */
 void bno085_init(
 	bno085_t *p,
@@ -92,7 +99,9 @@ void bno085_init(
 	GPIO_TypeDef *rst_port,
 	uint16_t rst_pin,
 	GPIO_TypeDef *int_port,
-	uint16_t int_pin
+	uint16_t int_pin,
+	GPIO_TypeDef *wake_port,
+	uint16_t wake_pin
 );
 
 /**
@@ -161,20 +170,24 @@ void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart);
  * @param payload_len - Number of payload bytes
  *
  * Builds a 4-byte SHTP header (length = 4 + payload_len, channel, and the
- * channel's current host TX sequence number from tx_seq[]), then asserts CS
- * and performs a single full-duplex SPI transfer of exactly
- * (4 + payload_len) bytes (the header followed by the payload), then
- * releases CS. SPI is full-duplex, so the device may simultaneously be
- * sending a queued packet of its own; the bytes received during this
- * transfer are captured into cmd_buf (rather than discarded) and cmd_len is
- * set from the received SHTP header's length field (capped to
- * BNO085_CMD_BUF_SIZE) - this is for debugging visibility only, as cmd_buf
- * beyond the (4 + payload_len) bytes actually transferred is not populated by
- * this call. On success, tx_seq[channel] is incremented (with uint8_t
- * wraparound).
+ * channel's current host TX sequence number from tx_seq[]). If INT is
+ * already low, proceeds immediately; otherwise pulses PS0/WAKE low to ask
+ * the device to assert INT and waits for it within BNO085_INT_TIMEOUT_MS
+ * before returning PS0/WAKE high. Then asserts CS and performs a single
+ * full-duplex SPI transfer of exactly (4 + payload_len) bytes (the header
+ * followed by the payload), then releases CS. SPI is full-duplex, so the
+ * device may simultaneously be sending a queued packet of its own; the bytes
+ * received during this transfer are captured into cmd_buf (rather than
+ * discarded) and cmd_len is set from the received SHTP header's length field
+ * (capped to BNO085_CMD_BUF_SIZE) - this is for debugging visibility only, as
+ * cmd_buf beyond the (4 + payload_len) bytes actually transferred is not
+ * populated by this call. On success, tx_seq[channel] is incremented (with
+ * uint8_t wraparound).
  *
- * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed SPI
- *         transfer (CS is released before returning either way).
+ * @return HAL_OK on success, HAL_TIMEOUT if INT does not go low (after a
+ *         PS0/WAKE pulse) within BNO085_INT_TIMEOUT_MS, or the
+ *         HAL_StatusTypeDef of a failed SPI transfer (CS is released before
+ *         returning either way).
  */
 HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len);
 
@@ -186,8 +199,9 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
  *
  * Sends an SH-2 Get Feature Request for report_id on BNO085_CHANNEL_CONTROL
  * via bno085_send_packet(). Then, up to BNO085_GET_FEATURE_MAX_ATTEMPTS
- * times: waits for INT to go low within BNO085_INT_TIMEOUT_MS, then reads the
- * 4-byte SHTP header followed by exactly (length - 4) more bytes (capped to
+ * times: wakes the device (if needed) and waits for INT to go low within
+ * BNO085_INT_TIMEOUT_MS (see bno085_send_packet()), then reads the 4-byte
+ * SHTP header followed by exactly (length - 4) more bytes (capped to
  * BNO085_CMD_BUF_SIZE) into cmd_buf/cmd_len - see bno085_read_advertisement()
  * for why the read length must match the packet's declared length exactly.
  * The response to our request is not always the next packet read (a

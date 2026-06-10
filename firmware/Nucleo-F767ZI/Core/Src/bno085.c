@@ -18,6 +18,10 @@ static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 {
 	p->int_initial = HAL_GPIO_ReadPin(p->int_port, p->int_pin);
 
+	/* PS0/WAKE must be high from before reset until after the first
+	 * assertion of INT, to select the SPI interface. */
+	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
+
 	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
 	HAL_Delay(BNO085_RESET_PULSE_MS);
 	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
@@ -53,7 +57,9 @@ void bno085_init(
 	GPIO_TypeDef *rst_port,
 	uint16_t rst_pin,
 	GPIO_TypeDef *int_port,
-	uint16_t int_pin
+	uint16_t int_pin,
+	GPIO_TypeDef *wake_port,
+	uint16_t wake_pin
 )
 {
 	memset(p, 0, sizeof(*p));
@@ -65,6 +71,8 @@ void bno085_init(
 	p->rst_pin = rst_pin;
 	p->int_port = int_port;
 	p->int_pin = int_pin;
+	p->wake_port = wake_port;
+	p->wake_pin = wake_pin;
 }
 
 HAL_StatusTypeDef bno085_bringup(bno085_t *p)
@@ -149,6 +157,26 @@ static HAL_StatusTypeDef bno085_wait_int_low(bno085_t *p)
 	return HAL_OK;
 }
 
+/*
+ * If INT is already low, returns HAL_OK immediately. Otherwise pulses
+ * PS0/WAKE low to ask the device to assert INT, waits for INT to go low
+ * within BNO085_INT_TIMEOUT_MS (via bno085_wait_int_low()), then returns
+ * PS0/WAKE high.
+ */
+static HAL_StatusTypeDef bno085_wake_and_wait_int_low(bno085_t *p)
+{
+	if (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_RESET) {
+		p->int_wait_ms = 0;
+		return HAL_OK;
+	}
+
+	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_RESET);
+	HAL_StatusTypeDef status = bno085_wait_int_low(p);
+	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
+
+	return status;
+}
+
 HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len)
 {
 	uint8_t tx_buf[BNO085_CMD_BUF_SIZE] = { 0 };
@@ -160,6 +188,11 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
 	tx_buf[3] = p->tx_seq[channel];
 	memcpy(&tx_buf[4], payload, payload_len);
 
+	HAL_StatusTypeDef status = bno085_wake_and_wait_int_low(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
 
 	/* SPI is full-duplex: capture the bytes the device sends back during
@@ -168,7 +201,7 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
 	 * (our own packet length) - it is not extended to cover a longer
 	 * pending packet the device may report, to avoid clocking extra
 	 * zero-padded bytes into the device that aren't part of our packet. */
-	HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, tx_total, BNO085_SPI_TIMEOUT_MS);
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, tx_total, BNO085_SPI_TIMEOUT_MS);
 
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 
@@ -184,13 +217,13 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
 }
 
 /*
- * Waits for INT low, then performs the same exact-length two-step read as
- * bno085_read_advertisement() into cmd_buf, recording the received length in
- * cmd_len.
+ * Wakes the device (if needed) and waits for INT low, then performs the same
+ * exact-length two-step read as bno085_read_advertisement() into cmd_buf,
+ * recording the received length in cmd_len.
  */
 static HAL_StatusTypeDef bno085_read_response(bno085_t *p)
 {
-	HAL_StatusTypeDef status = bno085_wait_int_low(p);
+	HAL_StatusTypeDef status = bno085_wake_and_wait_int_low(p);
 	if (status != HAL_OK) {
 		return status;
 	}

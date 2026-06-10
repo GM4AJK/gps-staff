@@ -1,10 +1,39 @@
 ## ADDED Requirements
 
+### Requirement: Wake the device and wait for INT before a transaction
+The driver SHALL provide a helper (`bno085_wake_and_wait_int_low()`)
+that is called before any SPI transaction in `bno085_send_packet()` and
+`bno085_read_response()`. If `INT` is already low, it returns `HAL_OK`
+immediately. Otherwise it pulses `PS0`/`WAKE` low (asking the device to
+assert `INT`), waits for `INT` to go low within `BNO085_INT_TIMEOUT_MS`
+(via the same poll used by `bno085_reset_and_wait()`), then returns
+`PS0`/`WAKE` high before returning the wait result. `bno085_init()`
+SHALL accept and store a GPIO port/pin for `PS0`/`WAKE`, and
+`bno085_reset_and_wait()` SHALL drive it high at the start of reset (it
+must be high from before reset until after the first assertion of
+`INT` to select the SPI interface).
+
+#### Scenario: INT already low requires no wake pulse
+- **WHEN** `bno085_wake_and_wait_int_low()` is called and `INT` is
+  already low
+- **THEN** it returns `HAL_OK` without changing `PS0`/`WAKE`
+
+#### Scenario: INT high triggers a wake pulse
+- **WHEN** `bno085_wake_and_wait_int_low()` is called and `INT` is high
+- **THEN** `PS0`/`WAKE` is driven low, then `INT` is polled for up to
+  `BNO085_INT_TIMEOUT_MS`
+- **AND** `PS0`/`WAKE` is returned high before the function returns,
+  regardless of whether `INT` went low in time
+- **AND** the function returns `HAL_OK` if `INT` went low, or
+  `HAL_TIMEOUT` otherwise
+
 ### Requirement: Send an SHTP packet to a channel
-The driver SHALL provide `bno085_send_packet()`, which builds a 4-byte
-SHTP header (length = 4 plus the payload length, the given channel
-number, and the channel's current host TX sequence number from
-`tx_seq[]`), asserts `CS`, performs a single full-duplex
+The driver SHALL provide `bno085_send_packet()`, which first calls
+`bno085_wake_and_wait_int_low()`; if that does not return `HAL_OK`, it
+returns that status without performing any SPI transfer. Otherwise it
+builds a 4-byte SHTP header (length = 4 plus the payload length, the
+given channel number, and the channel's current host TX sequence number
+from `tx_seq[]`), asserts `CS`, performs a single full-duplex
 `HAL_SPI_TransmitReceive()` of exactly `4 + payload_len` bytes (the
 header followed by the payload), and releases `CS`. SPI is
 full-duplex: the device may simultaneously be sending a queued packet
@@ -17,7 +46,8 @@ bytes actually transferred is not populated by this call.
 
 #### Scenario: Successful packet send
 - **WHEN** `bno085_send_packet()` is called with a channel, payload
-  pointer, and payload length, and the SPI transfer succeeds
+  pointer, and payload length, `bno085_wake_and_wait_int_low()` returns
+  `HAL_OK`, and the SPI transfer succeeds
 - **THEN** `bno085_send_packet()` returns `HAL_OK`
 - **AND** the bytes transmitted are a 4-byte SHTP header (length,
   channel, sequence number) followed by the payload bytes
@@ -25,6 +55,12 @@ bytes actually transferred is not populated by this call.
   bytes the device sent back during the transfer, and `cmd_len` is the
   device's reported packet length capped to `BNO085_CMD_BUF_SIZE`
 - **AND** `tx_seq[channel]` is incremented by one (wrapping at 256)
+
+#### Scenario: INT timeout during wake is propagated
+- **WHEN** `bno085_wake_and_wait_int_low()` returns `HAL_TIMEOUT`
+- **THEN** `bno085_send_packet()` returns `HAL_TIMEOUT` without
+  asserting `CS` or performing an SPI transfer
+- **AND** `tx_seq[channel]` is not incremented
 
 #### Scenario: SPI failure during send is propagated
 - **WHEN** the `HAL_SPI_TransmitReceive()` call fails (error or
@@ -38,8 +74,9 @@ bytes actually transferred is not populated by this call.
 The driver SHALL provide `bno085_get_feature()`, which sends an SH-2
 Get Feature Request (`{0xFE, report_id, 0x00, 0x00, 0x00, 0x00}`) on
 `BNO085_CHANNEL_CONTROL` via `bno085_send_packet()`. Then, up to
-`BNO085_GET_FEATURE_MAX_ATTEMPTS` times, it: waits for `INT` to go low
-within `BNO085_INT_TIMEOUT_MS`; reads the 4-byte SHTP header into
+`BNO085_GET_FEATURE_MAX_ATTEMPTS` times, it: wakes the device (if
+needed) and waits for `INT` to go low within `BNO085_INT_TIMEOUT_MS`
+(via `bno085_wake_and_wait_int_low()`); reads the 4-byte SHTP header into
 `cmd_buf[0..4)`; computes `cmd_len = min(length, BNO085_CMD_BUF_SIZE)`
 from it; and reads exactly `cmd_len - 4` more bytes (if any) into
 `cmd_buf[4..cmd_len)` (matching the exact-length read used by

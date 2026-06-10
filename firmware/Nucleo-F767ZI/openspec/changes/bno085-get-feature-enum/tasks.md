@@ -29,6 +29,6 @@
 
 ## 4. Bench verification
 
-- [ ] 4.1 Bench-test on hardware and confirm Get Feature
+- [x] 4.1 Bench-test on hardware and confirm Get Feature
       responses are received and parsed for at least one enabled
       sensor (non-zero `report_interval_us`).
