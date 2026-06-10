@@ -53,11 +53,18 @@ own outgoing sequence numbers.
 - **`bno085_send_packet()` signature**: takes the handle, a channel
   number, a pointer to payload bytes, and a payload length. It builds
   the 4-byte SHTP header (length = 4 + payload length, channel, current
-  TX sequence number for that channel), asserts `CS`, performs one
-  `HAL_SPI_TransmitReceive()` of `header + payload` (discarding the
-  received bytes), releases `CS`, and increments the channel's TX
-  sequence number. No `INT` wait - per SHTP, the host may write
-  whenever it chooses.
+  TX sequence number for that channel), waits for `INT` low (see
+  below), asserts `CS`, performs one `HAL_SPI_TransmitReceive()` of
+  `header + payload` (discarding the received bytes), releases `CS`,
+  and increments the channel's TX sequence number.
+- **`INT` wait before every SPI transaction, including writes**:
+  bench testing showed that sending the Get Feature Request without
+  first waiting for `INT` low resulted in every response coming back
+  as a mismatch (`HAL_ERROR`) - per the BNO08x SPI protocol, the device
+  asserts `INT` (HINTN) to indicate it is ready for *any* SPI
+  transaction, not just host reads. Both `bno085_send_packet()` and
+  `bno085_get_feature()`'s response read now wait for `INT` low (via a
+  shared `bno085_wait_int_low()` helper) before asserting `CS`.
 - **Per-channel TX sequence numbers**: add `uint8_t tx_seq[6]` to
   `bno085_t` (one counter per SHTP channel 0-5, matching the channels
   seen in the advertisement), initialized to 0 by `bno085_init()`

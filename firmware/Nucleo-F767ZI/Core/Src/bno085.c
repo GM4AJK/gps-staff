@@ -114,6 +114,25 @@ HAL_StatusTypeDef bno085_read_advertisement(bno085_t *p)
 	return HAL_OK;
 }
 
+/*
+ * Polls INT for it to go low (the BNO08x asserts INT to indicate it is
+ * ready for an SPI transaction, for both host reads and host writes) within
+ * BNO085_INT_TIMEOUT_MS.
+ *
+ * Returns HAL_OK once INT is low, or HAL_TIMEOUT if it does not go low in
+ * time.
+ */
+static HAL_StatusTypeDef bno085_wait_int_low(bno085_t *p)
+{
+	uint32_t start = HAL_GetTick();
+	while (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
+		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
+			return HAL_TIMEOUT;
+		}
+	}
+	return HAL_OK;
+}
+
 HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len)
 {
 	uint8_t tx_buf[4 + BNO085_CMD_BUF_SIZE];
@@ -126,8 +145,13 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
 	tx_buf[3] = p->tx_seq[channel];
 	memcpy(&tx_buf[4], payload, payload_len);
 
+	HAL_StatusTypeDef status = bno085_wait_int_low(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
-	HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(p->port, tx_buf, rx_buf, total_len, BNO085_SPI_TIMEOUT_MS);
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, rx_buf, total_len, BNO085_SPI_TIMEOUT_MS);
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 
 	if (status != HAL_OK) {
@@ -148,11 +172,9 @@ HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id)
 		return status;
 	}
 
-	uint32_t start = HAL_GetTick();
-	while (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
-		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
-			return HAL_TIMEOUT;
-		}
+	status = bno085_wait_int_low(p);
+	if (status != HAL_OK) {
+		return status;
 	}
 
 	uint8_t tx_buf[BNO085_CMD_BUF_SIZE] = { 0 };

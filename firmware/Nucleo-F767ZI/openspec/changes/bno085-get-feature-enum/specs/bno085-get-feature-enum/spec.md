@@ -4,22 +4,33 @@
 The driver SHALL provide `bno085_send_packet()`, which builds a 4-byte
 SHTP header (length = 4 plus the payload length, the given channel
 number, and the channel's current host TX sequence number from
-`tx_seq[]`), asserts `CS`, performs a single
-`HAL_SPI_TransmitReceive()` of the header followed by the payload bytes
-(received bytes discarded), releases `CS`, and increments
-`tx_seq[channel]` (with `uint8_t` wraparound).
+`tx_seq[]`), waits for `INT` to go low within `BNO085_INT_TIMEOUT_MS`
+(per the BNO08x SPI protocol, the host SHALL NOT initiate an SPI
+transaction - read or write - until the device asserts `INT`), then
+asserts `CS`, performs a single `HAL_SPI_TransmitReceive()` of the
+header followed by the payload bytes (received bytes discarded),
+releases `CS`, and increments `tx_seq[channel]` (with `uint8_t`
+wraparound).
 
 #### Scenario: Successful packet send
 - **WHEN** `bno085_send_packet()` is called with a channel, payload
-  pointer, and payload length, and the SPI transfer succeeds
+  pointer, and payload length, `INT` goes low within
+  `BNO085_INT_TIMEOUT_MS`, and the SPI transfer succeeds
 - **THEN** `bno085_send_packet()` returns `HAL_OK`
 - **AND** the bytes transmitted are a 4-byte SHTP header (length,
   channel, sequence number) followed by the payload bytes
 - **AND** `tx_seq[channel]` is incremented by one (wrapping at 256)
 
+#### Scenario: INT timeout returns an error without an SPI transaction
+- **WHEN** `bno085_send_packet()` is called and `INT` does not go low
+  within `BNO085_INT_TIMEOUT_MS`
+- **THEN** `bno085_send_packet()` returns `HAL_TIMEOUT`
+- **AND** no SPI transfer is performed
+- **AND** `tx_seq[channel]` is not incremented
+
 #### Scenario: SPI failure during send is propagated
-- **WHEN** the `HAL_SPI_TransmitReceive()` call fails (error or
-  timeout)
+- **WHEN** `INT` goes low within the timeout, but the
+  `HAL_SPI_TransmitReceive()` call fails (error or timeout)
 - **THEN** `bno085_send_packet()` returns the corresponding
   non-`HAL_OK` `HAL_StatusTypeDef`
 - **AND** `CS` is released high (deasserted) before returning
@@ -28,9 +39,9 @@ number, and the channel's current host TX sequence number from
 ### Requirement: Query a sensor's current configuration with Get Feature
 The driver SHALL provide `bno085_get_feature()`, which sends an SH-2
 Get Feature Request (`{0xFE, report_id, 0x00, 0x00, 0x00, 0x00}`) on
-`BNO085_CHANNEL_CONTROL` via `bno085_send_packet()`, then waits for
-`INT` to go low within `BNO085_INT_TIMEOUT_MS`. On `INT` low, it
-performs a single `BNO085_CMD_BUF_SIZE`-byte full-duplex SPI transfer
+`BNO085_CHANNEL_CONTROL` via `bno085_send_packet()`, then waits again
+for `INT` to go low within `BNO085_INT_TIMEOUT_MS` for the response.
+On `INT` low, it performs a single `BNO085_CMD_BUF_SIZE`-byte full-duplex SPI transfer
 into `cmd_buf` with `CS` asserted, then releases `CS`. If the response
 payload begins with `0xFC` (Get Feature Response) and the following
 byte equals `report_id`, the remaining 15 bytes SHALL be parsed

@@ -153,13 +153,16 @@ void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart);
  * @param payload_len - Number of payload bytes
  *
  * Builds a 4-byte SHTP header (length = 4 + payload_len, channel, and the
- * channel's current host TX sequence number from tx_seq[]), asserts CS,
- * performs a single full-duplex SPI transfer of the header followed by the
- * payload (received bytes discarded), then releases CS. On success,
- * tx_seq[channel] is incremented (with uint8_t wraparound).
+ * channel's current host TX sequence number from tx_seq[]), waits for INT
+ * to go low within BNO085_INT_TIMEOUT_MS (the BNO08x asserts INT before any
+ * SPI transaction, including host writes), then asserts CS, performs a
+ * single full-duplex SPI transfer of the header followed by the payload
+ * (received bytes discarded), then releases CS. On success, tx_seq[channel]
+ * is incremented (with uint8_t wraparound).
  *
- * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed SPI
- *         transfer (CS is released before returning either way).
+ * @return HAL_OK on success, HAL_TIMEOUT if INT does not go low in time, or
+ *         the HAL_StatusTypeDef of a failed SPI transfer (CS is released
+ *         before returning either way).
  */
 HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len);
 
