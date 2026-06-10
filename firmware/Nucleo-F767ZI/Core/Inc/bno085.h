@@ -9,7 +9,7 @@
 #define BNO085_RESET_PULSE_MS 10
 
 /* Max time to wait for INT to go low (data ready) after reset */
-#define BNO085_INT_TIMEOUT_MS 1000
+#define BNO085_INT_TIMEOUT_MS 5000
 
 /* Max time to wait for INT to read high (deasserted) after releasing RST,
  * before polling for it to go low. Guards against an immediate-low INT

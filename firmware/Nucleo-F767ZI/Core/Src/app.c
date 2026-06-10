@@ -149,7 +149,8 @@ void app_init(void)
 				bno.feature.feature_flags,
 				bno.feature.change_sensitivity);
 		} else {
-			len = snprintf(buf, sizeof(buf), "%s: bno085_get_feature failed: %d\r\n", sensors[i].name, feature_status);
+			len = snprintf(buf, sizeof(buf), "%s: bno085_get_feature failed: %d (int_wait=%lums)\r\n",
+				sensors[i].name, feature_status, (unsigned long)bno.int_wait_ms);
 		}
 		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 

@@ -141,9 +141,11 @@ static HAL_StatusTypeDef bno085_wait_int_low(bno085_t *p)
 	uint32_t start = HAL_GetTick();
 	while (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
 		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
+			p->int_wait_ms = HAL_GetTick() - start;
 			return HAL_TIMEOUT;
 		}
 	}
+	p->int_wait_ms = HAL_GetTick() - start;
 	return HAL_OK;
 }
 
