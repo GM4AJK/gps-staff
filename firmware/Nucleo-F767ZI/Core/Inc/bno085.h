@@ -11,8 +11,17 @@
 /* Max time to wait for INT to go low (data ready) after reset */
 #define BNO085_INT_TIMEOUT_MS 1000
 
+/* Max time to wait for INT to read high (deasserted) after releasing RST,
+ * before polling for it to go low. Guards against an immediate-low INT
+ * reading right after reset, which indicates the chip is still in
+ * reset/boot rather than signaling data-ready. */
+#define BNO085_INT_DEASSERT_TIMEOUT_MS 50
+
 /* Size of the single SPI read performed by bno085_bringup() */
 #define BNO085_BRINGUP_BUF_SIZE 32
+
+/* Size of the single SPI read performed by bno085_read_advertisement() */
+#define BNO085_ADVERT_BUF_SIZE 320
 
 typedef struct {
 	SPI_HandleTypeDef *port;
@@ -28,6 +37,8 @@ typedef struct {
 	uint8_t shtp_sequence;
 	GPIO_PinState int_initial;
 	uint32_t int_wait_ms;
+	uint8_t advert_buf[BNO085_ADVERT_BUF_SIZE];
+	uint16_t advert_len;
 } bno085_t;
 
 /**
@@ -71,5 +82,42 @@ void bno085_init(
  *         the HAL_StatusTypeDef of a failed SPI transfer.
  */
 HAL_StatusTypeDef bno085_bringup(bno085_t *p);
+
+/**
+ * bno085_read_advertisement
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Performs the same RST pulse and INT-wait sequence as bno085_bringup(),
+ * recording int_initial and int_wait_ms. On success, performs a single
+ * BNO085_ADVERT_BUF_SIZE-byte full-duplex SPI transfer (transmitting
+ * all-zero bytes) with CS asserted, then releases CS, parses the first 4
+ * received bytes as the SHTP header, and stores
+ * advert_len = min(shtp_length, BNO085_ADVERT_BUF_SIZE). The full received
+ * buffer is stored in advert_buf.
+ *
+ * @return HAL_OK on success, HAL_TIMEOUT if INT does not go low in time, or
+ *         the HAL_StatusTypeDef of a failed SPI transfer.
+ */
+HAL_StatusTypeDef bno085_read_advertisement(bno085_t *p);
+
+/**
+ * bno085_print_advertisement
+ * @param p - Pointer to a bno085_t struct populated by a successful call to
+ *            bno085_read_advertisement()
+ * @param huart - UART handle to print the parsed records to
+ *
+ * Walks advert_buf[4 .. advert_len) as a sequence of tag/length/value
+ * records (1 byte tag, 1 byte length, length bytes of value), and
+ * transmits one line per record over huart:
+ *  - length == 0: the tag only
+ *  - value is all printable ASCII: the tag and value as a quoted string
+ *  - length == 1 (and not printable ASCII): the tag and value as a decimal
+ *    number
+ *  - otherwise: the tag and value as space-separated hex bytes
+ *
+ * The walk stops before reading any record that would extend past
+ * advert_len or BNO085_ADVERT_BUF_SIZE.
+ */
+void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart);
 
 #endif /* INC_BNO085_H_ */
