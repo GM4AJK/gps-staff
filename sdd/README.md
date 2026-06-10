@@ -79,19 +79,9 @@ This document is a pre-design requirements and decisions capture, maintained as 
   - User never needs physical access to base station after placement -- fully remote controlled from rover
 - **Driver: [libdriver/sx1262](https://github.com/libdriver/sx1262)** -- we will drive the chip via its low-level primitives (`sx1262_set_tx`/`sx1262_set_rx` + `sx1262_irq_handler`-driven flags), not the high-level blocking wrappers (`sx1262_lora_transmit`/`sx1262_single_receive`), to fit our cooperative idle-loop-with-IRQ-flags architecture rather than pulling in an RTOS
 
-### Future Expansion: WiFi/Bluetooth Daughter Board (base station)
+### Display Planning
 
-- **Possible future project**: dock a [Seeed XIAO ESP32-C3](https://wiki.seeedstudio.com/XIAO_ESP32C3_Getting_Started/) module on the base station as a daughter board, fed correction data over UART (STM32F765 has spare UARTs) and relaying RTCM over WiFi to internet NTRIP casters / shared base-station services (e.g. RTK2GO, Emlid Caster)
-  - Base station runs from a permanent supply (not battery) -- the daughter board's extra current draw is not a battery-life concern
-  - Likely powered directly from the existing 3.3V rail (TPS63020 output) via the XIAO's `3V3` pin -- probably no new regulator needed; will require careful local bulk decoupling for WiFi TX current transients (~300-400mA bursts) and board partitioning to keep RF noise away from the GNSS/LoRa front ends
-    - **Decoupling layout plan**: mounting the module on headers leaves ~8mm clearance between it and the main PCB -- enough room to place decoupling directly underneath, right at the `3V3` pin: bulk capacitance (e.g. 47-100uF polymer/tantalum) to absorb the WiFi TX current bursts, plus a smaller high-frequency ceramic (100nF-1uF) alongside it for fast transient response
-  - MCU-controlled load switch (gated by an STM32 GPIO) to power the daughter board on/off as needed
-  - **Programming plan**: initial firmware flashed via the XIAO's own USB port *before* it's docked to the main board (avoids ever back-feeding its onboard 3V3 LDO from our rail while USB is connected); subsequent updates via OTA over WiFi using [ArduinoOTA](https://github.com/JAndrassy/ArduinoOTA)
-    - Still route `EN`/reset and `D9` (GPIO9, boot-mode strap) from the STM32 to the daughter board as a recovery fallback -- lets the F7 force the module into its UART serial bootloader (and reset it independently of the power switch) if OTA ever fails or the stack hangs, without needing to undock and re-flash over USB
-    - **OTA integration pattern**: `ArduinoOTA.handle()` is non-blocking (returns immediately when no upload is arriving) -- it drops straight into the normal Arduino `loop()` alongside application code; WiFi must stay connected for OTA to be reachable, which is a given since the NTRIP relay use case requires WiFi active anyway (add a `WiFi.reconnect()` watchdog in the loop)
-    - **UART/OTA interaction**: during an actual OTA flash, `handle()` blocks until the upload completes and the module reboots -- the STM32 continues running independently, but RTCM bytes streaming in over UART will be dropped during the flash window; the STM32 protocol design should treat a silent/unresponsive XIAO as a transient fault and retry rather than hard-failing
-  - Module also has Bluetooth -- a possible separate future project (e.g. phone/tablet pairing, wireless config)
-- **Display planning**: OLED is rover-only -- base station builds are DNP. The rover acts as the UI "head" for the whole system even in the field (fix status, satellite count, survey-in progress, etc.); the base station only needs status LEDs. Internet/WiFi configuration is handled by the RPi companion (see "Base Station: Internet Relay and Operating Modes" below), so there is no remaining use case for a base-station display
+- OLED is rover-only -- base station builds are DNP. The rover acts as the UI "head" for the whole system even in the field (fix status, satellite count, survey-in progress, etc.); the base station only needs status LEDs. Internet/WiFi configuration is handled by the RPi companion (see "Base Station: Internet Relay and Operating Modes" below), so there is no remaining use case for a base-station display
 
 ### Base Station: Internet Relay and Operating Modes
 
@@ -109,7 +99,6 @@ The base station has two operating modes -- same hardware and firmware in both:
   ```
 - All TLS, WiFi reconnect, credential management, and NTRIP protocol handling lives on the RPi -- nothing of this complexity touches the STM32 firmware
 - RPi has HDMI + keyboard for easy initial WiFi and credential setup -- no on-unit display or config UI needed
-- XIAO ESP32-C3 daughter board (see "Future Expansion" above) is superseded for internet relay by this approach; it remains a possible future option for Bluetooth pairing, wireless config, or scenarios where a laptop/RPi companion is not available
 
 ### Antenna
 
@@ -555,4 +544,3 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 15. **Status LEDs**: 3x LEDs each on a PWM-capable (TIMx_CHx) GPIO with a current-limiting resistor
 16. **Mode-selection jumper**: GPIO with pull-up/pull-down, sampled once at boot to select base vs rover
 17. **BOOT0**: 2-pin jumper header with 10K pull-down to GND, for entering the STM32 DFU bootloader
-18. **WiFi/Bluetooth daughter-board header (XIAO ESP32-C3, future)**: spare UART, 3.3V-rail power tap through an MCU-controlled load switch, and `EN`/reset + `D9` (GPIO9 boot-strap) lines to STM32 GPIOs -- route these even on builds where the module isn't populated, so the option stays open
