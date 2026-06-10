@@ -67,17 +67,34 @@ IRQ-safe set/test-and-clear for free, matching the existing idiom.
   and `flag_peek_BNO085_INT()`. `HAL_GPIO_EXTI_Callback()` in `app.c`
   calls `flag_set_BNO085_INT()` on `INT`'s falling edge, replacing the
   ad-hoc `BNO085_INT_STATE` global (removed).
-- **"Drain before arm, consume on wait" pattern**: at each point where
-  `INT` could *first* legitimately assert (immediately before releasing
-  `RST` in `bno085_reset_and_wait()`, and immediately before pulsing
-  `PS0`/`WAKE` low in `bno085_wake_and_wait_int_low()`), call
-  `flag_get_BNO085_INT()` once to discard any stale latched edge from
-  before that point. The subsequent wait loop's success condition
-  becomes `flag_get_BNO085_INT() || HAL_GPIO_ReadPin(int_port, int_pin)
-  == GPIO_PIN_RESET` - i.e. succeed if either an edge was latched at any
+- **"Drain after the in-reset/in-progress low period, consume on wait"
+  pattern**: call `flag_get_BNO085_INT()` once to discard any stale
+  latched edge immediately before the wait loop begins, but *after* any
+  period during which the device is known/expected to drive or read
+  `INT` low for reasons unrelated to data-ready:
+  - In `bno085_reset_and_wait()`, the BNO085 can read/drive `INT` low
+    for some of the `RST` pulse and the in-reset/booting period
+    afterwards (this is exactly what the existing 50ms
+    "deassert-debounce" loop waits out at the level layer). The drain
+    therefore happens *after* the deassert-debounce loop, immediately
+    before calling `bno085_wait_int_low()` - not before releasing `RST`.
+    Draining before `RST` release was tried first and made every
+    `bno085_bringup()`/`bno085_read_advertisement()` call return
+    instantly with `int_wait_ms == 0` and garbage data: the in-reset low
+    edge latched the flag during the `RST` pulse, so
+    `bno085_wait_int_low()` immediately reported "ready" while the chip
+    was still booting.
+  - In `bno085_wake_and_wait_int_low()`, there is no equivalent
+    in-progress low period before the `PS0`/`WAKE` pulse, so the drain
+    happens immediately before pulsing `PS0`/`WAKE` low, as originally
+    designed.
+
+  The subsequent wait loop's success condition is
+  `flag_get_BNO085_INT() || HAL_GPIO_ReadPin(int_port, int_pin) ==
+  GPIO_PIN_RESET` - i.e. succeed if either an edge was latched at any
   point since the drain, or `INT` currently reads low. This closes the
-  race regardless of whether the assertion happens before, during, or
-  after the wait loop starts polling.
+  race regardless of whether the (real, post-boot) assertion happens
+  before, during, or after the wait loop starts polling.
   - *Alternative considered*: drain the flag at the *start* of the wait
     loop instead of before the triggering action (RST release / WAKE
     pulse). Rejected - if the assertion happens between the triggering

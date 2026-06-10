@@ -16,11 +16,13 @@
       called from `bno085_reset_and_wait()`; change its loop condition
       to succeed when `flag_get_BNO085_INT()` returns true OR `INT`
       reads low (recording `int_wait_ms` as today).
-- [x] 3.2 In `bno085_reset_and_wait()`, call `flag_get_BNO085_INT()` to
-      discard any stale edge immediately before releasing `RST`, then
-      replace the existing inline "wait for INT low" loop with a call
-      to `bno085_wait_int_low()`. Leave the deassert-debounce loop
-      unchanged.
+- [x] 3.2 In `bno085_reset_and_wait()`, replace the existing inline
+      "wait for INT low" loop with a call to `bno085_wait_int_low()`,
+      and call `flag_get_BNO085_INT()` to discard any stale edge
+      immediately after the deassert-debounce loop (not before
+      releasing `RST` - the device can read/drive `INT` low during the
+      `RST` pulse and in-reset/booting period, which the
+      deassert-debounce loop waits out at the level layer).
 - [x] 3.3 In `bno085_wake_and_wait_int_low()`, call
       `flag_get_BNO085_INT()` to discard any stale edge immediately
       before pulsing `PS0`/`WAKE` low (only on the path where `INT` is

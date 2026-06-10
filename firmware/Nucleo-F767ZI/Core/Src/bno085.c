@@ -49,10 +49,6 @@ static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 	 * assertion of INT, to select the SPI interface. */
 	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
 
-	/* Discard any stale latched INT edge before RST is released, so
-	 * bno085_wait_int_low() below only observes edges from this reset. */
-	flag_get_BNO085_INT();
-
 	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
 	HAL_Delay(BNO085_RESET_PULSE_MS);
 	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
@@ -67,6 +63,12 @@ static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 			break;
 		}
 	}
+
+	/* Discard any latched INT edge from the RST pulse / in-reset period
+	 * (the chip can read/drive INT low while still booting), so
+	 * bno085_wait_int_low() below only observes the real post-boot
+	 * data-ready assertion. */
+	flag_get_BNO085_INT();
 
 	return bno085_wait_int_low(p);
 }
