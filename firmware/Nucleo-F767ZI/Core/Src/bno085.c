@@ -18,6 +18,10 @@ static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 {
 	p->int_initial = HAL_GPIO_ReadPin(p->int_port, p->int_pin);
 
+	/* PS0/WAKE must be high from before reset until after the first
+	 * assertion of INT, to select the SPI interface. */
+	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
+
 	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
 	HAL_Delay(BNO085_RESET_PULSE_MS);
 	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
@@ -53,7 +57,9 @@ void bno085_init(
 	GPIO_TypeDef *rst_port,
 	uint16_t rst_pin,
 	GPIO_TypeDef *int_port,
-	uint16_t int_pin
+	uint16_t int_pin,
+	GPIO_TypeDef *wake_port,
+	uint16_t wake_pin
 )
 {
 	memset(p, 0, sizeof(*p));
@@ -65,6 +71,8 @@ void bno085_init(
 	p->rst_pin = rst_pin;
 	p->int_port = int_port;
 	p->int_pin = int_pin;
+	p->wake_port = wake_port;
+	p->wake_pin = wake_pin;
 }
 
 HAL_StatusTypeDef bno085_bringup(bno085_t *p)
@@ -101,17 +109,186 @@ HAL_StatusTypeDef bno085_read_advertisement(bno085_t *p)
 	uint8_t tx_buf[BNO085_ADVERT_BUF_SIZE] = { 0 };
 
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
-	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->advert_buf, BNO085_ADVERT_BUF_SIZE, BNO085_SPI_TIMEOUT_MS);
-	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 
+	/* Read exactly the 4-byte SHTP header first, then exactly
+	 * (length - 4) more payload bytes - reading past the packet's
+	 * declared length would drain bytes from whatever the device queues
+	 * next, leaving it misaligned for later reads. */
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->advert_buf, 4, BNO085_SPI_TIMEOUT_MS);
 	if (status != HAL_OK) {
+		HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 		return status;
 	}
 
 	uint16_t length = (uint16_t)(p->advert_buf[0] | (p->advert_buf[1] << 8)) & 0x7FFF;
 	p->advert_len = (length < BNO085_ADVERT_BUF_SIZE) ? length : BNO085_ADVERT_BUF_SIZE;
 
+	if (p->advert_len > 4) {
+		status = HAL_SPI_TransmitReceive(p->port, &tx_buf[4], &p->advert_buf[4], p->advert_len - 4, BNO085_SPI_TIMEOUT_MS);
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
 	return HAL_OK;
+}
+
+/*
+ * Polls INT for it to go low (the BNO08x asserts INT to indicate it is
+ * ready for an SPI transaction, for both host reads and host writes) within
+ * BNO085_INT_TIMEOUT_MS.
+ *
+ * Returns HAL_OK once INT is low, or HAL_TIMEOUT if it does not go low in
+ * time.
+ */
+static HAL_StatusTypeDef bno085_wait_int_low(bno085_t *p)
+{
+	uint32_t start = HAL_GetTick();
+	while (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
+		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
+			p->int_wait_ms = HAL_GetTick() - start;
+			return HAL_TIMEOUT;
+		}
+	}
+	p->int_wait_ms = HAL_GetTick() - start;
+	return HAL_OK;
+}
+
+/*
+ * If INT is already low, returns HAL_OK immediately. Otherwise pulses
+ * PS0/WAKE low to ask the device to assert INT, waits for INT to go low
+ * within BNO085_INT_TIMEOUT_MS (via bno085_wait_int_low()), then returns
+ * PS0/WAKE high.
+ */
+static HAL_StatusTypeDef bno085_wake_and_wait_int_low(bno085_t *p)
+{
+	if (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_RESET) {
+		p->int_wait_ms = 0;
+		return HAL_OK;
+	}
+
+	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_RESET);
+	HAL_StatusTypeDef status = bno085_wait_int_low(p);
+	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
+
+	return status;
+}
+
+HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len)
+{
+	uint8_t tx_buf[BNO085_CMD_BUF_SIZE] = { 0 };
+	uint16_t tx_total = 4 + payload_len;
+
+	tx_buf[0] = (uint8_t)(tx_total & 0xFF);
+	tx_buf[1] = (uint8_t)(tx_total >> 8);
+	tx_buf[2] = channel;
+	tx_buf[3] = p->tx_seq[channel];
+	memcpy(&tx_buf[4], payload, payload_len);
+
+	HAL_StatusTypeDef status = bno085_wake_and_wait_int_low(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+
+	/* SPI is full-duplex: capture the bytes the device sends back during
+	 * our write into cmd_buf rather than discarding them, so they're at
+	 * least visible for debugging. The transfer is exactly tx_total bytes
+	 * (our own packet length) - it is not extended to cover a longer
+	 * pending packet the device may report, to avoid clocking extra
+	 * zero-padded bytes into the device that aren't part of our packet. */
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, tx_total, BNO085_SPI_TIMEOUT_MS);
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	uint16_t rx_length = (uint16_t)(p->cmd_buf[0] | (p->cmd_buf[1] << 8)) & 0x7FFF;
+	p->cmd_len = (rx_length < BNO085_CMD_BUF_SIZE) ? rx_length : BNO085_CMD_BUF_SIZE;
+	p->tx_seq[channel]++;
+
+	return HAL_OK;
+}
+
+/*
+ * Wakes the device (if needed) and waits for INT low, then performs the same
+ * exact-length two-step read as bno085_read_advertisement() into cmd_buf,
+ * recording the received length in cmd_len.
+ */
+static HAL_StatusTypeDef bno085_read_response(bno085_t *p)
+{
+	HAL_StatusTypeDef status = bno085_wake_and_wait_int_low(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	uint8_t tx_buf[BNO085_CMD_BUF_SIZE] = { 0 };
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, 4, BNO085_SPI_TIMEOUT_MS);
+	if (status != HAL_OK) {
+		HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+		return status;
+	}
+
+	uint16_t length = (uint16_t)(p->cmd_buf[0] | (p->cmd_buf[1] << 8)) & 0x7FFF;
+	uint16_t total_len = (length < BNO085_CMD_BUF_SIZE) ? length : BNO085_CMD_BUF_SIZE;
+
+	if (total_len > 4) {
+		status = HAL_SPI_TransmitReceive(p->port, &tx_buf[4], &p->cmd_buf[4], total_len - 4, BNO085_SPI_TIMEOUT_MS);
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	p->cmd_len = total_len;
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id)
+{
+	uint8_t payload[6] = { BNO085_REPORT_ID_GET_FEATURE_REQUEST, report_id, 0x00, 0x00, 0x00, 0x00 };
+
+	HAL_StatusTypeDef status = bno085_send_packet(p, BNO085_CHANNEL_CONTROL, payload, sizeof(payload));
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	/* The response to our request may not be the next packet read - a
+	 * previously-queued packet (e.g. the response to an earlier Get
+	 * Feature Request) can be read first. Read and discard packets until
+	 * a matching Get Feature Response is found or the retry limit is
+	 * reached. */
+	for (uint8_t attempt = 0; attempt < BNO085_GET_FEATURE_MAX_ATTEMPTS; attempt++) {
+		status = bno085_read_response(p);
+		if (status != HAL_OK) {
+			return status;
+		}
+
+		if (p->cmd_len >= 21 && p->cmd_buf[4] == BNO085_REPORT_ID_GET_FEATURE_RESPONSE && p->cmd_buf[5] == report_id) {
+			p->feature.feature_report_id = report_id;
+			p->feature.feature_flags = p->cmd_buf[6];
+			p->feature.change_sensitivity = (uint16_t)(p->cmd_buf[7] | (p->cmd_buf[8] << 8));
+			p->feature.report_interval_us = (uint32_t)(p->cmd_buf[9] | (p->cmd_buf[10] << 8) | (p->cmd_buf[11] << 16) | (p->cmd_buf[12] << 24));
+			p->feature.batch_interval_us = (uint32_t)(p->cmd_buf[13] | (p->cmd_buf[14] << 8) | (p->cmd_buf[15] << 16) | (p->cmd_buf[16] << 24));
+			p->feature.sensor_specific_config = (uint32_t)(p->cmd_buf[17] | (p->cmd_buf[18] << 8) | (p->cmd_buf[19] << 16) | (p->cmd_buf[20] << 24));
+
+			return HAL_OK;
+		}
+	}
+
+	return HAL_ERROR;
 }
 
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart)

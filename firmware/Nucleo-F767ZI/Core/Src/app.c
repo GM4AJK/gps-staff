@@ -1,6 +1,7 @@
 
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -13,12 +14,21 @@
 static ssd1309_t oled;
 static bno085_t bno;
 
+volatile bool BNO085_INT_STATE = false;
+
 #define COUNTER_TIMER(x, y, z) \
 	x++; \
 	if(x >= y) { \
 		x = 0; \
 		z(); \
 	}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if(GPIO_Pin == BNO085_INT_Pin) {
+		BNO085_INT_STATE = true;
+	}
+}
 
 void app_1ms(void)
 {
@@ -80,7 +90,8 @@ void app_init(void)
 	bno085_init(&bno, &hspi1,
 		BNO085_SPI_CS_GPIO_Port, BNO085_SPI_CS_Pin,
 		BNO085_RST_GPIO_Port, BNO085_RST_Pin,
-		BNO085_INT_GPIO_Port, BNO085_INT_Pin);
+		BNO085_INT_GPIO_Port, BNO085_INT_Pin,
+		BNO085_PS0_WAKE_GPIO_Port, BNO085_PS0_WAKE_Pin);
 
 	HAL_StatusTypeDef bno_status = bno085_bringup(&bno);
 	char buf[96];
@@ -115,6 +126,42 @@ void app_init(void)
 	} else {
 		len = snprintf(buf, sizeof(buf), "bno085_read_advertisement failed: %d\r\n", advert_status);
 		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+	}
+
+	static const struct {
+		uint8_t report_id;
+		const char *name;
+	} sensors[] = {
+		{ 0x01, "Accelerometer" },
+		{ 0x02, "Gyroscope" },
+		{ 0x03, "Magnetic Field" },
+		{ 0x05, "Rotation Vector" },
+		{ 0x08, "Game Rotation Vector" },
+	};
+
+	for (size_t i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++) {
+		HAL_StatusTypeDef feature_status = bno085_get_feature(&bno, sensors[i].report_id);
+
+		if (feature_status == HAL_OK) {
+			len = snprintf(buf, sizeof(buf), "%s: interval=%luus batch=%luus flags=%02X sens=%u\r\n",
+				sensors[i].name,
+				(unsigned long)bno.feature.report_interval_us,
+				(unsigned long)bno.feature.batch_interval_us,
+				bno.feature.feature_flags,
+				bno.feature.change_sensitivity);
+		} else {
+			len = snprintf(buf, sizeof(buf), "%s: bno085_get_feature failed: %d (int_wait=%lums)\r\n",
+				sensors[i].name, feature_status, (unsigned long)bno.int_wait_ms);
+		}
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+		len = snprintf(buf, sizeof(buf), "  cmd_len=%u cmd_buf:", bno.cmd_len);
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+		for (int j = 0; j < BNO085_CMD_BUF_SIZE; j++) {
+			len = snprintf(buf, sizeof(buf), " %02X", bno.cmd_buf[j]);
+			HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+		}
+		HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, 100);
 	}
 }
 
