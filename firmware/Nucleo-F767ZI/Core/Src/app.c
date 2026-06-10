@@ -105,6 +105,17 @@ void app_init(void)
 		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 	}
 	HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, 100);
+
+	HAL_StatusTypeDef advert_status = bno085_read_advertisement(&bno);
+
+	if (advert_status == HAL_OK) {
+		len = snprintf(buf, sizeof(buf), "bno085_read_advertisement OK: advert_len=%u\r\n", bno.advert_len);
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+		bno085_print_advertisement(&bno, &huart3);
+	} else {
+		len = snprintf(buf, sizeof(buf), "bno085_read_advertisement failed: %d\r\n", advert_status);
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+	}
 }
 
 void app_loop(void)
