@@ -43,23 +43,27 @@ static HAL_StatusTypeDef bno085_wait_int_low(bno085_t *p)
  */
 static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 {
+	int loop = 0;
+
 	p->int_initial = HAL_GPIO_ReadPin(p->int_port, p->int_pin);
 
-	/* PS0/WAKE must be high from before reset until after the first
-	 * assertion of INT, to select the SPI interface. */
-	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
+	do {
+		/* PS0/WAKE must be high from before reset until after the first
+		 * assertion of INT, to select the SPI interface. */
+		HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
 
-	/* Pulse RST twice. After a power cycle, a single RST pulse leaves the
-	 * chip in a state where it never produces a valid post-boot
-	 * advertisement (bench-confirmed); a second pulse reliably brings it
-	 * up. After each pulse, wait BNO085_STARTUP_T1_MS (datasheet 6.5.3 t1)
-	 * before sampling INT, since INT is undefined during that period. */
-	for (int i = 0; i < 2; i++) {
 		HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
 		HAL_Delay(BNO085_RESET_PULSE_MS);
 		HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
-		HAL_Delay(BNO085_STARTUP_T1_MS);
+
+		/* Wait for 90ms * 2 after asserting a reset before testing the INT pin.
+		 * During this delay period the INT pin is undefined.
+		 * Then ensure the flag is reset */
+		HAL_Delay(180);
 	}
+	while(loop++ < 1);
+
+
 
 	/* Wait for INT to read high (deasserted) before polling for it to go
 	 * low - rejects a spurious immediate-low reading while the chip is
