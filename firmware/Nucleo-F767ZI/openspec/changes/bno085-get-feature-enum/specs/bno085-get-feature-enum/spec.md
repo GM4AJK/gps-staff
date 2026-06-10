@@ -41,19 +41,25 @@ The driver SHALL provide `bno085_get_feature()`, which sends an SH-2
 Get Feature Request (`{0xFE, report_id, 0x00, 0x00, 0x00, 0x00}`) on
 `BNO085_CHANNEL_CONTROL` via `bno085_send_packet()`, then waits again
 for `INT` to go low within `BNO085_INT_TIMEOUT_MS` for the response.
-On `INT` low, it performs a single `BNO085_CMD_BUF_SIZE`-byte full-duplex SPI transfer
-into `cmd_buf` with `CS` asserted, then releases `CS`. If the response
-payload begins with `0xFC` (Get Feature Response) and the following
-byte equals `report_id`, the remaining 15 bytes SHALL be parsed
-little-endian into `feature` (a `bno085_feature_t`): `feature_flags`
-(1 byte), `change_sensitivity` (2 bytes), `report_interval_us` (4
-bytes), `batch_interval_us` (4 bytes), `sensor_specific_config` (4
-bytes), with `feature_report_id` set to `report_id`.
+On `INT` low, it asserts `CS`, reads the 4-byte SHTP header into
+`cmd_buf[0..4)`, computes `total_len = min(length, BNO085_CMD_BUF_SIZE)`
+from it, then reads exactly `total_len - 4` more bytes (if any) into
+`cmd_buf[4..total_len)`, before releasing `CS` (matching the
+exact-length read used by `bno085_read_advertisement()`, so the
+device's queue is not left misaligned for subsequent reads). If
+`total_len >= 21` and the response payload begins with `0xFC` (Get
+Feature Response) and the following byte equals `report_id`, the
+remaining 15 bytes SHALL be parsed little-endian into `feature` (a
+`bno085_feature_t`): `feature_flags` (1 byte), `change_sensitivity` (2
+bytes), `report_interval_us` (4 bytes), `batch_interval_us` (4 bytes),
+`sensor_specific_config` (4 bytes), with `feature_report_id` set to
+`report_id`.
 
 #### Scenario: Successful Get Feature query
 - **WHEN** `bno085_get_feature()` is called with a `report_id`, `INT`
   goes low within `BNO085_INT_TIMEOUT_MS` after the request is sent,
-  and the response payload is `0xFC` followed by `report_id`
+  and the response is a 21-byte packet whose payload is `0xFC`
+  followed by `report_id`
 - **THEN** `bno085_get_feature()` returns `HAL_OK`
 - **AND** `feature.feature_report_id` equals `report_id`
 - **AND** `feature.report_interval_us`, `feature.batch_interval_us`,
@@ -68,16 +74,17 @@ bytes), with `feature_report_id` set to `report_id`.
 - **AND** no response SPI transfer is performed
 
 #### Scenario: Unexpected response is reported as an error
-- **WHEN** `INT` goes low and the response SPI transfer succeeds, but
-  the response payload does not begin with `0xFC` or the following
-  byte does not equal the requested `report_id`
+- **WHEN** `INT` goes low and the response SPI transfers succeed, but
+  `total_len < 21`, or the response payload does not begin with `0xFC`,
+  or the following byte does not equal the requested `report_id`
 - **THEN** `bno085_get_feature()` returns `HAL_ERROR`
 - **AND** `cmd_buf` retains the raw received bytes for inspection
 - **AND** `feature` is left unmodified
 
 #### Scenario: SPI failure during the response read is propagated
-- **WHEN** `INT` goes low within the timeout, but the response
-  `HAL_SPI_TransmitReceive()` call fails (error or timeout)
+- **WHEN** `INT` goes low within the timeout, but either the
+  header-read or the payload-read `HAL_SPI_TransmitReceive()` call
+  fails (error or timeout)
 - **THEN** `bno085_get_feature()` returns the corresponding
   non-`HAL_OK` `HAL_StatusTypeDef`
 - **AND** `CS` is released high (deasserted) before returning

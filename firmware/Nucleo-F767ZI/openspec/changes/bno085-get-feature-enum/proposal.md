@@ -41,12 +41,22 @@ low.
   queried sensor's current configuration.
 
 ### Modified Capabilities
-- (none)
+- `bno085-shtp-advertisement`: `bno085_read_advertisement()` now reads
+  exactly `advert_len` bytes (4-byte header, then `advert_len - 4`
+  payload bytes) instead of always reading the full
+  `BNO085_ADVERT_BUF_SIZE`. This was discovered during bench testing of
+  this change: the previous fixed-size 320-byte read over-read the
+  276-byte advertisement by 44 bytes, draining bytes from the next
+  packet the device queued and leaving every subsequent read
+  misaligned - which is why every Get Feature query returned a
+  mismatched response.
 
 ## Impact
 
 - `Core/Inc/bno085.h` / `Core/Src/bno085.c`: new per-channel TX
   sequence numbers, new command buffer, new `bno085_feature_t` struct,
-  new `bno085_send_packet()` and `bno085_get_feature()` functions.
+  new `bno085_send_packet()` and `bno085_get_feature()` functions, and
+  an exact-length two-step (header then payload) read in
+  `bno085_read_advertisement()` and `bno085_get_feature()`.
 - `Core/Src/app.c`: demo updated to call `bno085_get_feature()` for a
   fixed list of sensor report IDs and print the results.

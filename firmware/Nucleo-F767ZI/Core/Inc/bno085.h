@@ -113,12 +113,15 @@ HAL_StatusTypeDef bno085_bringup(bno085_t *p);
  * @param p - Pointer to an initialized bno085_t struct
  *
  * Performs the same RST pulse and INT-wait sequence as bno085_bringup(),
- * recording int_initial and int_wait_ms. On success, performs a single
- * BNO085_ADVERT_BUF_SIZE-byte full-duplex SPI transfer (transmitting
- * all-zero bytes) with CS asserted, then releases CS, parses the first 4
- * received bytes as the SHTP header, and stores
- * advert_len = min(shtp_length, BNO085_ADVERT_BUF_SIZE). The full received
- * buffer is stored in advert_buf.
+ * recording int_initial and int_wait_ms. On success, asserts CS, performs a
+ * 4-byte full-duplex SPI transfer (transmitting all-zero bytes) to read the
+ * SHTP header, computes advert_len = min(shtp_length, BNO085_ADVERT_BUF_SIZE)
+ * from it, then performs a second full-duplex SPI transfer of exactly
+ * (advert_len - 4) more bytes (if any) before releasing CS. Reading exactly
+ * advert_len bytes (rather than always BNO085_ADVERT_BUF_SIZE) avoids
+ * draining bytes from whatever packet the device queues next. advert_buf[0
+ * .. advert_len) contains the received header and payload; bytes beyond
+ * advert_len are not written by this call.
  *
  * @return HAL_OK on success, HAL_TIMEOUT if INT does not go low in time, or
  *         the HAL_StatusTypeDef of a failed SPI transfer.
@@ -174,11 +177,13 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
  *
  * Sends an SH-2 Get Feature Request for report_id on
  * BNO085_CHANNEL_CONTROL via bno085_send_packet(), then waits for INT to go
- * low within BNO085_INT_TIMEOUT_MS. On INT low, performs a single
- * BNO085_CMD_BUF_SIZE-byte full-duplex SPI transfer into cmd_buf with CS
- * asserted, then releases CS. If the response payload is a Get Feature
- * Response (0xFC) for report_id, parses the remaining bytes little-endian
- * into the feature field.
+ * low within BNO085_INT_TIMEOUT_MS. On INT low, asserts CS, reads the 4-byte
+ * SHTP header, then reads exactly (length - 4) more bytes (capped to
+ * BNO085_CMD_BUF_SIZE), before releasing CS - see
+ * bno085_read_advertisement() for why the read length must match the
+ * packet's declared length exactly. If the resulting packet is at least 21
+ * bytes and its payload is a Get Feature Response (0xFC) for report_id,
+ * parses the remaining bytes little-endian into the feature field.
  *
  * @return HAL_OK on a matching Get Feature Response, HAL_TIMEOUT if INT does
  *         not go low in time, HAL_ERROR if the response does not match, or

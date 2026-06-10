@@ -14,12 +14,21 @@
 static ssd1309_t oled;
 static bno085_t bno;
 
+volatile bool BNO085_INT_STATE = false;
+
 #define COUNTER_TIMER(x, y, z) \
 	x++; \
 	if(x >= y) { \
 		x = 0; \
 		z(); \
 	}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if(GPIO_Pin == BNO085_INT_Pin) {
+		BNO085_INT_STATE = true;
+	}
+}
 
 void app_1ms(void)
 {

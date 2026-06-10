@@ -57,6 +57,20 @@ own outgoing sequence numbers.
   below), asserts `CS`, performs one `HAL_SPI_TransmitReceive()` of
   `header + payload` (discarding the received bytes), releases `CS`,
   and increments the channel's TX sequence number.
+- **Exact-length two-step reads (header then payload)**: bench testing
+  with a `cmd_buf` debug dump showed that `bno085_get_feature()` was
+  reading a *previous* request's Get Feature Response shifted by one
+  query (e.g. the Gyroscope query's `cmd_buf` contained the
+  Accelerometer's response). Root cause: `bno085_read_advertisement()`
+  always read the full `BNO085_ADVERT_BUF_SIZE` (320) bytes regardless
+  of the advertisement's actual 276-byte length, over-reading by 44
+  bytes into whatever the device queued next and leaving every
+  subsequent read misaligned. Both `bno085_read_advertisement()` and
+  `bno085_get_feature()`'s response read now read the 4-byte SHTP
+  header first, then read exactly `length - 4` more bytes - never more,
+  never fewer - so the device's queue stays aligned for the next read.
+  This modifies the previously-archived `bno085-shtp-advertisement`
+  capability (see its delta spec in this change).
 - **`INT` wait before every SPI transaction, including writes**:
   bench testing showed that sending the Get Feature Request without
   first waiting for `INT` low resulted in every response coming back

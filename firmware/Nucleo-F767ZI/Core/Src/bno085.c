@@ -101,15 +101,29 @@ HAL_StatusTypeDef bno085_read_advertisement(bno085_t *p)
 	uint8_t tx_buf[BNO085_ADVERT_BUF_SIZE] = { 0 };
 
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
-	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->advert_buf, BNO085_ADVERT_BUF_SIZE, BNO085_SPI_TIMEOUT_MS);
-	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 
+	/* Read exactly the 4-byte SHTP header first, then exactly
+	 * (length - 4) more payload bytes - reading past the packet's
+	 * declared length would drain bytes from whatever the device queues
+	 * next, leaving it misaligned for later reads. */
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->advert_buf, 4, BNO085_SPI_TIMEOUT_MS);
 	if (status != HAL_OK) {
+		HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 		return status;
 	}
 
 	uint16_t length = (uint16_t)(p->advert_buf[0] | (p->advert_buf[1] << 8)) & 0x7FFF;
 	p->advert_len = (length < BNO085_ADVERT_BUF_SIZE) ? length : BNO085_ADVERT_BUF_SIZE;
+
+	if (p->advert_len > 4) {
+		status = HAL_SPI_TransmitReceive(p->port, &tx_buf[4], &p->advert_buf[4], p->advert_len - 4, BNO085_SPI_TIMEOUT_MS);
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
 
 	return HAL_OK;
 }
@@ -180,14 +194,29 @@ HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id)
 	uint8_t tx_buf[BNO085_CMD_BUF_SIZE] = { 0 };
 
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
-	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, BNO085_CMD_BUF_SIZE, BNO085_SPI_TIMEOUT_MS);
+
+	/* Read exactly the 4-byte SHTP header first, then exactly
+	 * (length - 4) more payload bytes - see bno085_read_advertisement(). */
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, 4, BNO085_SPI_TIMEOUT_MS);
+	if (status != HAL_OK) {
+		HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+		return status;
+	}
+
+	uint16_t length = (uint16_t)(p->cmd_buf[0] | (p->cmd_buf[1] << 8)) & 0x7FFF;
+	uint16_t total_len = (length < BNO085_CMD_BUF_SIZE) ? length : BNO085_CMD_BUF_SIZE;
+
+	if (total_len > 4) {
+		status = HAL_SPI_TransmitReceive(p->port, &tx_buf[4], &p->cmd_buf[4], total_len - 4, BNO085_SPI_TIMEOUT_MS);
+	}
+
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 
 	if (status != HAL_OK) {
 		return status;
 	}
 
-	if (p->cmd_buf[4] != BNO085_REPORT_ID_GET_FEATURE_RESPONSE || p->cmd_buf[5] != report_id) {
+	if (total_len < 21 || p->cmd_buf[4] != BNO085_REPORT_ID_GET_FEATURE_RESPONSE || p->cmd_buf[5] != report_id) {
 		return HAL_ERROR;
 	}
 
