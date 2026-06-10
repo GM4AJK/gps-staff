@@ -162,26 +162,13 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
 
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
 
-	/* First 4 bytes: send our header while simultaneously receiving
-	 * whatever packet header the device has queued to send us. SPI is
-	 * full-duplex, so if we don't capture these bytes here they are
-	 * silently lost and the device's queue position is shifted. */
-	HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, 4, BNO085_SPI_TIMEOUT_MS);
-	if (status != HAL_OK) {
-		HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
-		return status;
-	}
-
-	uint16_t rx_length = (uint16_t)(p->cmd_buf[0] | (p->cmd_buf[1] << 8)) & 0x7FFF;
-	uint16_t rx_total = (rx_length < BNO085_CMD_BUF_SIZE) ? rx_length : BNO085_CMD_BUF_SIZE;
-	uint16_t transfer_total = (rx_total > tx_total) ? rx_total : tx_total;
-	if (transfer_total > BNO085_CMD_BUF_SIZE) {
-		transfer_total = BNO085_CMD_BUF_SIZE;
-	}
-
-	if (transfer_total > 4) {
-		status = HAL_SPI_TransmitReceive(p->port, &tx_buf[4], &p->cmd_buf[4], transfer_total - 4, BNO085_SPI_TIMEOUT_MS);
-	}
+	/* SPI is full-duplex: capture the bytes the device sends back during
+	 * our write into cmd_buf rather than discarding them, so they're at
+	 * least visible for debugging. The transfer is exactly tx_total bytes
+	 * (our own packet length) - it is not extended to cover a longer
+	 * pending packet the device may report, to avoid clocking extra
+	 * zero-padded bytes into the device that aren't part of our packet. */
+	HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, tx_total, BNO085_SPI_TIMEOUT_MS);
 
 	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
 
@@ -189,7 +176,8 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
 		return status;
 	}
 
-	p->cmd_len = rx_total;
+	uint16_t rx_length = (uint16_t)(p->cmd_buf[0] | (p->cmd_buf[1] << 8)) & 0x7FFF;
+	p->cmd_len = (rx_length < BNO085_CMD_BUF_SIZE) ? rx_length : BNO085_CMD_BUF_SIZE;
 	p->tx_seq[channel]++;
 
 	return HAL_OK;
@@ -244,19 +232,15 @@ HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id)
 		return status;
 	}
 
-	/* The response to our request may not be at the head of the queue
-	 * yet - other packets (e.g. the response to a previous Get Feature
-	 * Request) can be read first, and bno085_send_packet() itself may
-	 * already have captured a queued packet. Check the packet captured by
-	 * each step and read another packet if it doesn't match, until a
-	 * matching Get Feature Response is found or the retry limit is
+	/* The response to our request may not be the next packet read - a
+	 * previously-queued packet (e.g. the response to an earlier Get
+	 * Feature Request) can be read first. Read and discard packets until
+	 * a matching Get Feature Response is found or the retry limit is
 	 * reached. */
 	for (uint8_t attempt = 0; attempt < BNO085_GET_FEATURE_MAX_ATTEMPTS; attempt++) {
-		if (attempt > 0) {
-			status = bno085_read_response(p);
-			if (status != HAL_OK) {
-				return status;
-			}
+		status = bno085_read_response(p);
+		if (status != HAL_OK) {
+			return status;
 		}
 
 		if (p->cmd_len >= 21 && p->cmd_buf[4] == BNO085_REPORT_ID_GET_FEATURE_RESPONSE && p->cmd_buf[5] == report_id) {
