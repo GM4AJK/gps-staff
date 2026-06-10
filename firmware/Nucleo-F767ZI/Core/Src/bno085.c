@@ -49,9 +49,17 @@ static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 	 * assertion of INT, to select the SPI interface. */
 	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
 
-	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
-	HAL_Delay(BNO085_RESET_PULSE_MS);
-	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
+	/* Pulse RST twice. After a power cycle, a single RST pulse leaves the
+	 * chip in a state where it never produces a valid post-boot
+	 * advertisement (bench-confirmed); a second pulse reliably brings it
+	 * up. After each pulse, wait BNO085_STARTUP_T1_MS (datasheet 6.5.3 t1)
+	 * before sampling INT, since INT is undefined during that period. */
+	for (int i = 0; i < 2; i++) {
+		HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
+		HAL_Delay(BNO085_RESET_PULSE_MS);
+		HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
+		HAL_Delay(BNO085_STARTUP_T1_MS);
+	}
 
 	/* Wait for INT to read high (deasserted) before polling for it to go
 	 * low - rejects a spurious immediate-low reading while the chip is

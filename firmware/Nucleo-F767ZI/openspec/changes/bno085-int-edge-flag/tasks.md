@@ -28,8 +28,19 @@
       before pulsing `PS0`/`WAKE` low (only on the path where `INT` is
       not already low).
 
-## 4. Bench verification
+## 4. Startup timing fix
 
-- [ ] 4.1 Bench-test repeated cold-start/reset cycles and confirm
-      `bno085_bringup()`/`bno085_read_advertisement()` no longer
-      intermittently return `HAL_TIMEOUT`.
+- [x] 4.1 Add `BNO085_STARTUP_T1_MS` (90, datasheet 6.5.3 t1) to
+      `bno085.h`. In `bno085_reset_and_wait()`, pulse `RST` low for
+      `BNO085_RESET_PULSE_MS` then high, then wait
+      `BNO085_STARTUP_T1_MS` before sampling `INT` at all (it is
+      undefined during this period) - repeat this pulse+wait twice
+      (a second `RST` pulse is required to reliably recover from a
+      power cycle), before the existing deassert-debounce loop runs.
+
+## 5. Bench verification
+
+- [x] 5.1 Bench-test repeated cold-start/reset cycles (flash reset,
+      Nucleo reset-button, and full power cycle) and confirm
+      `bno085_bringup()`/`bno085_read_advertisement()` consistently
+      return real (non-`0xFF`) data with no `HAL_TIMEOUT`.

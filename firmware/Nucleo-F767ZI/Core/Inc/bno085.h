@@ -8,6 +8,12 @@
 /* Reset pulse width (RST held low) */
 #define BNO085_RESET_PULSE_MS 10
 
+/* Datasheet 6.5.3 "Startup timing": after releasing RST, INT is undefined
+ * for t1 (Internal Initialization, 90ms typ) before the chip asserts INT
+ * once t1+t2 (Internal configuration, 4ms max) have elapsed. Don't sample
+ * INT until t1 has passed. */
+#define BNO085_STARTUP_T1_MS 90
+
 /* Max time to wait for INT to go low (data ready) after reset */
 #define BNO085_INT_TIMEOUT_MS 5000
 

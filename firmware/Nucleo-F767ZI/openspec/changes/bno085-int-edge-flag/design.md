@@ -123,6 +123,27 @@ IRQ-safe set/test-and-clear for free, matching the existing idiom.
   happens between the triggering action and the call to
   `bno085_wait_int_low()` would be drained away before the wait loop
   ever checks it.
+- **`BNO085_STARTUP_T1_MS` (90ms) delay after each `RST` release, before
+  sampling `INT` at all**: datasheet 6.5.3 "Startup timing" states `INT`
+  is *undefined* for `t1` (Internal Initialization, 90ms typ) after `RST`
+  is released, and only becomes meaningful after `t1+t2` (`t2` =
+  Internal configuration, 4ms max). Earlier revisions of this change
+  drained the `BNO085_INT` flag at various points relative to `RST`
+  release but never accounted for `INT` being undefined during `t1` -
+  this was the actual root cause of the cold-start/post-reset garbage
+  reads, not just a missed-edge race. `bno085_reset_and_wait()` now
+  unconditionally waits `BNO085_STARTUP_T1_MS` after releasing `RST`
+  before the existing deassert-debounce loop runs.
+- **Two `RST` pulses in `bno085_reset_and_wait()`**: bench testing showed
+  that after a power cycle, a single `RST` pulse (+ `BNO085_STARTUP_T1_MS`
+  wait) does not reliably bring the device into a state where it produces
+  a valid post-boot SHTP advertisement - `bno085_bringup()` would still
+  return garbage (`0xFF` data, `len=32767`). A second `RST` pulse
+  (+ another `BNO085_STARTUP_T1_MS` wait) immediately afterward reliably
+  fixes this. The datasheet does not document this requirement; it is an
+  empirical bench finding specific to this device/board. Both pulses use
+  the same `BNO085_RESET_PULSE_MS`/`BNO085_STARTUP_T1_MS` timing, in a
+  fixed two-iteration loop before any `INT` polling begins.
 
 ## Risks / Trade-offs
 

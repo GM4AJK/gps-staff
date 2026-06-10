@@ -41,7 +41,7 @@ void app_1ms(void)
 void app_init(void)
 {
 	/* Allow externally connected devices time to power up before init */
-	HAL_Delay(300);
+	HAL_Delay(500);
 
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
 

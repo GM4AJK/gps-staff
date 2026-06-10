@@ -1,7 +1,15 @@
 ## MODIFIED Requirements
 
 ### Requirement: Wait for data-ready and read SHTP packet
-After releasing reset, `bno085_bringup()` SHALL wait (with a timeout of
+`bno085_bringup()` SHALL pulse `RST` low for `BNO085_RESET_PULSE_MS` then
+high twice in succession, waiting `BNO085_STARTUP_T1_MS` after each pulse
+before doing anything else - per datasheet 6.5.3 "Startup timing", `INT` is
+undefined for this period (`t1`, Internal Initialization) after `RST` is
+released. A single reset pulse does not reliably bring the device up
+following a power cycle; a second pulse is required.
+
+After the second reset pulse and its `BNO085_STARTUP_T1_MS` wait,
+`bno085_bringup()` SHALL wait (with a timeout of
 `BNO085_INT_DEASSERT_TIMEOUT_MS`) for `INT` to read high (deasserted),
 to allow the device's in-reset/booting period - during which it may
 read or drive `INT` low for reasons unrelated to data-ready - to pass.
@@ -22,10 +30,16 @@ driver SHALL parse the first 4 received bytes as the SHTP header: a
 `shtp_sequence`. The full received buffer SHALL be stored in the
 handle.
 
+#### Scenario: Two reset pulses are issued before waiting for data-ready
+- **WHEN** `bno085_bringup()` is called
+- **THEN** `RST` is pulsed low for `BNO085_RESET_PULSE_MS` then high, the
+  driver waits `BNO085_STARTUP_T1_MS` without sampling `INT`, and this
+  is repeated a second time before any `INT` polling begins
+
 #### Scenario: Successful read populates the handle and returns HAL_OK
 - **WHEN** `bno085_bringup()` is called, `INT` becomes active (edge
-  latched or level low) within `BNO085_INT_TIMEOUT_MS` of releasing
-  `RST`, and the SPI transfer succeeds
+  latched or level low) within `BNO085_INT_TIMEOUT_MS` of the second
+  `RST` release, and the SPI transfer succeeds
 - **THEN** `bno085_bringup()` returns `HAL_OK`
 - **AND** the handle's `shtp_length`, `shtp_channel`, and `shtp_sequence`
   fields reflect the first 4 bytes received
