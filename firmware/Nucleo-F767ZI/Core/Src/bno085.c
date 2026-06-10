@@ -114,6 +114,71 @@ HAL_StatusTypeDef bno085_read_advertisement(bno085_t *p)
 	return HAL_OK;
 }
 
+HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len)
+{
+	uint8_t tx_buf[4 + BNO085_CMD_BUF_SIZE];
+	uint8_t rx_buf[4 + BNO085_CMD_BUF_SIZE];
+	uint16_t total_len = 4 + payload_len;
+
+	tx_buf[0] = (uint8_t)(total_len & 0xFF);
+	tx_buf[1] = (uint8_t)(total_len >> 8);
+	tx_buf[2] = channel;
+	tx_buf[3] = p->tx_seq[channel];
+	memcpy(&tx_buf[4], payload, payload_len);
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	HAL_StatusTypeDef status = HAL_SPI_TransmitReceive(p->port, tx_buf, rx_buf, total_len, BNO085_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	p->tx_seq[channel]++;
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id)
+{
+	uint8_t payload[6] = { BNO085_REPORT_ID_GET_FEATURE_REQUEST, report_id, 0x00, 0x00, 0x00, 0x00 };
+
+	HAL_StatusTypeDef status = bno085_send_packet(p, BNO085_CHANNEL_CONTROL, payload, sizeof(payload));
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	uint32_t start = HAL_GetTick();
+	while (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
+		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
+			return HAL_TIMEOUT;
+		}
+	}
+
+	uint8_t tx_buf[BNO085_CMD_BUF_SIZE] = { 0 };
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, BNO085_CMD_BUF_SIZE, BNO085_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	if (p->cmd_buf[4] != BNO085_REPORT_ID_GET_FEATURE_RESPONSE || p->cmd_buf[5] != report_id) {
+		return HAL_ERROR;
+	}
+
+	p->feature.feature_report_id = report_id;
+	p->feature.feature_flags = p->cmd_buf[6];
+	p->feature.change_sensitivity = (uint16_t)(p->cmd_buf[7] | (p->cmd_buf[8] << 8));
+	p->feature.report_interval_us = (uint32_t)(p->cmd_buf[9] | (p->cmd_buf[10] << 8) | (p->cmd_buf[11] << 16) | (p->cmd_buf[12] << 24));
+	p->feature.batch_interval_us = (uint32_t)(p->cmd_buf[13] | (p->cmd_buf[14] << 8) | (p->cmd_buf[15] << 16) | (p->cmd_buf[16] << 24));
+	p->feature.sensor_specific_config = (uint32_t)(p->cmd_buf[17] | (p->cmd_buf[18] << 8) | (p->cmd_buf[19] << 16) | (p->cmd_buf[20] << 24));
+
+	return HAL_OK;
+}
+
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart)
 {
 	char buf[128];

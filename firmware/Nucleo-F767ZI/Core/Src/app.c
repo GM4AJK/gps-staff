@@ -1,6 +1,7 @@
 
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -114,6 +115,33 @@ void app_init(void)
 		bno085_print_advertisement(&bno, &huart3);
 	} else {
 		len = snprintf(buf, sizeof(buf), "bno085_read_advertisement failed: %d\r\n", advert_status);
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+	}
+
+	static const struct {
+		uint8_t report_id;
+		const char *name;
+	} sensors[] = {
+		{ 0x01, "Accelerometer" },
+		{ 0x02, "Gyroscope" },
+		{ 0x03, "Magnetic Field" },
+		{ 0x05, "Rotation Vector" },
+		{ 0x08, "Game Rotation Vector" },
+	};
+
+	for (size_t i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++) {
+		HAL_StatusTypeDef feature_status = bno085_get_feature(&bno, sensors[i].report_id);
+
+		if (feature_status == HAL_OK) {
+			len = snprintf(buf, sizeof(buf), "%s: interval=%luus batch=%luus flags=%02X sens=%u\r\n",
+				sensors[i].name,
+				(unsigned long)bno.feature.report_interval_us,
+				(unsigned long)bno.feature.batch_interval_us,
+				bno.feature.feature_flags,
+				bno.feature.change_sensitivity);
+		} else {
+			len = snprintf(buf, sizeof(buf), "%s: bno085_get_feature failed: %d\r\n", sensors[i].name, feature_status);
+		}
 		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 	}
 }

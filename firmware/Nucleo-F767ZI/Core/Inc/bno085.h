@@ -23,6 +23,28 @@
 /* Size of the single SPI read performed by bno085_read_advertisement() */
 #define BNO085_ADVERT_BUF_SIZE 320
 
+/* Size of the command buffer used by bno085_get_feature() */
+#define BNO085_CMD_BUF_SIZE 32
+
+/* SHTP channel numbers, from the parsed advertisement */
+#define BNO085_CHANNEL_CONTROL 2
+
+/* SH-2 report IDs for the Get Feature Request/Response pair */
+#define BNO085_REPORT_ID_GET_FEATURE_REQUEST 0xFE
+#define BNO085_REPORT_ID_GET_FEATURE_RESPONSE 0xFC
+
+/* Number of SHTP channels for which a host TX sequence number is tracked */
+#define BNO085_NUM_CHANNELS 6
+
+typedef struct {
+	uint8_t feature_report_id;
+	uint8_t feature_flags;
+	uint16_t change_sensitivity;
+	uint32_t report_interval_us;
+	uint32_t batch_interval_us;
+	uint32_t sensor_specific_config;
+} bno085_feature_t;
+
 typedef struct {
 	SPI_HandleTypeDef *port;
 	GPIO_TypeDef *cs_port;
@@ -39,6 +61,9 @@ typedef struct {
 	uint32_t int_wait_ms;
 	uint8_t advert_buf[BNO085_ADVERT_BUF_SIZE];
 	uint16_t advert_len;
+	uint8_t tx_seq[BNO085_NUM_CHANNELS];
+	uint8_t cmd_buf[BNO085_CMD_BUF_SIZE];
+	bno085_feature_t feature;
 } bno085_t;
 
 /**
@@ -119,5 +144,43 @@ HAL_StatusTypeDef bno085_read_advertisement(bno085_t *p);
  * advert_len or BNO085_ADVERT_BUF_SIZE.
  */
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart);
+
+/**
+ * bno085_send_packet
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param channel - SHTP channel number to send on (0..BNO085_NUM_CHANNELS-1)
+ * @param payload - Pointer to the payload bytes to send
+ * @param payload_len - Number of payload bytes
+ *
+ * Builds a 4-byte SHTP header (length = 4 + payload_len, channel, and the
+ * channel's current host TX sequence number from tx_seq[]), asserts CS,
+ * performs a single full-duplex SPI transfer of the header followed by the
+ * payload (received bytes discarded), then releases CS. On success,
+ * tx_seq[channel] is incremented (with uint8_t wraparound).
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed SPI
+ *         transfer (CS is released before returning either way).
+ */
+HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len);
+
+/**
+ * bno085_get_feature
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param report_id - SH-2 report ID of the sensor to query (e.g. 0x01 for
+ *                     Accelerometer)
+ *
+ * Sends an SH-2 Get Feature Request for report_id on
+ * BNO085_CHANNEL_CONTROL via bno085_send_packet(), then waits for INT to go
+ * low within BNO085_INT_TIMEOUT_MS. On INT low, performs a single
+ * BNO085_CMD_BUF_SIZE-byte full-duplex SPI transfer into cmd_buf with CS
+ * asserted, then releases CS. If the response payload is a Get Feature
+ * Response (0xFC) for report_id, parses the remaining bytes little-endian
+ * into the feature field.
+ *
+ * @return HAL_OK on a matching Get Feature Response, HAL_TIMEOUT if INT does
+ *         not go low in time, HAL_ERROR if the response does not match, or
+ *         the HAL_StatusTypeDef of a failed SPI transfer.
+ */
+HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id);
 
 #endif /* INC_BNO085_H_ */
