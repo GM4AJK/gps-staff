@@ -35,6 +35,15 @@ void app_init(void)
 	if (ssd1309_bringup(&oled) != HAL_OK) {
 		const char *msg = "ssd1309_bringup failed\r\n";
 		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
+		return;
+	}
+
+	ssd1309_clear(&oled);
+	ssd1309_draw_string(&oled, 0, 0, "Nucleo-F767ZI OK", SSD1309_COLOR_ON);
+
+	if (ssd1309_flush(&oled) != HAL_OK) {
+		const char *msg = "ssd1309_flush failed\r\n";
+		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
 	}
 }
 
