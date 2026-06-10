@@ -177,6 +177,27 @@ void ssd1309_draw_rect(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t
 void ssd1309_draw_circle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t r, bool fill, uint8_t color);
 
 /**
+ * ssd1309_draw_arrow
+ * @param p - Pointer to ssd1309_t struct
+ * @param x0 - Column of the shaft's start point
+ * @param y0 - Row of the shaft's start point
+ * @param x1 - Column of the shaft's end point (arrowhead tip)
+ * @param y1 - Row of the shaft's end point (arrowhead tip)
+ * @param size - Approximate pixel width of the arrowhead's base (the
+ *               actual base width is approximately size + 2); <= 0 draws
+ *               only the shaft
+ * @param color - SSD1309_COLOR_OFF or SSD1309_COLOR_ON
+ *
+ * Draws a 1px-wide line from (x0, y0) to (x1, y1) via ssd1309_draw_line(),
+ * plus (if size > 0) a filled triangular arrowhead at (x1, y1): two base
+ * corners at approximately +/-30 degrees from the shaft's direction and
+ * `size + 2` pixels from the tip, filled by fanning lines from the tip to
+ * points along the base. Out-of-bounds points are clipped per
+ * ssd1309_set_pixel() semantics.
+ */
+void ssd1309_draw_arrow(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t size, uint8_t color);
+
+/**
  * ssd1309_draw_char
  * @param p - Pointer to ssd1309_t struct
  * @param font - Font to draw with (e.g. &font5x7, &font8x8, &font10x14)
