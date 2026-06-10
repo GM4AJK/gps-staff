@@ -14,8 +14,6 @@
 static ssd1309_t oled;
 static bno085_t bno;
 
-volatile bool BNO085_INT_STATE = false;
-
 #define COUNTER_TIMER(x, y, z) \
 	x++; \
 	if(x >= y) { \
@@ -26,7 +24,7 @@ volatile bool BNO085_INT_STATE = false;
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if(GPIO_Pin == BNO085_INT_Pin) {
-		BNO085_INT_STATE = true;
+		flag_set_BNO085_INT();
 	}
 }
 
@@ -43,7 +41,7 @@ void app_1ms(void)
 void app_init(void)
 {
 	/* Allow externally connected devices time to power up before init */
-	HAL_Delay(300);
+	HAL_Delay(500);
 
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
 

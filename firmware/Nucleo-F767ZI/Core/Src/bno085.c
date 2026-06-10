@@ -1,4 +1,5 @@
 #include "bno085.h"
+#include "flags.h"
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -7,24 +8,62 @@
 #define BNO085_SPI_TIMEOUT_MS 100
 
 /*
- * Drives RST low for BNO085_RESET_PULSE_MS then high, then polls INT for it
- * to go low (data ready) within BNO085_INT_TIMEOUT_MS, recording the
- * pre-reset INT level in int_initial and the time waited in int_wait_ms.
+ * Polls for INT to become active (the BNO08x asserts INT to indicate it is
+ * ready for an SPI transaction, for both host reads and host writes) within
+ * BNO085_INT_TIMEOUT_MS. INT is considered active as soon as either the
+ * BNO085_INT edge flag is set (a falling edge latched by
+ * HAL_GPIO_EXTI_Callback() at any point since it was last discarded by the
+ * caller) or the INT GPIO pin currently reads low - this avoids missing a
+ * brief assertion that occurs before this loop starts polling.
  *
- * Returns HAL_OK once INT is low, or HAL_TIMEOUT if it does not go low in
- * time.
+ * Returns HAL_OK once INT is active, or HAL_TIMEOUT if it does not become
+ * active in time.
+ */
+static HAL_StatusTypeDef bno085_wait_int_low(bno085_t *p)
+{
+	uint32_t start = HAL_GetTick();
+	while (!flag_get_BNO085_INT() && HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
+		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
+			p->int_wait_ms = HAL_GetTick() - start;
+			return HAL_TIMEOUT;
+		}
+	}
+	p->int_wait_ms = HAL_GetTick() - start;
+	return HAL_OK;
+}
+
+/*
+ * Drives RST low for BNO085_RESET_PULSE_MS then high, then waits for INT to
+ * become active (data ready) within BNO085_INT_TIMEOUT_MS via
+ * bno085_wait_int_low(), recording the pre-reset INT level in int_initial
+ * and the time waited in int_wait_ms.
+ *
+ * Returns HAL_OK once INT is active, or HAL_TIMEOUT if it does not become
+ * active in time.
  */
 static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 {
+	int loop = 0;
+
 	p->int_initial = HAL_GPIO_ReadPin(p->int_port, p->int_pin);
 
-	/* PS0/WAKE must be high from before reset until after the first
-	 * assertion of INT, to select the SPI interface. */
-	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
+	do {
+		/* PS0/WAKE must be high from before reset until after the first
+		 * assertion of INT, to select the SPI interface. */
+		HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_SET);
 
-	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
-	HAL_Delay(BNO085_RESET_PULSE_MS);
-	HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_RESET);
+		HAL_Delay(BNO085_RESET_PULSE_MS);
+		HAL_GPIO_WritePin(p->rst_port, p->rst_pin, GPIO_PIN_SET);
+
+		/* Wait for 90ms * 2 after asserting a reset before testing the INT pin.
+		 * During this delay period the INT pin is undefined.
+		 * Then ensure the flag is reset */
+		HAL_Delay(180);
+	}
+	while(loop++ < 1);
+
+
 
 	/* Wait for INT to read high (deasserted) before polling for it to go
 	 * low - rejects a spurious immediate-low reading while the chip is
@@ -37,16 +76,13 @@ static HAL_StatusTypeDef bno085_reset_and_wait(bno085_t *p)
 		}
 	}
 
-	uint32_t start = HAL_GetTick();
-	while (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
-		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
-			p->int_wait_ms = HAL_GetTick() - start;
-			return HAL_TIMEOUT;
-		}
-	}
-	p->int_wait_ms = HAL_GetTick() - start;
+	/* Discard any latched INT edge from the RST pulse / in-reset period
+	 * (the chip can read/drive INT low while still booting), so
+	 * bno085_wait_int_low() below only observes the real post-boot
+	 * data-ready assertion. */
+	flag_get_BNO085_INT();
 
-	return HAL_OK;
+	return bno085_wait_int_low(p);
 }
 
 void bno085_init(
@@ -137,31 +173,10 @@ HAL_StatusTypeDef bno085_read_advertisement(bno085_t *p)
 }
 
 /*
- * Polls INT for it to go low (the BNO08x asserts INT to indicate it is
- * ready for an SPI transaction, for both host reads and host writes) within
- * BNO085_INT_TIMEOUT_MS.
- *
- * Returns HAL_OK once INT is low, or HAL_TIMEOUT if it does not go low in
- * time.
- */
-static HAL_StatusTypeDef bno085_wait_int_low(bno085_t *p)
-{
-	uint32_t start = HAL_GetTick();
-	while (HAL_GPIO_ReadPin(p->int_port, p->int_pin) == GPIO_PIN_SET) {
-		if ((HAL_GetTick() - start) >= BNO085_INT_TIMEOUT_MS) {
-			p->int_wait_ms = HAL_GetTick() - start;
-			return HAL_TIMEOUT;
-		}
-	}
-	p->int_wait_ms = HAL_GetTick() - start;
-	return HAL_OK;
-}
-
-/*
- * If INT is already low, returns HAL_OK immediately. Otherwise pulses
- * PS0/WAKE low to ask the device to assert INT, waits for INT to go low
- * within BNO085_INT_TIMEOUT_MS (via bno085_wait_int_low()), then returns
- * PS0/WAKE high.
+ * If INT is already low, returns HAL_OK immediately. Otherwise discards any
+ * stale latched INT edge, pulses PS0/WAKE low to ask the device to assert
+ * INT, waits for INT to become active within BNO085_INT_TIMEOUT_MS (via
+ * bno085_wait_int_low()), then returns PS0/WAKE high.
  */
 static HAL_StatusTypeDef bno085_wake_and_wait_int_low(bno085_t *p)
 {
@@ -169,6 +184,11 @@ static HAL_StatusTypeDef bno085_wake_and_wait_int_low(bno085_t *p)
 		p->int_wait_ms = 0;
 		return HAL_OK;
 	}
+
+	/* Discard any stale latched INT edge before pulsing WAKE, so
+	 * bno085_wait_int_low() below only observes an edge triggered by this
+	 * pulse. */
+	flag_get_BNO085_INT();
 
 	HAL_GPIO_WritePin(p->wake_port, p->wake_pin, GPIO_PIN_RESET);
 	HAL_StatusTypeDef status = bno085_wait_int_low(p);
