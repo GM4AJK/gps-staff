@@ -41,6 +41,8 @@ void app_init(void)
 	ssd1309_clear(&oled);
 	ssd1309_draw_string(&oled, &font5x7, 0, 0, "Nucleo-F767ZI OK", SSD1309_COLOR_ON);
 	ssd1309_draw_line(&oled, 0, 9, oled.width - 1, 9, SSD1309_COLOR_ON);
+	ssd1309_draw_rect(&oled, 0, 14, 20, 34, false, SSD1309_COLOR_ON);
+	ssd1309_draw_rect(&oled, 26, 14, 46, 34, true, SSD1309_COLOR_ON);
 
 	if (ssd1309_flush(&oled) != HAL_OK) {
 		const char *msg = "ssd1309_flush failed\r\n";

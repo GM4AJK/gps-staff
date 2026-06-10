@@ -145,6 +145,23 @@ HAL_StatusTypeDef ssd1309_flush(ssd1309_t *p);
 void ssd1309_draw_line(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint8_t color);
 
 /**
+ * ssd1309_draw_rect
+ * @param p - Pointer to ssd1309_t struct
+ * @param x0 - Column of the first corner
+ * @param y0 - Row of the first corner
+ * @param x1 - Column of the opposite corner
+ * @param y1 - Row of the opposite corner
+ * @param fill - false: draw a 1px-wide outline only; true: fill the
+ *               rectangle
+ * @param color - SSD1309_COLOR_OFF or SSD1309_COLOR_ON
+ *
+ * Draws a rectangle with corners (x0, y0) and (x1, y1) inclusive, in any
+ * corner order, using ssd1309_draw_line()/ssd1309_set_pixel() (so
+ * out-of-bounds points are clipped per ssd1309_set_pixel() semantics).
+ */
+void ssd1309_draw_rect(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, bool fill, uint8_t color);
+
+/**
  * ssd1309_draw_char
  * @param p - Pointer to ssd1309_t struct
  * @param font - Font to draw with (e.g. &font5x7, &font8x8, &font10x14)
