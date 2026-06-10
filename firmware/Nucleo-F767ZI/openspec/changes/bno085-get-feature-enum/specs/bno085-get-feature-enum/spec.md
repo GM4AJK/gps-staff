@@ -39,27 +39,32 @@ wraparound).
 ### Requirement: Query a sensor's current configuration with Get Feature
 The driver SHALL provide `bno085_get_feature()`, which sends an SH-2
 Get Feature Request (`{0xFE, report_id, 0x00, 0x00, 0x00, 0x00}`) on
-`BNO085_CHANNEL_CONTROL` via `bno085_send_packet()`, then waits again
-for `INT` to go low within `BNO085_INT_TIMEOUT_MS` for the response.
-On `INT` low, it asserts `CS`, reads the 4-byte SHTP header into
-`cmd_buf[0..4)`, computes `total_len = min(length, BNO085_CMD_BUF_SIZE)`
-from it, then reads exactly `total_len - 4` more bytes (if any) into
-`cmd_buf[4..total_len)`, before releasing `CS` (matching the
-exact-length read used by `bno085_read_advertisement()`, so the
-device's queue is not left misaligned for subsequent reads). If
-`total_len >= 21` and the response payload begins with `0xFC` (Get
-Feature Response) and the following byte equals `report_id`, the
-remaining 15 bytes SHALL be parsed little-endian into `feature` (a
-`bno085_feature_t`): `feature_flags` (1 byte), `change_sensitivity` (2
-bytes), `report_interval_us` (4 bytes), `batch_interval_us` (4 bytes),
-`sensor_specific_config` (4 bytes), with `feature_report_id` set to
-`report_id`.
+`BNO085_CHANNEL_CONTROL` via `bno085_send_packet()`. Then, up to
+`BNO085_GET_FEATURE_MAX_ATTEMPTS` times, it: waits again for `INT` to
+go low within `BNO085_INT_TIMEOUT_MS`; asserts `CS`; reads the 4-byte
+SHTP header into `cmd_buf[0..4)`; computes
+`total_len = min(length, BNO085_CMD_BUF_SIZE)` from it; reads exactly
+`total_len - 4` more bytes (if any) into `cmd_buf[4..total_len)`; and
+releases `CS` (matching the exact-length read used by
+`bno085_read_advertisement()`, so the device's queue is not left
+misaligned for subsequent reads). The response to a Get Feature
+Request is not always the next packet read - a previously-queued
+packet (e.g. the response to an earlier Get Feature Request) may be
+read first - so each read whose payload is not a Get Feature Response
+(`0xFC`) for `report_id` is discarded and another packet is read. Once
+a packet has `total_len >= 21` and a payload beginning with `0xFC`
+followed by `report_id`, the remaining 15 bytes SHALL be parsed
+little-endian into `feature` (a `bno085_feature_t`): `feature_flags`
+(1 byte), `change_sensitivity` (2 bytes), `report_interval_us` (4
+bytes), `batch_interval_us` (4 bytes), `sensor_specific_config` (4
+bytes), with `feature_report_id` set to `report_id`.
 
 #### Scenario: Successful Get Feature query
-- **WHEN** `bno085_get_feature()` is called with a `report_id`, `INT`
-  goes low within `BNO085_INT_TIMEOUT_MS` after the request is sent,
-  and the response is a 21-byte packet whose payload is `0xFC`
-  followed by `report_id`
+- **WHEN** `bno085_get_feature()` is called with a `report_id`, and
+  within `BNO085_GET_FEATURE_MAX_ATTEMPTS` reads (each preceded by
+  `INT` going low within `BNO085_INT_TIMEOUT_MS`), one of the packets
+  read is at least 21 bytes with a payload of `0xFC` followed by
+  `report_id`
 - **THEN** `bno085_get_feature()` returns `HAL_OK`
 - **AND** `feature.feature_report_id` equals `report_id`
 - **AND** `feature.report_interval_us`, `feature.batch_interval_us`,
@@ -69,16 +74,18 @@ bytes), `report_interval_us` (4 bytes), `batch_interval_us` (4 bytes),
 
 #### Scenario: INT timeout returns an error without reading a response
 - **WHEN** `bno085_get_feature()` is called and `INT` does not go low
-  within `BNO085_INT_TIMEOUT_MS` after the request is sent
+  within `BNO085_INT_TIMEOUT_MS` (either after the request is sent, or
+  before any retry's read)
 - **THEN** `bno085_get_feature()` returns `HAL_TIMEOUT`
-- **AND** no response SPI transfer is performed
+- **AND** the corresponding response SPI transfer is not performed
 
-#### Scenario: Unexpected response is reported as an error
-- **WHEN** `INT` goes low and the response SPI transfers succeed, but
-  `total_len < 21`, or the response payload does not begin with `0xFC`,
-  or the following byte does not equal the requested `report_id`
+#### Scenario: No matching response within the retry limit is an error
+- **WHEN** `BNO085_GET_FEATURE_MAX_ATTEMPTS` packets are read (each with
+  `INT` going low and successful SPI transfers), and none of them has
+  `total_len >= 21` with a payload of `0xFC` followed by `report_id`
 - **THEN** `bno085_get_feature()` returns `HAL_ERROR`
-- **AND** `cmd_buf` retains the raw received bytes for inspection
+- **AND** `cmd_buf` retains the last-read packet's raw bytes for
+  inspection
 - **AND** `feature` is left unmodified
 
 #### Scenario: SPI failure during the response read is propagated

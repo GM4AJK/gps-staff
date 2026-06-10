@@ -71,6 +71,15 @@ own outgoing sequence numbers.
   never fewer - so the device's queue stays aligned for the next read.
   This modifies the previously-archived `bno085-shtp-advertisement`
   capability (see its delta spec in this change).
+- **Drain/retry loop in `bno085_get_feature()`**: bench testing showed
+  that, even with exact-length reads, the response to a Get Feature
+  Request is not the next packet read - it shows up one query later
+  (e.g. the Gyroscope query's read returned the *Accelerometer's* Get
+  Feature Response, queued from the previous call). `bno085_get_feature()`
+  now sends the request once, then reads up to
+  `BNO085_GET_FEATURE_MAX_ATTEMPTS` (4) packets, discarding any that
+  aren't a matching `0xFC`/`report_id` response, before giving up with
+  `HAL_ERROR`.
 - **`INT` wait before every SPI transaction, including writes**:
   bench testing showed that sending the Get Feature Request without
   first waiting for `INT` low resulted in every response coming back

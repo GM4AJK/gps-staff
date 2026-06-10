@@ -186,48 +186,55 @@ HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id)
 		return status;
 	}
 
-	status = bno085_wait_int_low(p);
-	if (status != HAL_OK) {
-		return status;
-	}
-
 	uint8_t tx_buf[BNO085_CMD_BUF_SIZE] = { 0 };
 
-	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	/* The response to our request may not be at the head of the queue
+	 * yet - other packets (e.g. the response to a previous Get Feature
+	 * Request) can be read first. Read and discard packets until a
+	 * matching Get Feature Response is found or the retry limit is
+	 * reached. */
+	for (uint8_t attempt = 0; attempt < BNO085_GET_FEATURE_MAX_ATTEMPTS; attempt++) {
+		status = bno085_wait_int_low(p);
+		if (status != HAL_OK) {
+			return status;
+		}
 
-	/* Read exactly the 4-byte SHTP header first, then exactly
-	 * (length - 4) more payload bytes - see bno085_read_advertisement(). */
-	status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, 4, BNO085_SPI_TIMEOUT_MS);
-	if (status != HAL_OK) {
+		HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+
+		/* Read exactly the 4-byte SHTP header first, then exactly
+		 * (length - 4) more payload bytes - see bno085_read_advertisement(). */
+		status = HAL_SPI_TransmitReceive(p->port, tx_buf, p->cmd_buf, 4, BNO085_SPI_TIMEOUT_MS);
+		if (status != HAL_OK) {
+			HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+			return status;
+		}
+
+		uint16_t length = (uint16_t)(p->cmd_buf[0] | (p->cmd_buf[1] << 8)) & 0x7FFF;
+		uint16_t total_len = (length < BNO085_CMD_BUF_SIZE) ? length : BNO085_CMD_BUF_SIZE;
+
+		if (total_len > 4) {
+			status = HAL_SPI_TransmitReceive(p->port, &tx_buf[4], &p->cmd_buf[4], total_len - 4, BNO085_SPI_TIMEOUT_MS);
+		}
+
 		HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
-		return status;
+
+		if (status != HAL_OK) {
+			return status;
+		}
+
+		if (total_len >= 21 && p->cmd_buf[4] == BNO085_REPORT_ID_GET_FEATURE_RESPONSE && p->cmd_buf[5] == report_id) {
+			p->feature.feature_report_id = report_id;
+			p->feature.feature_flags = p->cmd_buf[6];
+			p->feature.change_sensitivity = (uint16_t)(p->cmd_buf[7] | (p->cmd_buf[8] << 8));
+			p->feature.report_interval_us = (uint32_t)(p->cmd_buf[9] | (p->cmd_buf[10] << 8) | (p->cmd_buf[11] << 16) | (p->cmd_buf[12] << 24));
+			p->feature.batch_interval_us = (uint32_t)(p->cmd_buf[13] | (p->cmd_buf[14] << 8) | (p->cmd_buf[15] << 16) | (p->cmd_buf[16] << 24));
+			p->feature.sensor_specific_config = (uint32_t)(p->cmd_buf[17] | (p->cmd_buf[18] << 8) | (p->cmd_buf[19] << 16) | (p->cmd_buf[20] << 24));
+
+			return HAL_OK;
+		}
 	}
 
-	uint16_t length = (uint16_t)(p->cmd_buf[0] | (p->cmd_buf[1] << 8)) & 0x7FFF;
-	uint16_t total_len = (length < BNO085_CMD_BUF_SIZE) ? length : BNO085_CMD_BUF_SIZE;
-
-	if (total_len > 4) {
-		status = HAL_SPI_TransmitReceive(p->port, &tx_buf[4], &p->cmd_buf[4], total_len - 4, BNO085_SPI_TIMEOUT_MS);
-	}
-
-	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
-
-	if (status != HAL_OK) {
-		return status;
-	}
-
-	if (total_len < 21 || p->cmd_buf[4] != BNO085_REPORT_ID_GET_FEATURE_RESPONSE || p->cmd_buf[5] != report_id) {
-		return HAL_ERROR;
-	}
-
-	p->feature.feature_report_id = report_id;
-	p->feature.feature_flags = p->cmd_buf[6];
-	p->feature.change_sensitivity = (uint16_t)(p->cmd_buf[7] | (p->cmd_buf[8] << 8));
-	p->feature.report_interval_us = (uint32_t)(p->cmd_buf[9] | (p->cmd_buf[10] << 8) | (p->cmd_buf[11] << 16) | (p->cmd_buf[12] << 24));
-	p->feature.batch_interval_us = (uint32_t)(p->cmd_buf[13] | (p->cmd_buf[14] << 8) | (p->cmd_buf[15] << 16) | (p->cmd_buf[16] << 24));
-	p->feature.sensor_specific_config = (uint32_t)(p->cmd_buf[17] | (p->cmd_buf[18] << 8) | (p->cmd_buf[19] << 16) | (p->cmd_buf[20] << 24));
-
-	return HAL_OK;
+	return HAL_ERROR;
 }
 
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart)
