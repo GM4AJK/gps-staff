@@ -153,7 +153,7 @@ void app_init(void)
 		}
 		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 
-		len = snprintf(buf, sizeof(buf), "  cmd_buf:");
+		len = snprintf(buf, sizeof(buf), "  cmd_len=%u cmd_buf:", bno.cmd_len);
 		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 		for (int j = 0; j < BNO085_CMD_BUF_SIZE; j++) {
 			len = snprintf(buf, sizeof(buf), " %02X", bno.cmd_buf[j]);

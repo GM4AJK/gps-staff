@@ -67,6 +67,7 @@ typedef struct {
 	uint16_t advert_len;
 	uint8_t tx_seq[BNO085_NUM_CHANNELS];
 	uint8_t cmd_buf[BNO085_CMD_BUF_SIZE];
+	uint16_t cmd_len;
 	bno085_feature_t feature;
 } bno085_t;
 
@@ -160,16 +161,19 @@ void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart);
  * @param payload_len - Number of payload bytes
  *
  * Builds a 4-byte SHTP header (length = 4 + payload_len, channel, and the
- * channel's current host TX sequence number from tx_seq[]), waits for INT
- * to go low within BNO085_INT_TIMEOUT_MS (the BNO08x asserts INT before any
- * SPI transaction, including host writes), then asserts CS, performs a
- * single full-duplex SPI transfer of the header followed by the payload
- * (received bytes discarded), then releases CS. On success, tx_seq[channel]
- * is incremented (with uint8_t wraparound).
+ * channel's current host TX sequence number from tx_seq[]), then asserts CS
+ * and performs a full-duplex SPI transfer of the header followed by the
+ * payload. SPI is full-duplex, so the device may simultaneously be sending a
+ * queued packet of its own; the bytes received during this transfer are
+ * captured into cmd_buf rather than discarded (so they aren't lost from the
+ * device's queue), and cmd_len is set from the received SHTP header's length
+ * field (capped to BNO085_CMD_BUF_SIZE). The transfer is exactly
+ * max(4 + payload_len, cmd_len) bytes, so neither side's packet is
+ * under-clocked. CS is released afterwards. On success, tx_seq[channel] is
+ * incremented (with uint8_t wraparound).
  *
- * @return HAL_OK on success, HAL_TIMEOUT if INT does not go low in time, or
- *         the HAL_StatusTypeDef of a failed SPI transfer (CS is released
- *         before returning either way).
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed SPI
+ *         transfer (CS is released before returning either way).
  */
 HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t *payload, uint16_t payload_len);
 
@@ -179,24 +183,23 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
  * @param report_id - SH-2 report ID of the sensor to query (e.g. 0x01 for
  *                     Accelerometer)
  *
- * Sends an SH-2 Get Feature Request for report_id on
- * BNO085_CHANNEL_CONTROL via bno085_send_packet(). Then, up to
- * BNO085_GET_FEATURE_MAX_ATTEMPTS times: waits for INT to go low within
- * BNO085_INT_TIMEOUT_MS, asserts CS, reads the 4-byte SHTP header, then reads
- * exactly (length - 4) more bytes (capped to BNO085_CMD_BUF_SIZE), before
- * releasing CS - see bno085_read_advertisement() for why the read length
- * must match the packet's declared length exactly. The response to our
- * request is not always the next packet read (a previously-queued packet,
- * e.g. the response to an earlier Get Feature Request, may be read first),
- * so non-matching packets are discarded and another packet is read. If a
- * packet is at least 21 bytes and its payload is a Get Feature Response
- * (0xFC) for report_id, parses the remaining bytes little-endian into the
- * feature field and returns.
+ * Sends an SH-2 Get Feature Request for report_id on BNO085_CHANNEL_CONTROL
+ * via bno085_send_packet(), which captures whatever packet the device had
+ * queued into cmd_buf/cmd_len as a side effect of the write. If that packet
+ * is at least 21 bytes with a payload of Get Feature Response (0xFC)
+ * followed by report_id, it is used directly. Otherwise, up to
+ * BNO085_GET_FEATURE_MAX_ATTEMPTS - 1 more times: waits for INT to go low
+ * within BNO085_INT_TIMEOUT_MS, then reads the 4-byte SHTP header followed by
+ * exactly (length - 4) more bytes (capped to BNO085_CMD_BUF_SIZE) into
+ * cmd_buf/cmd_len - see bno085_read_advertisement() for why the read length
+ * must match the packet's declared length exactly. Each non-matching packet
+ * is discarded and another is read. Once a matching packet is found, parses
+ * the remaining bytes little-endian into the feature field and returns.
  *
  * @return HAL_OK on a matching Get Feature Response, HAL_TIMEOUT if INT does
- *         not go low in time, HAL_ERROR if no matching response is found
- *         within BNO085_GET_FEATURE_MAX_ATTEMPTS reads, or the
- *         HAL_StatusTypeDef of a failed SPI transfer.
+ *         not go low in time on a retry read, HAL_ERROR if no matching
+ *         response is found within BNO085_GET_FEATURE_MAX_ATTEMPTS packets,
+ *         or the HAL_StatusTypeDef of a failed SPI transfer.
  */
 HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id);
 

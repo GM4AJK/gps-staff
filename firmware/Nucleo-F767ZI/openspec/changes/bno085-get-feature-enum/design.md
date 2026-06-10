@@ -53,10 +53,11 @@ own outgoing sequence numbers.
 - **`bno085_send_packet()` signature**: takes the handle, a channel
   number, a pointer to payload bytes, and a payload length. It builds
   the 4-byte SHTP header (length = 4 + payload length, channel, current
-  TX sequence number for that channel), waits for `INT` low (see
-  below), asserts `CS`, performs one `HAL_SPI_TransmitReceive()` of
-  `header + payload` (discarding the received bytes), releases `CS`,
-  and increments the channel's TX sequence number.
+  TX sequence number for that channel), asserts `CS`, then performs a
+  full-duplex transfer of `max(4 + payload length, received SHTP
+  length)` bytes, capturing the received bytes into `cmd_buf`/`cmd_len`
+  (see "Full-duplex read-ahead" below), releases `CS`, and increments
+  the channel's TX sequence number.
 - **Exact-length two-step reads (header then payload)**: bench testing
   with a `cmd_buf` debug dump showed that `bno085_get_feature()` was
   reading a *previous* request's Get Feature Response shifted by one
@@ -73,30 +74,48 @@ own outgoing sequence numbers.
   capability (see its delta spec in this change).
 - **Drain/retry loop in `bno085_get_feature()`**: bench testing showed
   that, even with exact-length reads, the response to a Get Feature
-  Request is not the next packet read - it shows up one query later
-  (e.g. the Gyroscope query's read returned the *Accelerometer's* Get
-  Feature Response, queued from the previous call). `bno085_get_feature()`
-  now sends the request once, then reads up to
-  `BNO085_GET_FEATURE_MAX_ATTEMPTS` (4) packets, discarding any that
-  aren't a matching `0xFC`/`report_id` response, before giving up with
-  `HAL_ERROR`.
-- **`INT` wait before every SPI transaction, including writes**:
-  bench testing showed that sending the Get Feature Request without
-  first waiting for `INT` low resulted in every response coming back
-  as a mismatch (`HAL_ERROR`) - per the BNO08x SPI protocol, the device
-  asserts `INT` (HINTN) to indicate it is ready for *any* SPI
-  transaction, not just host reads. Both `bno085_send_packet()` and
-  `bno085_get_feature()`'s response read now wait for `INT` low (via a
-  shared `bno085_wait_int_low()` helper) before asserting `CS`.
+  Request is not always the next packet read - a previously-queued
+  packet may be read first. `bno085_get_feature()` checks the packet
+  captured by `bno085_send_packet()` itself first; if it doesn't match,
+  it reads up to `BNO085_GET_FEATURE_MAX_ATTEMPTS - 1` further packets
+  (via `bno085_read_response()`), discarding any that aren't a matching
+  `0xFC`/`report_id` response, before giving up with `HAL_ERROR`.
+- **`INT` wait before reads only, not writes**: an earlier iteration
+  had `bno085_send_packet()` wait for `INT` low before every send, on
+  the assumption that the device asserts `INT` before *any* SPI
+  transaction. Bench testing showed this breaks every query after the
+  first: once the device's queue is drained, `INT` stays deasserted and
+  `bno085_send_packet()` times out (`HAL_TIMEOUT`) before the request is
+  even transmitted. `bno085_send_packet()` no longer waits for `INT`;
+  only `bno085_get_feature()`'s retry reads (via `bno085_read_response()`)
+  wait for `INT` low.
+- **Full-duplex read-ahead capture in `bno085_send_packet()`**: SPI is
+  full-duplex - every byte the host clocks out to send a request
+  simultaneously shifts in a byte from the device. The previous
+  implementation discarded these received bytes into a local, unused
+  buffer, silently losing whatever packet the device had queued and
+  shifting its read position mid-packet. `bno085_send_packet()` now
+  captures the first 4 received bytes into `cmd_buf` (the device's own
+  pending SHTP header, sent back-to-back with our outgoing header),
+  computes that packet's length, and extends the transfer to
+  `max(our header+payload length, the device's packet length)` so
+  neither side's data is truncated, capturing the rest into `cmd_buf`
+  too. `cmd_len` records the device's reported length (capped to
+  `BNO085_CMD_BUF_SIZE`). `bno085_get_feature()` checks this captured
+  packet first before doing any additional reads.
 - **Per-channel TX sequence numbers**: add `uint8_t tx_seq[6]` to
   `bno085_t` (one counter per SHTP channel 0-5, matching the channels
   seen in the advertisement), initialized to 0 by `bno085_init()`
   (already zeroed via `memset`).
-- **Command buffer**: add `uint8_t cmd_buf[BNO085_CMD_BUF_SIZE]` with
-  `BNO085_CMD_BUF_SIZE = 32` (Get Feature Response is 4-byte header +
-  17-byte payload = 21 bytes, so 32 gives margin), separate from
-  `rx_buf`/`advert_buf` to keep each function's buffer purpose
-  explicit, matching the pattern established for `advert_buf`.
+- **Command buffer**: add `uint8_t cmd_buf[BNO085_CMD_BUF_SIZE]` and
+  `uint16_t cmd_len` with `BNO085_CMD_BUF_SIZE = 32` (Get Feature
+  Response is 4-byte header + 17-byte payload = 21 bytes, so 32 gives
+  margin), separate from `rx_buf`/`advert_buf` to keep each function's
+  buffer purpose explicit, matching the pattern established for
+  `advert_buf`. `cmd_len` records how many bytes of `cmd_buf` are valid
+  (the received SHTP packet's declared length, capped to
+  `BNO085_CMD_BUF_SIZE`), set by both `bno085_send_packet()` and
+  `bno085_read_response()`.
 - **`bno085_get_feature()` flow**:
   1. Build a 6-byte Get Feature Request payload: `{0xFE, report_id, 0,
      0, 0, 0}`.
