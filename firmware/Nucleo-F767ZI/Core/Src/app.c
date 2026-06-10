@@ -45,6 +45,7 @@ void app_init(void)
 	ssd1309_draw_rect(&oled, 26, 14, 46, 34, true, SSD1309_COLOR_ON);
 	ssd1309_draw_circle(&oled, 75, 24, 10, false, SSD1309_COLOR_ON);
 	ssd1309_draw_circle(&oled, 105, 24, 10, true, SSD1309_COLOR_ON);
+	ssd1309_draw_arrow(&oled, 10, 45, 50, 60, 6, SSD1309_COLOR_ON);
 
 	if (ssd1309_flush(&oled) != HAL_OK) {
 		const char *msg = "ssd1309_flush failed\r\n";

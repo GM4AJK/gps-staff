@@ -1,6 +1,7 @@
 
 
 #include "ssd1309.h"
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -632,6 +633,30 @@ void ssd1309_draw_circle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t r, bool f
 			ssd1309_set_pixel(p, (int16_t)(x0 - y), (int16_t)(y0 + x), color);
 			ssd1309_set_pixel(p, (int16_t)(x0 + y), (int16_t)(y0 - x), color);
 			ssd1309_set_pixel(p, (int16_t)(x0 - y), (int16_t)(y0 - x), color);
+		}
+	}
+}
+
+void ssd1309_draw_arrow(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, int16_t size, uint8_t color)
+{
+	ssd1309_draw_line(p, x0, y0, x1, y1, color);
+
+	if (size > 0) {
+		float angle = atan2f((float)(y1 - y0), (float)(x1 - x0));
+		float wing_angle = (float)M_PI / 6.0f;
+		float length = (float)size + 2.0f;
+
+		float wx0 = (float)x1 - length * cosf(angle - wing_angle);
+		float wy0 = (float)y1 - length * sinf(angle - wing_angle);
+		float wx1 = (float)x1 - length * cosf(angle + wing_angle);
+		float wy1 = (float)y1 - length * sinf(angle + wing_angle);
+
+		int16_t steps = (int16_t)(2 * size + 4);
+		for (int16_t i = 0; i <= steps; i++) {
+			float t = (float)i / (float)steps;
+			int16_t bx = (int16_t)lrintf(wx0 + t * (wx1 - wx0));
+			int16_t by = (int16_t)lrintf(wy0 + t * (wy1 - wy0));
+			ssd1309_draw_line(p, x1, y1, bx, by, color);
 		}
 	}
 }
