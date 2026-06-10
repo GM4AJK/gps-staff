@@ -3,9 +3,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "main.h"
 #include "flags.h"
+#include "ssd1309.h"
+
+static ssd1309_t oled;
 
 #define COUNTER_TIMER(x, y, z) \
 	x++; \
@@ -26,7 +30,12 @@ void app_1ms(void)
 
 void app_init(void)
 {
-	// TDo
+	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
+
+	if (ssd1309_bringup(&oled) != HAL_OK) {
+		const char *msg = "ssd1309_bringup failed\r\n";
+		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
+	}
 }
 
 void app_loop(void)
