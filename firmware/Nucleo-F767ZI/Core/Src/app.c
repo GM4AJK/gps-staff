@@ -8,8 +8,10 @@
 #include "main.h"
 #include "flags.h"
 #include "ssd1309.h"
+#include "bno085.h"
 
 static ssd1309_t oled;
+static bno085_t bno;
 
 #define COUNTER_TIMER(x, y, z) \
 	x++; \
@@ -74,6 +76,35 @@ void app_init(void)
 		const char *msg = "ssd1309_flush failed\r\n";
 		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
 	}
+
+	bno085_init(&bno, &hspi1,
+		BNO085_SPI_CS_GPIO_Port, BNO085_SPI_CS_Pin,
+		BNO085_RST_GPIO_Port, BNO085_RST_Pin,
+		BNO085_INT_GPIO_Port, BNO085_INT_Pin);
+
+	HAL_StatusTypeDef bno_status = bno085_bringup(&bno);
+	char buf[96];
+	int len;
+
+	len = snprintf(buf, sizeof(buf), "bno085 INT initial=%d wait=%lums\r\n",
+		bno.int_initial, (unsigned long)bno.int_wait_ms);
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+	if (bno_status == HAL_OK) {
+		len = snprintf(buf, sizeof(buf), "bno085_bringup OK: len=%u chan=%u seq=%u\r\n",
+			bno.shtp_length, bno.shtp_channel, bno.shtp_sequence);
+	} else {
+		len = snprintf(buf, sizeof(buf), "bno085_bringup failed: %d\r\n", bno_status);
+	}
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), "bno085 rx_buf:");
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+	for (int i = 0; i < BNO085_BRINGUP_BUF_SIZE; i++) {
+		len = snprintf(buf, sizeof(buf), " %02X", bno.rx_buf[i]);
+		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+	}
+	HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, 100);
 }
 
 void app_loop(void)
@@ -87,8 +118,8 @@ void app_loop(void)
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
 		flipper = !flipper;
 
-		int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
-		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+		//int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
+		//HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 
 		HAL_Delay(500);
 	}
