@@ -47,7 +47,25 @@ void app_init(void)
 	ssd1309_draw_circle(&oled, 105, 24, 10, true, SSD1309_COLOR_ON);
 	ssd1309_draw_arrow(&oled, 10, 45, 50, 60, 6, SSD1309_COLOR_ON);
 	ssd1309_draw_triangle(&oled, 70, 45, 90, 45, 80, 62, false, SSD1309_COLOR_ON);
-	ssd1309_draw_triangle(&oled, 95, 45, 115, 45, 105, 62, true, SSD1309_COLOR_ON);
+
+	static const ssd1309_point_t pentagon[] = {
+		{ 59, 45 },
+		{ 67, 51 },
+		{ 64, 60 },
+		{ 54, 60 },
+		{ 51, 51 },
+	};
+	ssd1309_draw_polygon(&oled, pentagon, 5, true, SSD1309_COLOR_ON);
+
+	static const ssd1309_point_t hexagon[] = {
+		{ 105, 46 },
+		{ 112, 50 },
+		{ 112, 58 },
+		{ 105, 62 },
+		{ 98, 58 },
+		{ 98, 50 },
+	};
+	ssd1309_draw_polygon(&oled, hexagon, 6, false, SSD1309_COLOR_ON);
 
 	if (ssd1309_flush(&oled) != HAL_OK) {
 		const char *msg = "ssd1309_flush failed\r\n";

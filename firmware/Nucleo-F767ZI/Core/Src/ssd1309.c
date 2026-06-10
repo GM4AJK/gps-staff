@@ -734,6 +734,61 @@ void ssd1309_draw_triangle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int
 	}
 }
 
+void ssd1309_draw_polygon(ssd1309_t *p, const ssd1309_point_t *points, uint8_t num_points, bool fill, uint8_t color)
+{
+	if (num_points < 3) {
+		return;
+	}
+
+	if (!fill) {
+		for (uint8_t i = 0; i < num_points; i++) {
+			const ssd1309_point_t *a = &points[i];
+			const ssd1309_point_t *b = &points[(i + 1) % num_points];
+			ssd1309_draw_line(p, a->x, a->y, b->x, b->y, color);
+		}
+		return;
+	}
+
+	int16_t min_y = points[0].y;
+	int16_t max_y = points[0].y;
+	for (uint8_t i = 1; i < num_points; i++) {
+		if (points[i].y < min_y) min_y = points[i].y;
+		if (points[i].y > max_y) max_y = points[i].y;
+	}
+
+	for (int16_t y = min_y; y <= max_y; y++) {
+		int16_t nodes[SSD1309_POLYGON_MAX_POINTS];
+		uint8_t node_count = 0;
+
+		for (uint8_t i = 0; i < num_points; i++) {
+			const ssd1309_point_t *a = &points[i];
+			const ssd1309_point_t *b = &points[(i + 1) % num_points];
+
+			if ((a->y <= y && b->y > y) || (b->y <= y && a->y > y)) {
+				int32_t x = (int32_t)a->x + (int32_t)(y - a->y) * (int32_t)(b->x - a->x) / (int32_t)(b->y - a->y);
+				if (node_count < SSD1309_POLYGON_MAX_POINTS) {
+					nodes[node_count++] = (int16_t)x;
+				}
+			}
+		}
+
+		/* Insertion sort the x-intersections ascending */
+		for (uint8_t i = 1; i < node_count; i++) {
+			int16_t key = nodes[i];
+			int8_t j = (int8_t)(i - 1);
+			while (j >= 0 && nodes[j] > key) {
+				nodes[j + 1] = nodes[j];
+				j--;
+			}
+			nodes[j + 1] = key;
+		}
+
+		for (uint8_t i = 0; (uint8_t)(i + 1) < node_count; i = (uint8_t)(i + 2)) {
+			ssd1309_draw_line(p, nodes[i], y, nodes[i + 1], y, color);
+		}
+	}
+}
+
 void ssd1309_draw_char(ssd1309_t *p, const ssd1309_font_t *font, int16_t x, int16_t y, char c, uint8_t color)
 {
 	if (c < font->first_char || c > font->last_char) {

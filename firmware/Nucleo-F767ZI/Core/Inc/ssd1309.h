@@ -12,6 +12,9 @@
 #define SSD1309_COLOR_OFF 0
 #define SSD1309_COLOR_ON  1
 
+/* Max vertices supported by ssd1309_draw_polygon() */
+#define SSD1309_POLYGON_MAX_POINTS 32
+
 typedef struct {
 	I2C_HandleTypeDef *port;
 	uint16_t address;
@@ -20,6 +23,16 @@ typedef struct {
 	uint8_t buffer[SSD1309_FB_SIZE];
 	bool dirty;
 } ssd1309_t;
+
+/**
+ * ssd1309_point_t
+ *
+ * A single (x, y) vertex, used by ssd1309_draw_polygon().
+ */
+typedef struct {
+	int16_t x;
+	int16_t y;
+} ssd1309_point_t;
 
 /**
  * ssd1309_font_t
@@ -175,6 +188,27 @@ void ssd1309_draw_rect(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t
  * out-of-bounds points are clipped per ssd1309_set_pixel() semantics).
  */
 void ssd1309_draw_circle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t r, bool fill, uint8_t color);
+
+/**
+ * ssd1309_draw_polygon
+ * @param p - Pointer to ssd1309_t struct
+ * @param points - Array of vertices (closed automatically: an edge is
+ *                  drawn/filled from points[num_points-1] back to
+ *                  points[0])
+ * @param num_points - Number of vertices in `points` (must be >= 3 and
+ *                      <= SSD1309_POLYGON_MAX_POINTS; otherwise no-op for
+ *                      < 3, and intersections beyond
+ *                      SSD1309_POLYGON_MAX_POINTS per scanline are dropped
+ *                      when filled)
+ * @param fill - false: draw a 1px-wide outline only; true: fill the
+ *               polygon using the even-odd scanline rule
+ * @param color - SSD1309_COLOR_OFF or SSD1309_COLOR_ON
+ *
+ * Draws a closed polygon through points[0]..points[num_points-1], using
+ * ssd1309_draw_line() (so out-of-bounds points are clipped per
+ * ssd1309_set_pixel() semantics).
+ */
+void ssd1309_draw_polygon(ssd1309_t *p, const ssd1309_point_t *points, uint8_t num_points, bool fill, uint8_t color);
 
 /**
  * ssd1309_draw_triangle
