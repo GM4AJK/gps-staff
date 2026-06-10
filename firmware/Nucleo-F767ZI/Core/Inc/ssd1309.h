@@ -162,6 +162,21 @@ void ssd1309_draw_line(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t
 void ssd1309_draw_rect(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, bool fill, uint8_t color);
 
 /**
+ * ssd1309_draw_circle
+ * @param p - Pointer to ssd1309_t struct
+ * @param x0 - Column of the circle's center
+ * @param y0 - Row of the circle's center
+ * @param r - Radius in pixels (0 draws a single point)
+ * @param fill - false: draw a 1px-wide outline only; true: fill the disc
+ * @param color - SSD1309_COLOR_OFF or SSD1309_COLOR_ON
+ *
+ * Draws a circle centered at (x0, y0) with radius r using the midpoint
+ * circle algorithm and ssd1309_set_pixel()/ssd1309_draw_line() (so
+ * out-of-bounds points are clipped per ssd1309_set_pixel() semantics).
+ */
+void ssd1309_draw_circle(ssd1309_t *p, int16_t x0, int16_t y0, int16_t r, bool fill, uint8_t color);
+
+/**
  * ssd1309_draw_char
  * @param p - Pointer to ssd1309_t struct
  * @param font - Font to draw with (e.g. &font5x7, &font8x8, &font10x14)
