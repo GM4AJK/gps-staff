@@ -569,6 +569,27 @@ void ssd1309_draw_line(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t
 	}
 }
 
+void ssd1309_draw_rect(ssd1309_t *p, int16_t x0, int16_t y0, int16_t x1, int16_t y1, bool fill, uint8_t color)
+{
+	int16_t min_x = (x0 < x1) ? x0 : x1;
+	int16_t max_x = (x0 < x1) ? x1 : x0;
+	int16_t min_y = (y0 < y1) ? y0 : y1;
+	int16_t max_y = (y0 < y1) ? y1 : y0;
+
+	if (fill) {
+		for (int16_t y = min_y; y <= max_y; y++) {
+			for (int16_t x = min_x; x <= max_x; x++) {
+				ssd1309_set_pixel(p, x, y, color);
+			}
+		}
+	} else {
+		ssd1309_draw_line(p, min_x, min_y, max_x, min_y, color);
+		ssd1309_draw_line(p, min_x, max_y, max_x, max_y, color);
+		ssd1309_draw_line(p, min_x, min_y, min_x, max_y, color);
+		ssd1309_draw_line(p, max_x, min_y, max_x, max_y, color);
+	}
+}
+
 void ssd1309_draw_char(ssd1309_t *p, const ssd1309_font_t *font, int16_t x, int16_t y, char c, uint8_t color)
 {
 	if (c < font->first_char || c > font->last_char) {
