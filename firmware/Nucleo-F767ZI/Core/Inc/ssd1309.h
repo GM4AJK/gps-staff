@@ -21,6 +21,29 @@ typedef struct {
 	bool dirty;
 } ssd1309_t;
 
+/**
+ * ssd1309_font_t
+ *
+ * Describes a fixed-width font. Glyphs cover the inclusive character range
+ * `first_char`..`last_char` and are stored in `glyphs` column-major, with
+ * `(glyph_height + 7) / 8` bytes per column (bit 0 = top row of each 8-row
+ * chunk). `advance` is the x distance in pixels from one glyph's origin to
+ * the next.
+ */
+typedef struct {
+	const uint8_t *glyphs;
+	uint8_t glyph_width;
+	uint8_t glyph_height;
+	uint8_t advance;
+	char first_char;
+	char last_char;
+} ssd1309_font_t;
+
+/* Built-in fonts, all covering printable ASCII 0x20-0x7E */
+extern const ssd1309_font_t font5x7;
+extern const ssd1309_font_t font8x8;
+extern const ssd1309_font_t font10x14;
+
 
 /**
  * ssd1309_init
@@ -109,26 +132,30 @@ HAL_StatusTypeDef ssd1309_flush(ssd1309_t *p);
 /**
  * ssd1309_draw_char
  * @param p - Pointer to ssd1309_t struct
+ * @param font - Font to draw with (e.g. &font5x7, &font8x8, &font10x14)
  * @param x - Column of the glyph's top-left pixel
  * @param y - Row of the glyph's top-left pixel
- * @param c - Character to draw (0x20 .. 0x7E); other values render blank
+ * @param c - Character to draw; values outside font->first_char..last_char
+ *            render blank
  * @param color - SSD1309_COLOR_OFF or SSD1309_COLOR_ON
  *
- * Draws a 5x7 glyph from the built-in font using ssd1309_set_pixel().
+ * Draws a glyph_width x glyph_height glyph from `font` using
+ * ssd1309_set_pixel().
  */
-void ssd1309_draw_char(ssd1309_t *p, int16_t x, int16_t y, char c, uint8_t color);
+void ssd1309_draw_char(ssd1309_t *p, const ssd1309_font_t *font, int16_t x, int16_t y, char c, uint8_t color);
 
 /**
  * ssd1309_draw_string
  * @param p - Pointer to ssd1309_t struct
+ * @param font - Font to draw with (e.g. &font5x7, &font8x8, &font10x14)
  * @param x - Column of the first glyph's top-left pixel
  * @param y - Row of the first glyph's top-left pixel
  * @param str - NUL-terminated string to draw
  * @param color - SSD1309_COLOR_OFF or SSD1309_COLOR_ON
  *
- * Draws each character via ssd1309_draw_char(), advancing x by 6px per
- * character. No wrapping is performed.
+ * Draws each character via ssd1309_draw_char(), advancing x by
+ * font->advance pixels per character. No wrapping is performed.
  */
-void ssd1309_draw_string(ssd1309_t *p, int16_t x, int16_t y, const char *str, uint8_t color);
+void ssd1309_draw_string(ssd1309_t *p, const ssd1309_font_t *font, int16_t x, int16_t y, const char *str, uint8_t color);
 
 #endif /* INC_SSD1309_H_ */
