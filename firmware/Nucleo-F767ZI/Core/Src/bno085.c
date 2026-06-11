@@ -311,6 +311,129 @@ HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id)
 	return HAL_ERROR;
 }
 
+HAL_StatusTypeDef bno085_set_feature(
+	bno085_t *p,
+	uint8_t report_id,
+	uint8_t feature_flags,
+	uint16_t change_sensitivity,
+	uint32_t report_interval_us,
+	uint32_t batch_interval_us,
+	uint32_t sensor_specific_config
+)
+{
+	uint8_t payload[17] = {
+		BNO085_REPORT_ID_SET_FEATURE_COMMAND,
+		report_id,
+		feature_flags,
+		(uint8_t)(change_sensitivity & 0xFF),
+		(uint8_t)(change_sensitivity >> 8),
+		(uint8_t)(report_interval_us & 0xFF),
+		(uint8_t)(report_interval_us >> 8),
+		(uint8_t)(report_interval_us >> 16),
+		(uint8_t)(report_interval_us >> 24),
+		(uint8_t)(batch_interval_us & 0xFF),
+		(uint8_t)(batch_interval_us >> 8),
+		(uint8_t)(batch_interval_us >> 16),
+		(uint8_t)(batch_interval_us >> 24),
+		(uint8_t)(sensor_specific_config & 0xFF),
+		(uint8_t)(sensor_specific_config >> 8),
+		(uint8_t)(sensor_specific_config >> 16),
+		(uint8_t)(sensor_specific_config >> 24),
+	};
+
+	return bno085_send_packet(p, BNO085_CHANNEL_CONTROL, payload, sizeof(payload));
+}
+
+HAL_StatusTypeDef bno085_read_rotation_vector(bno085_t *p)
+{
+	for (uint8_t attempt = 0; attempt < BNO085_GET_FEATURE_MAX_ATTEMPTS; attempt++) {
+		HAL_StatusTypeDef status = bno085_read_response(p);
+		if (status != HAL_OK) {
+			return status;
+		}
+
+		if (p->cmd_buf[2] == BNO085_CHANNEL_INPUT_REPORTS && p->cmd_len >= 23
+			&& p->cmd_buf[4] == BNO085_REPORT_ID_BASE_TIMESTAMP
+			&& p->cmd_buf[9] == BNO085_REPORT_ID_ROTATION_VECTOR) {
+
+			p->rotation_vector.sequence = p->cmd_buf[10];
+			p->rotation_vector.status = p->cmd_buf[11] & 0x03;
+			p->rotation_vector.i = (int16_t)(p->cmd_buf[13] | (p->cmd_buf[14] << 8));
+			p->rotation_vector.j = (int16_t)(p->cmd_buf[15] | (p->cmd_buf[16] << 8));
+			p->rotation_vector.k = (int16_t)(p->cmd_buf[17] | (p->cmd_buf[18] << 8));
+			p->rotation_vector.real = (int16_t)(p->cmd_buf[19] | (p->cmd_buf[20] << 8));
+			p->rotation_vector.accuracy = (int16_t)(p->cmd_buf[21] | (p->cmd_buf[22] << 8));
+
+			p->rotation_vector.i_f = p->rotation_vector.i / (float)(1 << BNO085_ROTATION_VECTOR_Q_POINT);
+			p->rotation_vector.j_f = p->rotation_vector.j / (float)(1 << BNO085_ROTATION_VECTOR_Q_POINT);
+			p->rotation_vector.k_f = p->rotation_vector.k / (float)(1 << BNO085_ROTATION_VECTOR_Q_POINT);
+			p->rotation_vector.real_f = p->rotation_vector.real / (float)(1 << BNO085_ROTATION_VECTOR_Q_POINT);
+			p->rotation_vector.accuracy_rad = p->rotation_vector.accuracy / (float)(1 << BNO085_ROTATION_VECTOR_ACCURACY_Q_POINT);
+
+			return HAL_OK;
+		}
+	}
+
+	return HAL_ERROR;
+}
+
+/*
+ * Formats a signed Q-point fixed-point value as a fixed-4-decimal-place
+ * string (e.g. "-0.6831"), without relying on printf's %f - newlib-nano
+ * (the default STM32 C library) omits float formatting support unless the
+ * linker is told to pull it in.
+ */
+static int bno085_format_q(int16_t raw, int q_point, char *buf, size_t bufsize)
+{
+	int32_t scaled = ((int32_t)raw * 10000) / (1 << q_point);
+	int32_t int_part = scaled / 10000;
+	int32_t frac_part = scaled % 10000;
+
+	if (frac_part < 0) {
+		frac_part = -frac_part;
+	}
+
+	if (int_part == 0 && scaled < 0) {
+		return snprintf(buf, bufsize, "-0.%04ld", (long)frac_part);
+	}
+
+	return snprintf(buf, bufsize, "%ld.%04ld", (long)int_part, (long)frac_part);
+}
+
+void bno085_print_rotation_vector(bno085_t *p, UART_HandleTypeDef *huart)
+{
+	char buf[64];
+	int len;
+
+	len = snprintf(buf, sizeof(buf), "rv: i=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->rotation_vector.i, BNO085_ROTATION_VECTOR_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " j=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->rotation_vector.j, BNO085_ROTATION_VECTOR_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " k=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->rotation_vector.k, BNO085_ROTATION_VECTOR_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " real=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->rotation_vector.real, BNO085_ROTATION_VECTOR_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " acc=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->rotation_vector.accuracy, BNO085_ROTATION_VECTOR_ACCURACY_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " seq=%u status=%u\r\n", p->rotation_vector.sequence, p->rotation_vector.status);
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+}
+
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart)
 {
 	char buf[128];

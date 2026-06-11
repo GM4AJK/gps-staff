@@ -161,6 +161,17 @@ void app_init(void)
 		}
 		HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, 100);
 	}
+
+	/* Enable the Rotation Vector report at 20Hz (50000us interval), no
+	 * batching, default change sensitivity/flags/sensor-specific config. */
+	HAL_StatusTypeDef set_feature_status = bno085_set_feature(&bno, 0x05, 0, 0, 50000, 0, 0);
+
+	if (set_feature_status == HAL_OK) {
+		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Rotation Vector) OK\r\n");
+	} else {
+		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Rotation Vector) failed: %d\r\n", set_feature_status);
+	}
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 }
 
 void app_loop(void)
@@ -176,6 +187,12 @@ void app_loop(void)
 
 		//int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
 		//HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+		if (flag_get_100MS()) {
+			if (bno085_read_rotation_vector(&bno) == HAL_OK) {
+				bno085_print_rotation_vector(&bno, &huart3);
+			}
+		}
 
 		HAL_Delay(500);
 	}
