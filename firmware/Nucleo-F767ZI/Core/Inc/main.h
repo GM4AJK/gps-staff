@@ -45,7 +45,6 @@ extern "C" {
 
 extern UART_HandleTypeDef huart3;
 extern I2C_HandleTypeDef hi2c1;
-extern SPI_HandleTypeDef hspi1;
 
 //extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* USER CODE END EC */
@@ -66,29 +65,14 @@ void Error_Handler(void);
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
-#define BNO085_SPI_CLK_Pin GPIO_PIN_5
-#define BNO085_SPI_CLK_GPIO_Port GPIOA
-#define BNO085_SPI_MISO_Pin GPIO_PIN_6
-#define BNO085_SPI_MISO_GPIO_Port GPIOA
-#define BNO085_SPI_MOSI_Pin GPIO_PIN_7
-#define BNO085_SPI_MOSI_GPIO_Port GPIOA
 #define LD1_Pin GPIO_PIN_0
 #define LD1_GPIO_Port GPIOB
-#define BNO085_INT_Pin GPIO_PIN_12
-#define BNO085_INT_GPIO_Port GPIOF
-#define BNO085_INT_EXTI_IRQn EXTI15_10_IRQn
-#define BNO085_PS0_WAKE_Pin GPIO_PIN_14
-#define BNO085_PS0_WAKE_GPIO_Port GPIOF
 #define STLK_RX_Pin GPIO_PIN_10
 #define STLK_RX_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14
 #define LD3_GPIO_Port GPIOB
 #define STLK_TX_Pin GPIO_PIN_9
 #define STLK_TX_GPIO_Port GPIOD
-#define BNO085_SPI_CS_Pin GPIO_PIN_14
-#define BNO085_SPI_CS_GPIO_Port GPIOD
-#define BNO085_RST_Pin GPIO_PIN_15
-#define BNO085_RST_GPIO_Port GPIOD
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
 #define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
