@@ -605,6 +605,51 @@ HAL_StatusTypeDef bno085_set_periodic_dcd_save(bno085_t *p, uint8_t enable)
 	return bno085_send_command(p, BNO085_COMMAND_DCD_PERIODIC_SAVE, params);
 }
 
+HAL_StatusTypeDef bno085_start_calibration(bno085_t *p, uint32_t interval_us)
+{
+	const uint8_t params[9] = {
+		BNO085_SIMPLE_CALIBRATION_START,
+		(uint8_t)(interval_us & 0xFF),
+		(uint8_t)((interval_us >> 8) & 0xFF),
+		(uint8_t)((interval_us >> 16) & 0xFF),
+		(uint8_t)((interval_us >> 24) & 0xFF),
+		0, 0, 0, 0
+	};
+
+	HAL_StatusTypeDef status = bno085_send_command(p, BNO085_COMMAND_SIMPLE_CALIBRATION, params);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	status = bno085_read_command_response(p, BNO085_COMMAND_SIMPLE_CALIBRATION);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	p->simple_calibration.start_status = p->cmd_buf[9];
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef bno085_finish_calibration(bno085_t *p)
+{
+	const uint8_t params[9] = { BNO085_SIMPLE_CALIBRATION_FINISH, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+	HAL_StatusTypeDef status = bno085_send_command(p, BNO085_COMMAND_SIMPLE_CALIBRATION, params);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	status = bno085_read_command_response(p, BNO085_COMMAND_SIMPLE_CALIBRATION);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	p->simple_calibration.finish_status = p->cmd_buf[10];
+
+	return HAL_OK;
+}
+
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart)
 {
 	char buf[128];

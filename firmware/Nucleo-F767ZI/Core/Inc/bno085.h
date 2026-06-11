@@ -65,6 +65,11 @@
 #define BNO085_COMMAND_SAVE_DCD 0x06
 #define BNO085_COMMAND_ME_CALIBRATION 0x07
 #define BNO085_COMMAND_DCD_PERIODIC_SAVE 0x09
+#define BNO085_COMMAND_SIMPLE_CALIBRATION 0x0C
+
+/* P0 sub-command values for the Simple Calibration command (0x0C) */
+#define BNO085_SIMPLE_CALIBRATION_START 0x00
+#define BNO085_SIMPLE_CALIBRATION_FINISH 0x01
 
 /* Number of SHTP channels for which a host TX sequence number is tracked */
 #define BNO085_NUM_CHANNELS 6
@@ -118,6 +123,11 @@ typedef struct {
 } bno085_magnetic_field_t;
 
 typedef struct {
+	uint8_t start_status;
+	uint8_t finish_status;
+} bno085_simple_calibration_t;
+
+typedef struct {
 	SPI_HandleTypeDef *port;
 	GPIO_TypeDef *cs_port;
 	uint16_t cs_pin;
@@ -144,6 +154,7 @@ typedef struct {
 	bno085_rotation_vector_t rotation_vector;
 	bno085_me_calibration_t me_calibration;
 	bno085_magnetic_field_t magnetic_field;
+	bno085_simple_calibration_t simple_calibration;
 } bno085_t;
 
 /**
@@ -482,6 +493,46 @@ HAL_StatusTypeDef bno085_save_dcd(bno085_t *p);
  *         failed send (see bno085_send_command()).
  */
 HAL_StatusTypeDef bno085_set_periodic_dcd_save(bno085_t *p, uint8_t enable);
+
+/**
+ * bno085_start_calibration
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param interval_us - Calibration report interval, in microseconds
+ *
+ * Sends a Start Calibration command (BNO085_COMMAND_SIMPLE_CALIBRATION
+ * with params {BNO085_SIMPLE_CALIBRATION_START, interval_us as a 4-byte
+ * little-endian value, 0, 0, 0, 0}) via bno085_send_command(), then calls
+ * bno085_read_command_response(p, BNO085_COMMAND_SIMPLE_CALIBRATION). On
+ * HAL_OK, sets simple_calibration.start_status from cmd_buf[9] (R0,
+ * 0x00 = Start Calibration). Per the SH-2 Reference Manual section
+ * 6.4.10.1, the caller should wait for this response before performing
+ * the calibration motion.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed send or
+ *         response read. On any non-HAL_OK return, simple_calibration is
+ *         left unmodified.
+ */
+HAL_StatusTypeDef bno085_start_calibration(bno085_t *p, uint32_t interval_us);
+
+/**
+ * bno085_finish_calibration
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Sends a Finish Calibration command (BNO085_COMMAND_SIMPLE_CALIBRATION
+ * with params {BNO085_SIMPLE_CALIBRATION_FINISH, 0, 0, 0, 0, 0, 0, 0, 0})
+ * via bno085_send_command(), then calls
+ * bno085_read_command_response(p, BNO085_COMMAND_SIMPLE_CALIBRATION). On
+ * HAL_OK, sets simple_calibration.finish_status from cmd_buf[10] (R1, the
+ * Finish Calibration Status: 0 = success, 1-8 = various failure reasons
+ * per section 6.4.10.2). Per the SH-2 Reference Manual, on success the
+ * new calibration is stored to FRS but does not take effect until the
+ * sensor hub is reset.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed send or
+ *         response read. On any non-HAL_OK return, simple_calibration is
+ *         left unmodified.
+ */
+HAL_StatusTypeDef bno085_finish_calibration(bno085_t *p);
 
 /**
  * bno085_read_magnetic_field

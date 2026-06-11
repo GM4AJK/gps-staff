@@ -26,6 +26,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 	if(GPIO_Pin == BNO085_INT_Pin) {
 		flag_set_BNO085_INT();
 	}
+	if(GPIO_Pin == USER_Btn_Pin) {
+		flag_set_USER_BTN();
+	}
 }
 
 void app_1ms(void)
@@ -214,12 +217,47 @@ void app_loop(void)
 	bool flipper = false;
 	uint32_t loop_count = 0;
 	uint32_t me_cal_count = 0;
-	char buf[64];
+	char buf[96];
+	int len;
+
+	/* Simple Calibration (0x0C) "dance", driven by the user (B1) button:
+	 *   0 -> 1: Start Calibration, then rotate the board ~180 degrees
+	 *   1 -> 2: Finish Calibration, then power-cycle for it to take effect
+	 *   2: idle, calibration sequence complete
+	 */
+	uint8_t cal_state = 0;
 
 	while(true) {
 		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
 		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
 		flipper = !flipper;
+
+		if (flag_get_USER_BTN()) {
+			if (cal_state == 0) {
+				HAL_StatusTypeDef status = bno085_start_calibration(&bno, 10000);
+				if (status == HAL_OK) {
+					len = snprintf(buf, sizeof(buf), "bno085_start_calibration OK: start_status=%u - rotate ~180deg, then press B1\r\n",
+						bno.simple_calibration.start_status);
+					cal_state = 1;
+				} else {
+					len = snprintf(buf, sizeof(buf), "bno085_start_calibration failed: %d\r\n", status);
+				}
+				HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+			} else if (cal_state == 1) {
+				HAL_StatusTypeDef status = bno085_finish_calibration(&bno);
+				if (status == HAL_OK) {
+					len = snprintf(buf, sizeof(buf), "bno085_finish_calibration OK: finish_status=%u - power-cycle to apply\r\n",
+						bno.simple_calibration.finish_status);
+					cal_state = 2;
+				} else {
+					len = snprintf(buf, sizeof(buf), "bno085_finish_calibration failed: %d\r\n", status);
+				}
+				HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+			} else {
+				len = snprintf(buf, sizeof(buf), "calibration sequence already complete - power-cycle to apply\r\n");
+				HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+			}
+		}
 
 		//int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
 		//HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
@@ -239,7 +277,6 @@ void app_loop(void)
 		if (++me_cal_count >= 4) {
 			me_cal_count = 0;
 
-			int len;
 			if (bno085_get_me_calibration(&bno) == HAL_OK) {
 				len = snprintf(buf, sizeof(buf), "me_cal: status=%u accel=%u gyro=%u mag=%u\r\n",
 					bno.me_calibration.status, bno.me_calibration.accel_enable,

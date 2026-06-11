@@ -12,12 +12,14 @@ enum {
 	FLAG_100MS,
 	FLAG_1000MS,
 	FLAG_BNO085_INT,
+	FLAG_USER_BTN,
 };
 
 static const uint32_t FLAG_MASK_10MS       = (1UL << FLAG_10MS);
 static const uint32_t FLAG_MASK_100MS      = (1UL << FLAG_100MS);
 static const uint32_t FLAG_MASK_1000MS     = (1UL << FLAG_1000MS);
 static const uint32_t FLAG_MASK_BNO085_INT = (1UL << FLAG_BNO085_INT);
+static const uint32_t FLAG_MASK_USER_BTN   = (1UL << FLAG_USER_BTN);
 
 static volatile uint32_t flags = 0;
 
@@ -47,3 +49,4 @@ MAKE_C(10MS)
 MAKE_C(100MS)
 MAKE_C(1000MS)
 MAKE_C(BNO085_INT)
+MAKE_C(USER_BTN)
