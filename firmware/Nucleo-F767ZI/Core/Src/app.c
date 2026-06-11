@@ -173,6 +173,17 @@ void app_init(void)
 	}
 	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 
+	/* Enable the Magnetic Field Calibrated report at the same 20Hz rate, as
+	 * a diagnostic alongside the Rotation Vector's status/accuracy. */
+	HAL_StatusTypeDef set_feature_mag_status = bno085_set_feature(&bno, 0x03, 0, 0, 50000, 0, 0);
+
+	if (set_feature_mag_status == HAL_OK) {
+		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Magnetic Field) OK\r\n");
+	} else {
+		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Magnetic Field) failed: %d\r\n", set_feature_mag_status);
+	}
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
 	/* Enable accel/gyro/mag dynamic calibration (planar/on-table left
 	 * disabled) so the Rotation Vector's status/accuracy can improve. */
 	HAL_StatusTypeDef me_cal_status = bno085_set_me_calibration(&bno, 1, 1, 1, 0, 0);
@@ -204,7 +215,11 @@ void app_loop(void)
 
 		//if (flag_get_100MS()) {
 			if (bno085_read_rotation_vector(&bno) == HAL_OK) {
-				bno085_print_rotation_vector(&bno, &huart3);
+				//bno085_print_rotation_vector(&bno, &huart3);
+			}
+
+			if (bno085_read_magnetic_field(&bno) == HAL_OK) {
+				bno085_print_magnetic_field(&bno, &huart3);
 			}
 		//}
 
