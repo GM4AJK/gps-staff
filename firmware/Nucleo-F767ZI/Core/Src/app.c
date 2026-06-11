@@ -172,13 +172,27 @@ void app_init(void)
 		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Rotation Vector) failed: %d\r\n", set_feature_status);
 	}
 	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+	/* Enable accel/gyro/mag dynamic calibration (planar/on-table left
+	 * disabled) so the Rotation Vector's status/accuracy can improve. */
+	HAL_StatusTypeDef me_cal_status = bno085_set_me_calibration(&bno, 1, 1, 1, 0, 0);
+
+	if (me_cal_status == HAL_OK) {
+		len = snprintf(buf, sizeof(buf), "bno085_set_me_calibration OK: status=%u accel=%u gyro=%u mag=%u\r\n",
+			bno.me_calibration.status, bno.me_calibration.accel_enable,
+			bno.me_calibration.gyro_enable, bno.me_calibration.mag_enable);
+	} else {
+		len = snprintf(buf, sizeof(buf), "bno085_set_me_calibration failed: %d\r\n", me_cal_status);
+	}
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 }
 
 void app_loop(void)
 {
 	bool flipper = false;
 	uint32_t loop_count = 0;
-	char buf[48];
+	uint32_t me_cal_count = 0;
+	char buf[64];
 
 	while(true) {
 		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
@@ -188,10 +202,26 @@ void app_loop(void)
 		//int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
 		//HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 
-		if (flag_get_100MS()) {
+		//if (flag_get_100MS()) {
 			if (bno085_read_rotation_vector(&bno) == HAL_OK) {
 				bno085_print_rotation_vector(&bno, &huart3);
 			}
+		//}
+
+		/* Every ~2s, read back the on-chip ME calibration enable state to
+		 * confirm the Configure command persisted. */
+		if (++me_cal_count >= 4) {
+			me_cal_count = 0;
+
+			int len;
+			if (bno085_get_me_calibration(&bno) == HAL_OK) {
+				len = snprintf(buf, sizeof(buf), "me_cal: status=%u accel=%u gyro=%u mag=%u\r\n",
+					bno.me_calibration.status, bno.me_calibration.accel_enable,
+					bno.me_calibration.gyro_enable, bno.me_calibration.mag_enable);
+			} else {
+				len = snprintf(buf, sizeof(buf), "bno085_get_me_calibration failed\r\n");
+			}
+			HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 		}
 
 		HAL_Delay(500);

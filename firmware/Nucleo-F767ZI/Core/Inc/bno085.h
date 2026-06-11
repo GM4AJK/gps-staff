@@ -52,6 +52,14 @@
 #define BNO085_ROTATION_VECTOR_Q_POINT 14
 #define BNO085_ROTATION_VECTOR_ACCURACY_Q_POINT 12
 
+/* SH-2 report IDs for the Command Request/Response pair */
+#define BNO085_REPORT_ID_COMMAND_REQUEST 0xF2
+#define BNO085_REPORT_ID_COMMAND_RESPONSE 0xF1
+
+/* SH-2 command IDs used by this driver, sent via the Command Request */
+#define BNO085_COMMAND_SAVE_DCD 0x06
+#define BNO085_COMMAND_ME_CALIBRATION 0x07
+
 /* Number of SHTP channels for which a host TX sequence number is tracked */
 #define BNO085_NUM_CHANNELS 6
 
@@ -84,6 +92,15 @@ typedef struct {
 } bno085_rotation_vector_t;
 
 typedef struct {
+	uint8_t status;
+	uint8_t accel_enable;
+	uint8_t gyro_enable;
+	uint8_t mag_enable;
+	uint8_t planar_accel_enable;
+	uint8_t on_table_enable;
+} bno085_me_calibration_t;
+
+typedef struct {
 	SPI_HandleTypeDef *port;
 	GPIO_TypeDef *cs_port;
 	uint16_t cs_pin;
@@ -104,8 +121,11 @@ typedef struct {
 	uint8_t tx_seq[BNO085_NUM_CHANNELS];
 	uint8_t cmd_buf[BNO085_CMD_BUF_SIZE];
 	uint16_t cmd_len;
+	uint8_t cmd_seq;
+	uint8_t last_cmd_seq;
 	bno085_feature_t feature;
 	bno085_rotation_vector_t rotation_vector;
+	bno085_me_calibration_t me_calibration;
 } bno085_t;
 
 /**
@@ -325,5 +345,108 @@ HAL_StatusTypeDef bno085_read_rotation_vector(bno085_t *p);
  * accuracy_rad), and the sequence and status fields.
  */
 void bno085_print_rotation_vector(bno085_t *p, UART_HandleTypeDef *huart);
+
+/**
+ * bno085_send_command
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param command - SH-2 command ID (1-127)
+ * @param params - Pointer to a 9-byte array of command-specific parameters
+ *                  (P0..P8)
+ *
+ * Builds a 12-byte SH-2 Command Request (0xF2) payload -
+ * {0xF2, p->cmd_seq, command, params[0..9)} - and sends it on
+ * BNO085_CHANNEL_CONTROL via bno085_send_packet(). On success,
+ * p->last_cmd_seq is set to the sequence number that was sent and
+ * p->cmd_seq is incremented (with uint8_t wraparound).
+ *
+ * @return HAL_OK on a successful send, HAL_TIMEOUT if INT does not go low
+ *         in time, or the HAL_StatusTypeDef of a failed SPI transfer (see
+ *         bno085_send_packet()). On any non-HAL_OK return, neither
+ *         p->cmd_seq nor p->last_cmd_seq is modified.
+ */
+HAL_StatusTypeDef bno085_send_command(bno085_t *p, uint8_t command, const uint8_t params[9]);
+
+/**
+ * bno085_read_command_response
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param command - SH-2 command ID that a prior bno085_send_command() call
+ *                   was sent for
+ *
+ * Up to BNO085_GET_FEATURE_MAX_ATTEMPTS times: wakes the device (if needed)
+ * and waits for INT to go low within BNO085_INT_TIMEOUT_MS, then reads a
+ * packet via bno085_read_response() into cmd_buf/cmd_len. A packet matches
+ * if cmd_len >= 20, cmd_buf[4] == BNO085_REPORT_ID_COMMAND_RESPONSE,
+ * cmd_buf[6] == command, and cmd_buf[7] == p->last_cmd_seq. Each
+ * non-matching packet is discarded and another is read. On a match,
+ * cmd_buf[9..20) (R0..R10) are left populated for the caller to interpret.
+ *
+ * @return HAL_OK on a matching response, HAL_TIMEOUT if INT does not go low
+ *         in time on a read, HAL_ERROR if no matching packet is found
+ *         within BNO085_GET_FEATURE_MAX_ATTEMPTS packets, or the
+ *         HAL_StatusTypeDef of a failed SPI transfer.
+ */
+HAL_StatusTypeDef bno085_read_command_response(bno085_t *p, uint8_t command);
+
+/**
+ * bno085_get_me_calibration
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Sends a Get ME Calibration command (BNO085_COMMAND_ME_CALIBRATION with
+ * params {0, 0, 0, 0x01, 0, 0, 0, 0, 0}) via bno085_send_command(), then
+ * calls bno085_read_command_response(p, BNO085_COMMAND_ME_CALIBRATION). On
+ * HAL_OK, parses cmd_buf[9..15) into me_calibration: status (R0),
+ * accel_enable, gyro_enable, mag_enable, planar_accel_enable, and
+ * on_table_enable (R1..R5).
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed send or
+ *         response read. On any non-HAL_OK return, me_calibration is left
+ *         unmodified.
+ */
+HAL_StatusTypeDef bno085_get_me_calibration(bno085_t *p);
+
+/**
+ * bno085_set_me_calibration
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param accel_enable - 1 to enable accelerometer calibration, 0 to disable
+ * @param gyro_enable - 1 to enable gyroscope calibration, 0 to disable
+ * @param mag_enable - 1 to enable magnetometer calibration, 0 to disable
+ * @param planar_accel_enable - 1 to enable planar accelerometer
+ *                               calibration, 0 to disable
+ * @param on_table_enable - 1 to enable on-table calibration, 0 to disable
+ *
+ * Sends a Configure ME Calibration command
+ * (BNO085_COMMAND_ME_CALIBRATION with params {accel_enable, gyro_enable,
+ * mag_enable, 0x00, planar_accel_enable, on_table_enable, 0, 0, 0}) via
+ * bno085_send_command(), then calls
+ * bno085_read_command_response(p, BNO085_COMMAND_ME_CALIBRATION). On
+ * HAL_OK, parses cmd_buf[9..15) into me_calibration exactly as
+ * bno085_get_me_calibration() does.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed send or
+ *         response read. On any non-HAL_OK return, me_calibration is left
+ *         unmodified.
+ */
+HAL_StatusTypeDef bno085_set_me_calibration(
+	bno085_t *p,
+	uint8_t accel_enable,
+	uint8_t gyro_enable,
+	uint8_t mag_enable,
+	uint8_t planar_accel_enable,
+	uint8_t on_table_enable
+);
+
+/**
+ * bno085_save_dcd
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Sends a Save DCD command (BNO085_COMMAND_SAVE_DCD with all-zero params)
+ * via bno085_send_command(), then calls
+ * bno085_read_command_response(p, BNO085_COMMAND_SAVE_DCD). On HAL_OK, sets
+ * me_calibration.status from cmd_buf[9] (R0, 0 = success).
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of a failed send or
+ *         response read.
+ */
+HAL_StatusTypeDef bno085_save_dcd(bno085_t *p);
 
 #endif /* INC_BNO085_H_ */

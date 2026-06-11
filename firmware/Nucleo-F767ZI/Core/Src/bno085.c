@@ -434,6 +434,117 @@ void bno085_print_rotation_vector(bno085_t *p, UART_HandleTypeDef *huart)
 	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
 }
 
+HAL_StatusTypeDef bno085_send_command(bno085_t *p, uint8_t command, const uint8_t params[9])
+{
+	uint8_t payload[12];
+
+	payload[0] = BNO085_REPORT_ID_COMMAND_REQUEST;
+	payload[1] = p->cmd_seq;
+	payload[2] = command;
+	memcpy(&payload[3], params, 9);
+
+	HAL_StatusTypeDef status = bno085_send_packet(p, BNO085_CHANNEL_CONTROL, payload, sizeof(payload));
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	p->last_cmd_seq = p->cmd_seq;
+	p->cmd_seq++;
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef bno085_read_command_response(bno085_t *p, uint8_t command)
+{
+	for (uint8_t attempt = 0; attempt < BNO085_GET_FEATURE_MAX_ATTEMPTS; attempt++) {
+		HAL_StatusTypeDef status = bno085_read_response(p);
+		if (status != HAL_OK) {
+			return status;
+		}
+
+		if (p->cmd_len >= 20 && p->cmd_buf[4] == BNO085_REPORT_ID_COMMAND_RESPONSE
+			&& p->cmd_buf[6] == command && p->cmd_buf[7] == p->last_cmd_seq) {
+			return HAL_OK;
+		}
+	}
+
+	return HAL_ERROR;
+}
+
+static void bno085_parse_me_calibration_response(bno085_t *p)
+{
+	p->me_calibration.status = p->cmd_buf[9];
+	p->me_calibration.accel_enable = p->cmd_buf[10];
+	p->me_calibration.gyro_enable = p->cmd_buf[11];
+	p->me_calibration.mag_enable = p->cmd_buf[12];
+	p->me_calibration.planar_accel_enable = p->cmd_buf[13];
+	p->me_calibration.on_table_enable = p->cmd_buf[14];
+}
+
+HAL_StatusTypeDef bno085_get_me_calibration(bno085_t *p)
+{
+	const uint8_t params[9] = { 0, 0, 0, 0x01, 0, 0, 0, 0, 0 };
+
+	HAL_StatusTypeDef status = bno085_send_command(p, BNO085_COMMAND_ME_CALIBRATION, params);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	status = bno085_read_command_response(p, BNO085_COMMAND_ME_CALIBRATION);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	bno085_parse_me_calibration_response(p);
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef bno085_set_me_calibration(
+	bno085_t *p,
+	uint8_t accel_enable,
+	uint8_t gyro_enable,
+	uint8_t mag_enable,
+	uint8_t planar_accel_enable,
+	uint8_t on_table_enable
+)
+{
+	const uint8_t params[9] = { accel_enable, gyro_enable, mag_enable, 0x00, planar_accel_enable, on_table_enable, 0, 0, 0 };
+
+	HAL_StatusTypeDef status = bno085_send_command(p, BNO085_COMMAND_ME_CALIBRATION, params);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	status = bno085_read_command_response(p, BNO085_COMMAND_ME_CALIBRATION);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	bno085_parse_me_calibration_response(p);
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef bno085_save_dcd(bno085_t *p)
+{
+	const uint8_t params[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+	HAL_StatusTypeDef status = bno085_send_command(p, BNO085_COMMAND_SAVE_DCD, params);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	status = bno085_read_command_response(p, BNO085_COMMAND_SAVE_DCD);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	p->me_calibration.status = p->cmd_buf[9];
+
+	return HAL_OK;
+}
+
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart)
 {
 	char buf[128];
