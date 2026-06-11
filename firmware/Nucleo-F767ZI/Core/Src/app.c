@@ -9,10 +9,14 @@
 #include "main.h"
 #include "flags.h"
 #include "ssd1309.h"
-#include "bno085.h"
+//#include "bno085.h"
+#include "bno085_spi.h"
 
 static ssd1309_t oled;
-static bno085_t bno;
+//static bno085_t bno;
+
+void bno085_init(void);
+void bno085_service(void);
 
 #define COUNTER_TIMER(x, y, z) \
 	x++; \
@@ -21,11 +25,35 @@ static bno085_t bno;
 		z(); \
 	}
 
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+void app_delay_us(uint32_t us)
 {
-	if(GPIO_Pin == BNO085_INT_Pin) {
-		flag_set_BNO085_INT();
+	uint32_t target = DWT->CYCCNT + us * (SystemCoreClock / 1000000U);
+	while((int32_t)(DWT->CYCCNT - target) < 0);
+}
+
+#define DWT_LAR_UNLOCK_KEY  0xC5ACCE55
+
+static void app_delay_us_init()
+{
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CTRL        |= DWT_CTRL_CYCCNTENA_Msk;
+	if ((CoreDebug->DEMCR & CoreDebug_DEMCR_TRCENA_Msk) == 0) {
+		// Enable use of DWT and ITM blocks
+		CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
 	}
+	// 2. Unlock DWT access (Mandatory for Cortex-M7)
+	// Without this, writes to DWT control registers are ignored
+	DWT->LAR = DWT_LAR_UNLOCK_KEY;
+	// 3. Reset the cycle counter register
+	DWT->CYCCNT = 0;
+	// 4. Enable the cycle counter
+	// Bit 0 (CYCCNTENA) enables the counter
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+	// 5. Verification check
+//	if (DWT->CYCCNT == DWT->CYCCNT) {
+//		return 0; // Success, counter is running
+//	}
+
 }
 
 void app_1ms(void)
@@ -40,8 +68,24 @@ void app_1ms(void)
 
 void app_init(void)
 {
+	app_delay_us_init();
+
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
+
+//	bno.spi = &hspi1;
+//	bno.reset.pin        = BNO085_RST_Pin;
+//	bno.reset.port       = BNO085_RST_GPIO_Port;
+//	bno.ps0_wake.pin     = BNO085_PS0_WAKE_Pin;
+//	bno.ps0_wake.port    = BNO085_PS0_WAKE_GPIO_Port;
+//	bno.interrupt.pin    = BNO085_INT_Pin;
+//	bno.interrupt.port   = BNO085_INT_GPIO_Port;
+//	bno.chip_select.pin  = BNO085_SPI_CS_Pin;
+//	bno.chip_select.port = BNO085_SPI_CS_GPIO_Port;
+//	bno.us_delay_fp      = app_delay_us;
+//	bno085_init(&bno);
+
+	bno085_init();
 
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
 
@@ -85,171 +129,18 @@ void app_init(void)
 		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
 	}
 
-	bno085_init(&bno, &hspi1,
-		BNO085_SPI_CS_GPIO_Port, BNO085_SPI_CS_Pin,
-		BNO085_RST_GPIO_Port, BNO085_RST_Pin,
-		BNO085_INT_GPIO_Port, BNO085_INT_Pin,
-		BNO085_PS0_WAKE_GPIO_Port, BNO085_PS0_WAKE_Pin);
 
-	HAL_StatusTypeDef bno_status = bno085_bringup(&bno);
-	char buf[96];
-	int len;
-
-	len = snprintf(buf, sizeof(buf), "bno085 INT initial=%d wait=%lums\r\n",
-		bno.int_initial, (unsigned long)bno.int_wait_ms);
-	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-
-	if (bno_status == HAL_OK) {
-		len = snprintf(buf, sizeof(buf), "bno085_bringup OK: len=%u chan=%u seq=%u\r\n",
-			bno.shtp_length, bno.shtp_channel, bno.shtp_sequence);
-	} else {
-		len = snprintf(buf, sizeof(buf), "bno085_bringup failed: %d\r\n", bno_status);
-	}
-	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-
-	len = snprintf(buf, sizeof(buf), "bno085 rx_buf:");
-	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-	for (int i = 0; i < BNO085_BRINGUP_BUF_SIZE; i++) {
-		len = snprintf(buf, sizeof(buf), " %02X", bno.rx_buf[i]);
-		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-	}
-	HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, 100);
-
-	HAL_StatusTypeDef advert_status = bno085_read_advertisement(&bno);
-
-	if (advert_status == HAL_OK) {
-		len = snprintf(buf, sizeof(buf), "bno085_read_advertisement OK: advert_len=%u\r\n", bno.advert_len);
-		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-		bno085_print_advertisement(&bno, &huart3);
-	} else {
-		len = snprintf(buf, sizeof(buf), "bno085_read_advertisement failed: %d\r\n", advert_status);
-		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-	}
-
-	static const struct {
-		uint8_t report_id;
-		const char *name;
-	} sensors[] = {
-		{ 0x01, "Accelerometer" },
-		{ 0x02, "Gyroscope" },
-		{ 0x03, "Magnetic Field" },
-		{ 0x05, "Rotation Vector" },
-		{ 0x08, "Game Rotation Vector" },
-	};
-
-	for (size_t i = 0; i < sizeof(sensors) / sizeof(sensors[0]); i++) {
-		HAL_StatusTypeDef feature_status = bno085_get_feature(&bno, sensors[i].report_id);
-
-		if (feature_status == HAL_OK) {
-			len = snprintf(buf, sizeof(buf), "%s: interval=%luus batch=%luus flags=%02X sens=%u\r\n",
-				sensors[i].name,
-				(unsigned long)bno.feature.report_interval_us,
-				(unsigned long)bno.feature.batch_interval_us,
-				bno.feature.feature_flags,
-				bno.feature.change_sensitivity);
-		} else {
-			len = snprintf(buf, sizeof(buf), "%s: bno085_get_feature failed: %d (int_wait=%lums)\r\n",
-				sensors[i].name, feature_status, (unsigned long)bno.int_wait_ms);
-		}
-		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-
-		len = snprintf(buf, sizeof(buf), "  cmd_len=%u cmd_buf:", bno.cmd_len);
-		HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-		for (int j = 0; j < BNO085_CMD_BUF_SIZE; j++) {
-			len = snprintf(buf, sizeof(buf), " %02X", bno.cmd_buf[j]);
-			HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-		}
-		HAL_UART_Transmit(&huart3, (uint8_t *)"\r\n", 2, 100);
-	}
-
-	/* Enable the Rotation Vector report at 20Hz (50000us interval), no
-	 * batching, default change sensitivity/flags/sensor-specific config. */
-	HAL_StatusTypeDef set_feature_status = bno085_set_feature(&bno, 0x05, 0, 0, 50000, 0, 0);
-
-	if (set_feature_status == HAL_OK) {
-		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Rotation Vector) OK\r\n");
-	} else {
-		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Rotation Vector) failed: %d\r\n", set_feature_status);
-	}
-	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-
-	/* Enable the Magnetic Field Calibrated report at the same 20Hz rate, as
-	 * a diagnostic alongside the Rotation Vector's status/accuracy. */
-	HAL_StatusTypeDef set_feature_mag_status = bno085_set_feature(&bno, 0x03, 0, 0, 50000, 0, 0);
-
-	if (set_feature_mag_status == HAL_OK) {
-		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Magnetic Field) OK\r\n");
-	} else {
-		len = snprintf(buf, sizeof(buf), "bno085_set_feature(Magnetic Field) failed: %d\r\n", set_feature_mag_status);
-	}
-	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-
-	/* Enable accel/gyro/mag dynamic calibration (planar/on-table left
-	 * disabled) so the Rotation Vector's status/accuracy can improve. */
-	HAL_StatusTypeDef me_cal_status = bno085_set_me_calibration(&bno, 1, 1, 1, 0, 0);
-
-	if (me_cal_status == HAL_OK) {
-		len = snprintf(buf, sizeof(buf), "bno085_set_me_calibration OK: status=%u accel=%u gyro=%u mag=%u\r\n",
-			bno.me_calibration.status, bno.me_calibration.accel_enable,
-			bno.me_calibration.gyro_enable, bno.me_calibration.mag_enable);
-	} else {
-		len = snprintf(buf, sizeof(buf), "bno085_set_me_calibration failed: %d\r\n", me_cal_status);
-	}
-	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-
-	/* Enable periodic DCD save, per the forum-suggested calibration recipe
-	 * (ME calibration enable + periodic DCD save). */
-	HAL_StatusTypeDef dcd_save_status = bno085_set_periodic_dcd_save(&bno, 1);
-
-	if (dcd_save_status == HAL_OK) {
-		len = snprintf(buf, sizeof(buf), "bno085_set_periodic_dcd_save OK\r\n");
-	} else {
-		len = snprintf(buf, sizeof(buf), "bno085_set_periodic_dcd_save failed: %d\r\n", dcd_save_status);
-	}
-	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 }
 
 void app_loop(void)
 {
 	bool flipper = false;
-	uint32_t loop_count = 0;
-	uint32_t me_cal_count = 0;
-	char buf[64];
 
 	while(true) {
-		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
-		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
-		flipper = !flipper;
-
-		//int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
-		//HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-
-		//if (flag_get_100MS()) {
-			if (bno085_read_rotation_vector(&bno) == HAL_OK) {
-				//bno085_print_rotation_vector(&bno, &huart3);
-			}
-
-			if (bno085_read_magnetic_field(&bno) == HAL_OK) {
-				bno085_print_magnetic_field(&bno, &huart3);
-			}
-		//}
-
-		/* Every ~2s, read back the on-chip ME calibration enable state to
-		 * confirm the Configure command persisted. */
-		if (++me_cal_count >= 4) {
-			me_cal_count = 0;
-
-			int len;
-			if (bno085_get_me_calibration(&bno) == HAL_OK) {
-				len = snprintf(buf, sizeof(buf), "me_cal: status=%u accel=%u gyro=%u mag=%u\r\n",
-					bno.me_calibration.status, bno.me_calibration.accel_enable,
-					bno.me_calibration.gyro_enable, bno.me_calibration.mag_enable);
-			} else {
-				len = snprintf(buf, sizeof(buf), "bno085_get_me_calibration failed\r\n");
-			}
-			HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-		}
-
-		HAL_Delay(500);
+		bno085_service();
+//		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
+//		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
+//		flipper = !flipper;
+//		HAL_Delay(500);
 	}
 }
