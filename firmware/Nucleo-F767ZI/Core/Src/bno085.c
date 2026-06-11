@@ -598,6 +598,13 @@ HAL_StatusTypeDef bno085_save_dcd(bno085_t *p)
 	return HAL_OK;
 }
 
+HAL_StatusTypeDef bno085_set_periodic_dcd_save(bno085_t *p, uint8_t enable)
+{
+	const uint8_t params[9] = { enable ? 0x00 : 0x01, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+	return bno085_send_command(p, BNO085_COMMAND_DCD_PERIODIC_SAVE, params);
+}
+
 void bno085_print_advertisement(bno085_t *p, UART_HandleTypeDef *huart)
 {
 	char buf[128];

@@ -196,6 +196,17 @@ void app_init(void)
 		len = snprintf(buf, sizeof(buf), "bno085_set_me_calibration failed: %d\r\n", me_cal_status);
 	}
 	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+	/* Enable periodic DCD save, per the forum-suggested calibration recipe
+	 * (ME calibration enable + periodic DCD save). */
+	HAL_StatusTypeDef dcd_save_status = bno085_set_periodic_dcd_save(&bno, 1);
+
+	if (dcd_save_status == HAL_OK) {
+		len = snprintf(buf, sizeof(buf), "bno085_set_periodic_dcd_save OK\r\n");
+	} else {
+		len = snprintf(buf, sizeof(buf), "bno085_set_periodic_dcd_save failed: %d\r\n", dcd_save_status);
+	}
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 }
 
 void app_loop(void)

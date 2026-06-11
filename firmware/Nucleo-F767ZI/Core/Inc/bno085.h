@@ -64,6 +64,7 @@
 /* SH-2 command IDs used by this driver, sent via the Command Request */
 #define BNO085_COMMAND_SAVE_DCD 0x06
 #define BNO085_COMMAND_ME_CALIBRATION 0x07
+#define BNO085_COMMAND_DCD_PERIODIC_SAVE 0x09
 
 /* Number of SHTP channels for which a host TX sequence number is tracked */
 #define BNO085_NUM_CHANNELS 6
@@ -465,6 +466,22 @@ HAL_StatusTypeDef bno085_set_me_calibration(
  *         response read.
  */
 HAL_StatusTypeDef bno085_save_dcd(bno085_t *p);
+
+/**
+ * bno085_set_periodic_dcd_save
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param enable - 1 to enable periodic DCD save, 0 to disable
+ *
+ * Sends a Configure Periodic DCD Save command
+ * (BNO085_COMMAND_DCD_PERIODIC_SAVE with params {enable ? 0x00 : 0x01, 0,
+ * 0, 0, 0, 0, 0, 0, 0}) via bno085_send_command(). Per the SH-2 Reference
+ * Manual section 6.4.7, this command has no response, so
+ * bno085_read_command_response() is not called.
+ *
+ * @return HAL_OK on a successful send, or the HAL_StatusTypeDef of a
+ *         failed send (see bno085_send_command()).
+ */
+HAL_StatusTypeDef bno085_set_periodic_dcd_save(bno085_t *p, uint8_t enable);
 
 /**
  * bno085_read_magnetic_field
