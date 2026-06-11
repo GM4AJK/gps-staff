@@ -509,7 +509,7 @@ HAL_StatusTypeDef bno085_send_command(bno085_t *p, uint8_t command, const uint8_
 
 HAL_StatusTypeDef bno085_read_command_response(bno085_t *p, uint8_t command)
 {
-	for (uint8_t attempt = 0; attempt < BNO085_GET_FEATURE_MAX_ATTEMPTS; attempt++) {
+	for (uint8_t attempt = 0; attempt < BNO085_COMMAND_RESPONSE_MAX_ATTEMPTS; attempt++) {
 		HAL_StatusTypeDef status = bno085_read_response(p);
 		if (status != HAL_OK) {
 			return status;

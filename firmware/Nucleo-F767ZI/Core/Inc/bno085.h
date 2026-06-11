@@ -78,6 +78,14 @@
  * non-matching ones) while looking for its Get Feature Response */
 #define BNO085_GET_FEATURE_MAX_ATTEMPTS 4
 
+/* Max number of packets bno085_read_command_response() will read
+ * (discarding non-matching ones) while looking for its Command Response.
+ * Larger than BNO085_GET_FEATURE_MAX_ATTEMPTS because by the time a command
+ * is sent from app_loop(), several backlogged Rotation Vector / Magnetic
+ * Field input reports (streamed every 50ms vs. a 500ms loop period) may be
+ * ahead of the response in the queue. */
+#define BNO085_COMMAND_RESPONSE_MAX_ATTEMPTS 16
+
 typedef struct {
 	uint8_t feature_report_id;
 	uint8_t feature_flags;
