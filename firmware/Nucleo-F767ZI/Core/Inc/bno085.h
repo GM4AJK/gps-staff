@@ -34,10 +34,23 @@
 
 /* SHTP channel numbers, from the parsed advertisement */
 #define BNO085_CHANNEL_CONTROL 2
+#define BNO085_CHANNEL_INPUT_REPORTS 3
 
 /* SH-2 report IDs for the Get Feature Request/Response pair */
 #define BNO085_REPORT_ID_GET_FEATURE_REQUEST 0xFE
 #define BNO085_REPORT_ID_GET_FEATURE_RESPONSE 0xFC
+
+/* SH-2 report ID for the Set Feature Command */
+#define BNO085_REPORT_ID_SET_FEATURE_COMMAND 0xFD
+
+/* SH-2 report IDs for sensor input reports handled by this driver */
+#define BNO085_REPORT_ID_BASE_TIMESTAMP 0xFB
+#define BNO085_REPORT_ID_ROTATION_VECTOR 0x05
+
+/* Q point (fractional bits) of the Rotation Vector quaternion components
+ * and accuracy estimate, per the SH-2 Reference Manual section 6.5.18 */
+#define BNO085_ROTATION_VECTOR_Q_POINT 14
+#define BNO085_ROTATION_VECTOR_ACCURACY_Q_POINT 12
 
 /* Number of SHTP channels for which a host TX sequence number is tracked */
 #define BNO085_NUM_CHANNELS 6
@@ -54,6 +67,21 @@ typedef struct {
 	uint32_t batch_interval_us;
 	uint32_t sensor_specific_config;
 } bno085_feature_t;
+
+typedef struct {
+	uint8_t sequence;
+	uint8_t status;
+	int16_t i;
+	int16_t j;
+	int16_t k;
+	int16_t real;
+	int16_t accuracy;
+	float i_f;
+	float j_f;
+	float k_f;
+	float real_f;
+	float accuracy_rad;
+} bno085_rotation_vector_t;
 
 typedef struct {
 	SPI_HandleTypeDef *port;
@@ -77,6 +105,7 @@ typedef struct {
 	uint8_t cmd_buf[BNO085_CMD_BUF_SIZE];
 	uint16_t cmd_len;
 	bno085_feature_t feature;
+	bno085_rotation_vector_t rotation_vector;
 } bno085_t;
 
 /**
@@ -223,5 +252,78 @@ HAL_StatusTypeDef bno085_send_packet(bno085_t *p, uint8_t channel, const uint8_t
  *         HAL_StatusTypeDef of a failed SPI transfer.
  */
 HAL_StatusTypeDef bno085_get_feature(bno085_t *p, uint8_t report_id);
+
+/**
+ * bno085_set_feature
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param report_id - SH-2 report ID of the sensor to configure (e.g. 0x05
+ *                     for Rotation Vector)
+ * @param feature_flags - Feature flags byte (see SH-2 Set Feature Command)
+ * @param change_sensitivity - Change sensitivity (units/Q point are
+ *                              report-specific)
+ * @param report_interval_us - Desired report interval, in microseconds
+ * @param batch_interval_us - Desired batch interval, in microseconds
+ * @param sensor_specific_config - Sensor-specific configuration word
+ *
+ * Builds a 17-byte SH-2 Set Feature Command (0xFD) payload - report_id,
+ * feature_flags, change_sensitivity (2 bytes LE), report_interval_us
+ * (4 bytes LE), batch_interval_us (4 bytes LE), and
+ * sensor_specific_config (4 bytes LE) - and sends it on
+ * BNO085_CHANNEL_CONTROL via bno085_send_packet(). Unlike
+ * bno085_get_feature(), no response is awaited: the SH-2 Get Feature
+ * Response is only sent unsolicited on a later rate change, not
+ * synchronously in reply to a Set Feature Command.
+ *
+ * @return HAL_OK on a successful send, HAL_TIMEOUT if INT does not go low
+ *         in time, or the HAL_StatusTypeDef of a failed SPI transfer (see
+ *         bno085_send_packet()).
+ */
+HAL_StatusTypeDef bno085_set_feature(
+	bno085_t *p,
+	uint8_t report_id,
+	uint8_t feature_flags,
+	uint16_t change_sensitivity,
+	uint32_t report_interval_us,
+	uint32_t batch_interval_us,
+	uint32_t sensor_specific_config
+);
+
+/**
+ * bno085_read_rotation_vector
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Up to BNO085_GET_FEATURE_MAX_ATTEMPTS times: wakes the device (if needed)
+ * and waits for INT to go low within BNO085_INT_TIMEOUT_MS, then reads a
+ * packet via the same exact-length two-step read used by
+ * bno085_get_feature() into cmd_buf/cmd_len. A packet matches if it was
+ * received on BNO085_CHANNEL_INPUT_REPORTS, cmd_len >= 23, and its payload
+ * is a Base Timestamp Reference (0xFB) immediately followed by a Rotation
+ * Vector (0x05) report. Each non-matching packet is discarded and another
+ * is read.
+ *
+ * On a match, the 14-byte Rotation Vector report is parsed into
+ * rotation_vector: sequence number and status, the i/j/k/real quaternion
+ * components as signed 16-bit Q14 values (with i_f/j_f/k_f/real_f as the
+ * corresponding floats, value / 16384.0f), and the accuracy estimate as a
+ * signed 16-bit Q12 value (with accuracy_rad = value / 4096.0f).
+ *
+ * @return HAL_OK on a matching report, HAL_TIMEOUT if INT does not go low
+ *         in time on a read, HAL_ERROR if no matching packet is found
+ *         within BNO085_GET_FEATURE_MAX_ATTEMPTS packets, or the
+ *         HAL_StatusTypeDef of a failed SPI transfer.
+ */
+HAL_StatusTypeDef bno085_read_rotation_vector(bno085_t *p);
+
+/**
+ * bno085_print_rotation_vector
+ * @param p - Pointer to a bno085_t struct populated by a successful call to
+ *            bno085_read_rotation_vector()
+ * @param huart - UART handle to print the parsed rotation vector to
+ *
+ * Transmits a single line over huart summarizing rotation_vector: the
+ * quaternion components and accuracy as floats (i_f, j_f, k_f, real_f,
+ * accuracy_rad), and the sequence and status fields.
+ */
+void bno085_print_rotation_vector(bno085_t *p, UART_HandleTypeDef *huart);
 
 #endif /* INC_BNO085_H_ */
