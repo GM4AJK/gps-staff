@@ -45,12 +45,17 @@
 
 /* SH-2 report IDs for sensor input reports handled by this driver */
 #define BNO085_REPORT_ID_BASE_TIMESTAMP 0xFB
+#define BNO085_REPORT_ID_MAGNETIC_FIELD 0x03
 #define BNO085_REPORT_ID_ROTATION_VECTOR 0x05
 
 /* Q point (fractional bits) of the Rotation Vector quaternion components
  * and accuracy estimate, per the SH-2 Reference Manual section 6.5.18 */
 #define BNO085_ROTATION_VECTOR_Q_POINT 14
 #define BNO085_ROTATION_VECTOR_ACCURACY_Q_POINT 12
+
+/* Q point (fractional bits) of the Magnetic Field Calibrated report's
+ * x/y/z components (uTesla), per the SH-2 Reference Manual section 6.5.16 */
+#define BNO085_MAGNETIC_FIELD_Q_POINT 4
 
 /* SH-2 report IDs for the Command Request/Response pair */
 #define BNO085_REPORT_ID_COMMAND_REQUEST 0xF2
@@ -101,6 +106,17 @@ typedef struct {
 } bno085_me_calibration_t;
 
 typedef struct {
+	uint8_t sequence;
+	uint8_t status;
+	int16_t x;
+	int16_t y;
+	int16_t z;
+	float x_f;
+	float y_f;
+	float z_f;
+} bno085_magnetic_field_t;
+
+typedef struct {
 	SPI_HandleTypeDef *port;
 	GPIO_TypeDef *cs_port;
 	uint16_t cs_pin;
@@ -126,6 +142,7 @@ typedef struct {
 	bno085_feature_t feature;
 	bno085_rotation_vector_t rotation_vector;
 	bno085_me_calibration_t me_calibration;
+	bno085_magnetic_field_t magnetic_field;
 } bno085_t;
 
 /**
@@ -448,5 +465,42 @@ HAL_StatusTypeDef bno085_set_me_calibration(
  *         response read.
  */
 HAL_StatusTypeDef bno085_save_dcd(bno085_t *p);
+
+/**
+ * bno085_read_magnetic_field
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Up to BNO085_GET_FEATURE_MAX_ATTEMPTS times: wakes the device (if needed)
+ * and waits for INT to go low within BNO085_INT_TIMEOUT_MS, then reads a
+ * packet via the same exact-length two-step read used by
+ * bno085_get_feature() into cmd_buf/cmd_len. A packet matches if it was
+ * received on BNO085_CHANNEL_INPUT_REPORTS, cmd_len >= 19, and its payload
+ * is a Base Timestamp Reference (0xFB) immediately followed by a Magnetic
+ * Field Calibrated (0x03) report. Each non-matching packet is discarded and
+ * another is read.
+ *
+ * On a match, the 10-byte Magnetic Field Calibrated report is parsed into
+ * magnetic_field: sequence number and status, and the x/y/z field
+ * components as signed 16-bit Q4 values in uTesla (with x_f/y_f/z_f as the
+ * corresponding floats, value / 16.0f).
+ *
+ * @return HAL_OK on a matching report, HAL_TIMEOUT if INT does not go low
+ *         in time on a read, HAL_ERROR if no matching packet is found
+ *         within BNO085_GET_FEATURE_MAX_ATTEMPTS packets, or the
+ *         HAL_StatusTypeDef of a failed SPI transfer.
+ */
+HAL_StatusTypeDef bno085_read_magnetic_field(bno085_t *p);
+
+/**
+ * bno085_print_magnetic_field
+ * @param p - Pointer to a bno085_t struct populated by a successful call to
+ *            bno085_read_magnetic_field()
+ * @param huart - UART handle to print the parsed magnetic field to
+ *
+ * Transmits a single line over huart summarizing magnetic_field: the x/y/z
+ * field components in uTesla as floats (x_f, y_f, z_f), and the sequence
+ * and status fields.
+ */
+void bno085_print_magnetic_field(bno085_t *p, UART_HandleTypeDef *huart);
 
 #endif /* INC_BNO085_H_ */

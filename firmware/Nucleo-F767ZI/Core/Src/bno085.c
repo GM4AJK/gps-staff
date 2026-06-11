@@ -434,6 +434,59 @@ void bno085_print_rotation_vector(bno085_t *p, UART_HandleTypeDef *huart)
 	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
 }
 
+HAL_StatusTypeDef bno085_read_magnetic_field(bno085_t *p)
+{
+	for (uint8_t attempt = 0; attempt < BNO085_GET_FEATURE_MAX_ATTEMPTS; attempt++) {
+		HAL_StatusTypeDef status = bno085_read_response(p);
+		if (status != HAL_OK) {
+			return status;
+		}
+
+		if (p->cmd_buf[2] == BNO085_CHANNEL_INPUT_REPORTS && p->cmd_len >= 19
+			&& p->cmd_buf[4] == BNO085_REPORT_ID_BASE_TIMESTAMP
+			&& p->cmd_buf[9] == BNO085_REPORT_ID_MAGNETIC_FIELD) {
+
+			p->magnetic_field.sequence = p->cmd_buf[10];
+			p->magnetic_field.status = p->cmd_buf[11] & 0x03;
+			p->magnetic_field.x = (int16_t)(p->cmd_buf[13] | (p->cmd_buf[14] << 8));
+			p->magnetic_field.y = (int16_t)(p->cmd_buf[15] | (p->cmd_buf[16] << 8));
+			p->magnetic_field.z = (int16_t)(p->cmd_buf[17] | (p->cmd_buf[18] << 8));
+
+			p->magnetic_field.x_f = p->magnetic_field.x / (float)(1 << BNO085_MAGNETIC_FIELD_Q_POINT);
+			p->magnetic_field.y_f = p->magnetic_field.y / (float)(1 << BNO085_MAGNETIC_FIELD_Q_POINT);
+			p->magnetic_field.z_f = p->magnetic_field.z / (float)(1 << BNO085_MAGNETIC_FIELD_Q_POINT);
+
+			return HAL_OK;
+		}
+	}
+
+	return HAL_ERROR;
+}
+
+void bno085_print_magnetic_field(bno085_t *p, UART_HandleTypeDef *huart)
+{
+	char buf[64];
+	int len;
+
+	len = snprintf(buf, sizeof(buf), "mag: x=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->magnetic_field.x, BNO085_MAGNETIC_FIELD_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " y=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->magnetic_field.y, BNO085_MAGNETIC_FIELD_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " z=");
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+	len = bno085_format_q(p->magnetic_field.z, BNO085_MAGNETIC_FIELD_Q_POINT, buf, sizeof(buf));
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+
+	len = snprintf(buf, sizeof(buf), " seq=%u status=%u\r\n", p->magnetic_field.sequence, p->magnetic_field.status);
+	HAL_UART_Transmit(huart, (uint8_t *)buf, len, 100);
+}
+
 HAL_StatusTypeDef bno085_send_command(bno085_t *p, uint8_t command, const uint8_t params[9])
 {
 	uint8_t payload[12];
