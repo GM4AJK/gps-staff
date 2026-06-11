@@ -523,6 +523,10 @@ HAL_StatusTypeDef bno085_read_command_response(bno085_t *p, uint8_t command)
 		}
 
 		if (p->cmd_len == 0) {
+			/* Give the device a moment to actually queue its response
+			 * before hammering it with another back-to-back SPI
+			 * transaction. */
+			HAL_Delay(1);
 			continue;
 		}
 
