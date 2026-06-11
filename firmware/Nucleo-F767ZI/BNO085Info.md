@@ -55,9 +55,73 @@ performance") suggests:
   180-degree motion -> Finish Calibration -> reset sensor hub for new
   calibration to take effect
 
+## Status: PARKED (2026-06-11)
+
+Driver development on this branch (`bno085-simple-calibration`) is
+paused. Work so far is committed and pushed (PR #84), but the Simple
+Calibration command does not work and the underlying cause is not
+understood well enough to keep "trying things" - see below.
+
+The user is going to read the BNO085/SH-2 datasheets in full before
+continuing, either to write the SPI/SHTP transport layer themselves or
+to direct further driver changes with a clearer understanding of the
+expected protocol timing/behaviour. **Do not resume guessing at fixes
+for this issue without that direction.**
+
+### Simple Calibration (0x0C) bench-test results
+
+Pressing B1 to call `bno085_start_calibration()` consistently fails
+(`HAL_ERROR`). Debug instrumentation added during this investigation
+(dumping `cmd_len` and the first 12 bytes of `cmd_buf` on failure)
+showed:
+
+- Every `bno085_read_response()` call inside
+  `bno085_read_command_response()` returns `cmd_len == 0` (an
+  all-zero 4-byte SHTP header) - i.e. `bno085_wake_and_wait_int_low()`
+  reports "ready" (INT already low / flag already set) on every
+  attempt, but the device has nothing queued.
+- This happens even after:
+  - Increasing the match-attempt budget from 4 to 16
+    (`BNO085_COMMAND_RESPONSE_MAX_ATTEMPTS`).
+  - Separately capping/skipping empty packets without spending the
+    attempt budget, up to 64 total reads
+    (`BNO085_COMMAND_RESPONSE_MAX_TOTAL_READS`).
+  - Adding a 1ms `HAL_Delay()` between empty-packet retries.
+- Meanwhile `bno085_read_rotation_vector()` /
+  `bno085_read_magnetic_field()` continue to succeed normally in the
+  same loop, both before and after the failed command.
+- `bno085_get_me_calibration()` (also a Command Request/Response, 0x07)
+  *did* work earlier in `app_init()`, using the same
+  `bno085_send_command()` / `bno085_read_command_response()` path with
+  the original budget of 4 - so the generic command path is not
+  obviously broken, but something about the SHTP/SPI transport state
+  around sending 0x0C and reading its response specifically is not
+  understood.
+
+None of the three changes above (16-attempt budget, empty-packet
+skip+64 cap, 1ms pacing delay) fixed the symptom - this looks like a
+transport/protocol-level misunderstanding (INT/WAKE handshake timing,
+SHTP packet framing, or SPI CS/clock requirements between back-to-back
+transactions) rather than something fixable by tuning retry counts.
+All three changes are committed on this branch (PR #84) for reference
+but should be reviewed/possibly reverted once the transport is better
+understood, rather than built upon further.
+
+### Open investigation: status stuck at 0
+
+Still unresolved (see above) - both `rv: status` and `mag: status`
+remain pinned at `0` (Unreliable). The Simple Calibration "dance"
+(Start -> rotate ~180deg -> Finish -> power-cycle) could not be
+completed because Start Calibration itself fails to get a response.
+
 ## Next steps
 
-- Bench-test the Simple Calibration "dance": press B1 (Start
-  Calibration), rotate the board ~180 degrees, press B1 again (Finish
-  Calibration, check finish_status == 0 for success), then power-cycle
-  the board and observe whether `rv: status` / `mag: status` unstick.
+- User to read the SH-2 reference manual and BNO085 datasheet in full
+  to build a clear model of the expected SPI/SHTP transport behaviour
+  (INT/WAKE handshake, packet framing, timing between transactions),
+  then either write the transport layer directly or direct specific,
+  understood changes here.
+- Once the transport-level understanding is in place, revisit:
+  - Why `bno085_read_command_response()` sees all-empty packets after
+    sending command 0x0C, when 0x07 (ME Calibration) worked.
+  - The `status` stuck-at-0 root cause.
