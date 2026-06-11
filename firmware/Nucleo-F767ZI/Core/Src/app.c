@@ -215,7 +215,6 @@ void app_init(void)
 void app_loop(void)
 {
 	bool flipper = false;
-	uint32_t loop_count = 0;
 	uint32_t me_cal_count = 0;
 	char buf[96];
 	int len;
@@ -259,31 +258,17 @@ void app_loop(void)
 			}
 		}
 
-		//int len = snprintf(buf, sizeof(buf), "loop %lu\r\n", loop_count++);
-		//HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+		bno085_read_rotation_vector(&bno);
+		bno085_read_magnetic_field(&bno);
 
-		//if (flag_get_100MS()) {
-			if (bno085_read_rotation_vector(&bno) == HAL_OK) {
-				//bno085_print_rotation_vector(&bno, &huart3);
-			}
-
-			if (bno085_read_magnetic_field(&bno) == HAL_OK) {
-				bno085_print_magnetic_field(&bno, &huart3);
-			}
-		//}
-
-		/* Every ~2s, read back the on-chip ME calibration enable state to
-		 * confirm the Configure command persisted. */
-		if (++me_cal_count >= 4) {
+		/* Every ~5s, print a compact status line so the calibration
+		 * "dance" can be followed without the usual per-sample
+		 * mag:/me_cal: telemetry flooding the terminal. */
+		if (++me_cal_count >= 10) {
 			me_cal_count = 0;
 
-			if (bno085_get_me_calibration(&bno) == HAL_OK) {
-				len = snprintf(buf, sizeof(buf), "me_cal: status=%u accel=%u gyro=%u mag=%u\r\n",
-					bno.me_calibration.status, bno.me_calibration.accel_enable,
-					bno.me_calibration.gyro_enable, bno.me_calibration.mag_enable);
-			} else {
-				len = snprintf(buf, sizeof(buf), "bno085_get_me_calibration failed\r\n");
-			}
+			len = snprintf(buf, sizeof(buf), "status: rv=%u mag=%u\r\n",
+				bno.rotation_vector.status, bno.magnetic_field.status);
 			HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 		}
 
