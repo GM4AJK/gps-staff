@@ -509,15 +509,30 @@ HAL_StatusTypeDef bno085_send_command(bno085_t *p, uint8_t command, const uint8_
 
 HAL_StatusTypeDef bno085_read_command_response(bno085_t *p, uint8_t command)
 {
-	for (uint8_t attempt = 0; attempt < BNO085_COMMAND_RESPONSE_MAX_ATTEMPTS; attempt++) {
+	uint8_t attempt = 0;
+
+	/* Empty (cmd_len == 0) packets happen when bno085_wake_and_wait_int_low()
+	 * sees a stale latched INT edge flag (left over from a streamed
+	 * Rotation Vector / Magnetic Field report) and proceeds to read before
+	 * the device actually has new data. These don't count against the
+	 * attempt budget - only packets that actually carry data do. */
+	for (uint8_t reads = 0; reads < BNO085_COMMAND_RESPONSE_MAX_TOTAL_READS; reads++) {
 		HAL_StatusTypeDef status = bno085_read_response(p);
 		if (status != HAL_OK) {
 			return status;
 		}
 
+		if (p->cmd_len == 0) {
+			continue;
+		}
+
 		if (p->cmd_len >= 20 && p->cmd_buf[4] == BNO085_REPORT_ID_COMMAND_RESPONSE
 			&& p->cmd_buf[6] == command && p->cmd_buf[7] == p->last_cmd_seq) {
 			return HAL_OK;
+		}
+
+		if (++attempt >= BNO085_COMMAND_RESPONSE_MAX_ATTEMPTS) {
+			break;
 		}
 	}
 
