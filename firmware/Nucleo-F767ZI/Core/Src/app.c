@@ -240,6 +240,16 @@ void app_loop(void)
 					cal_state = 1;
 				} else {
 					len = snprintf(buf, sizeof(buf), "bno085_start_calibration failed: %d\r\n", status);
+					HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+
+					/* Debug: dump the last received packet so we can see
+					 * what the device actually sent back (channel, report
+					 * ID, command echo, etc). */
+					len = snprintf(buf, sizeof(buf), "  cmd_len=%u buf[0..11]=%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X\r\n",
+						bno.cmd_len,
+						bno.cmd_buf[0], bno.cmd_buf[1], bno.cmd_buf[2], bno.cmd_buf[3],
+						bno.cmd_buf[4], bno.cmd_buf[5], bno.cmd_buf[6], bno.cmd_buf[7],
+						bno.cmd_buf[8], bno.cmd_buf[9], bno.cmd_buf[10], bno.cmd_buf[11]);
 				}
 				HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 			} else if (cal_state == 1) {
