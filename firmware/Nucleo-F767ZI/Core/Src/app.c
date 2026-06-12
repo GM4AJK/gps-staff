@@ -16,11 +16,19 @@ static void app_tests(void);
 static ssd1309_t oled;
 
 #define COUNTER_TIMER(x, y, z) \
+	static volatile int x = 0; \
 	x++; \
 	if(x >= y) { \
 		x = 0; \
 		z(); \
 	}
+
+void app_1ms(void)
+{
+	COUNTER_TIMER(   cnt_10ms,   10, flag_set_10MS   );
+	COUNTER_TIMER(  cnt_100ms,  100, flag_set_100MS  );
+	COUNTER_TIMER( cnt_1000ms, 1000, flag_set_1000MS );
+}
 
 void app_log(const char *fmt, ...)
 {
@@ -32,16 +40,6 @@ void app_log(const char *fmt, ...)
 	va_end(args);
 
 	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
-}
-
-void app_1ms(void)
-{
-	static volatile int cnt_10ms = 0;
-	static volatile int cnt_100ms = 0;
-	static volatile int cnt_1000ms = 0;
-	COUNTER_TIMER(   cnt_10ms,   10, flag_set_10MS   );
-	COUNTER_TIMER(  cnt_100ms,  100, flag_set_100MS  );
-	COUNTER_TIMER( cnt_1000ms, 1000, flag_set_1000MS );
 }
 
 void app_init(void)
