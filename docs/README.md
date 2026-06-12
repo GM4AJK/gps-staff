@@ -19,3 +19,13 @@ A catalog of reference documents kept in this repo.
 | [SSD1309.pdf](datasheets/SSD1309.pdf) | Solomon Systech SSD1309 OLED display controller datasheet -- the controller for the I2C1 OLED module being added to the Nucleo-F767ZI sandbox |
 | [LSM6DSOX.pdf](datasheets/LSM6DSOX.pdf) | STMicroelectronics LSM6DSOX accelerometer + gyroscope datasheet -- the IMU specced for tilt compensation and the bubble-level display, replacing the BNO085 |
 | [um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf](datasheets/um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf) | STMicroelectronics UM1724 -- STM32 Nucleo-64 boards (MB1136) user manual. Reference for power supply options (Section 7.5), JP5/JP6 (IDD) jumper configuration, and connector pinouts for the Nucleo-F446RE/G491RE bench boards |
+
+## BNO085 (`datasheets/bno085/`)
+
+Out-of-spec side project (not part of the LSM6DSOX+LIS3MDL tilt/azimuth design) -- restored from history for a fresh attempt at the BNO085 over I2C instead of SPI.
+
+| Document | Description |
+|---|---|
+| [BNO085-Datasheet.pdf](datasheets/bno085/BNO085-Datasheet.pdf) | CEVA/Bosch BNO085 9-DOF IMU datasheet (BNO08X DS 1000-3927 v1.17). [DigiKey product page](https://www.digikey.co.uk/en/products/detail/ceva-technologies-inc/BNO085/9445940) |
+| [Adafruit-BNO085-BOB-Schematic.png](datasheets/bno085/Adafruit-BNO085-BOB-Schematic.png) | Adafruit BNO085 9-DOF breakout (#4754, rev C) schematic -- shows the level-shifted SPI/I2C signals (SCK, MOSI, MISO, CS, INT) and P0/P1/BOOTP strapping options. Sourced from the [Adafruit Learning Guide](https://learn.adafruit.com/adafruit-9-dof-orientation-imu-fusion-breakout-bno085) |
+| [SH-2-Reference-Manual.pdf](datasheets/bno085/SH-2-Reference-Manual.pdf) | CEVA SH-2 Reference Manual (1000-3625) -- defines the SH-2 sensor hub protocol used over SHTP by the BNO085: Set/Get Feature commands, the full sensor report ID table (e.g. `0x05` Rotation Vector, `0x08` Game Rotation Vector, `0x09` Geomagnetic Rotation Vector), and input report payload layouts (quaternion scaling, accuracy fields, etc.). Sourced from [ceva-ip.com](https://www.ceva-ip.com/wp-content/uploads/SH-2-Reference-Manual.pdf) |
