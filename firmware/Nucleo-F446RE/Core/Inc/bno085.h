@@ -14,11 +14,22 @@
 /* SHTP channels (fixed assignment per the SH-2 reference manual) */
 #define BNO085_CHANNEL_COMMAND  0
 #define BNO085_CHANNEL_CONTROL  2
+#define BNO085_CHANNEL_REPORTS  3
 #define BNO085_NUM_CHANNELS     6
 
 /* SH-2 control channel report IDs */
-#define BNO085_REPORT_PRODUCT_ID_REQUEST  0xF9
-#define BNO085_REPORT_PRODUCT_ID_RESPONSE 0xF8
+#define BNO085_REPORT_PRODUCT_ID_REQUEST     0xF9
+#define BNO085_REPORT_PRODUCT_ID_RESPONSE    0xF8
+#define BNO085_REPORT_SET_FEATURE_COMMAND    0xFD
+#define BNO085_SET_FEATURE_CMD_SIZE          17
+
+/* SH-2 sensor report (channel 3) report IDs and sizes, including the
+ * 1-byte report ID */
+#define BNO085_REPORT_BASE_TIMESTAMP_REFERENCE 0xFB
+#define BNO085_BASE_TIMESTAMP_REFERENCE_SIZE   5
+
+#define BNO085_REPORT_ROTATION_VECTOR          0x05
+#define BNO085_ROTATION_VECTOR_SIZE            14
 
 typedef struct {
 	I2C_HandleTypeDef *port;
@@ -95,5 +106,20 @@ HAL_StatusTypeDef bno085_write_packet(bno085_t *p, uint8_t channel, const uint8_
  * advertisement) so a subsequent write/read pair gets a fresh response.
  */
 void bno085_drain(bno085_t *p);
+
+/**
+ * bno085_set_feature
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param report_id - The feature's report ID (e.g. BNO085_REPORT_ROTATION_VECTOR)
+ * @param report_interval_us - Desired report interval in microseconds
+ *
+ * Sends a Set Feature Command (0xFD) on the SH-2 control channel to enable
+ * a sensor report at the given interval, with all other fields (sensitivity,
+ * batch interval, sensor-specific configuration) left at zero.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed I2C
+ *         transfer.
+ */
+HAL_StatusTypeDef bno085_set_feature(bno085_t *p, uint8_t report_id, uint32_t report_interval_us);
 
 #endif /* INC_BNO085_H_ */

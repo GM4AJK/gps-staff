@@ -3,6 +3,7 @@
 #include "app.h"
 #include <stdio.h>
 #include <stdbool.h>
+#include <math.h>
 
 #ifdef TEST_BNO085
 
@@ -39,6 +40,58 @@ static void print_product_id_entry(const uint8_t *e)
 
 	app_log("bno085: product ID: SW v%u.%u.%u, part %lu, build %lu\r\n",
 			e[2], e[3], patch, (unsigned long)part, (unsigned long)build);
+}
+
+/* Formats a Q-point fixed-point value as a decimal string with 4 fractional
+ * digits, without relying on printf float support (--specs=nano.specs does
+ * not include it by default) */
+static void format_q(char *out, size_t out_size, int16_t raw, int shift)
+{
+	float val = (float)raw / (float)(1 << shift);
+	int32_t scaled = (int32_t)(val * 10000.0f);
+	bool negative = scaled < 0;
+
+	if (negative) {
+		scaled = -scaled;
+	}
+
+	snprintf(out, out_size, "%s%ld.%04ld", negative ? "-" : "", (long)(scaled / 10000), (long)(scaled % 10000));
+}
+
+/* Formats a float as a decimal string with 1 fractional digit, without
+ * relying on printf float support (--specs=nano.specs does not include it
+ * by default). Pads the whole part to 3 digits for column alignment. */
+static void format_degrees(char *out, size_t out_size, float val)
+{
+	int32_t scaled = (int32_t)(val * 10.0f);
+	bool negative = scaled < 0;
+
+	if (negative) {
+		scaled = -scaled;
+	}
+
+	snprintf(out, out_size, "%s%3ld.%01ld", negative ? "-" : "", (long)(scaled / 10), (long)(scaled % 10));
+}
+
+/* Decodes a 14-byte Rotation Vector report (SH-2 ref manual 6.5.7): report
+ * ID, sequence, status, delay, then i/j/k/real (Q14) and accuracy (Q12) */
+static void print_rotation_vector(const uint8_t *r)
+{
+	int16_t i_raw = (int16_t)(r[4] | (r[5] << 8));
+	int16_t j_raw = (int16_t)(r[6] | (r[7] << 8));
+	int16_t k_raw = (int16_t)(r[8] | (r[9] << 8));
+	int16_t real_raw = (int16_t)(r[10] | (r[11] << 8));
+	int16_t acc_raw = (int16_t)(r[12] | (r[13] << 8));
+
+	char i_s[16], j_s[16], k_s[16], real_s[16], acc_s[16];
+	format_q(i_s, sizeof(i_s), i_raw, 14);
+	format_q(j_s, sizeof(j_s), j_raw, 14);
+	format_q(k_s, sizeof(k_s), k_raw, 14);
+	format_q(real_s, sizeof(real_s), real_raw, 14);
+	format_q(acc_s, sizeof(acc_s), acc_raw, 12);
+
+	app_log("bno085: rotation vector: status=%u i=%s j=%s k=%s real=%s acc=%s\r\n",
+			r[2] & 0x03u, i_s, j_s, k_s, real_s, acc_s);
 }
 
 void test_bno085_hello(bno085_t *p)
@@ -112,6 +165,138 @@ void test_bno085_product_id(bno085_t *p)
 		hex_dump(hex, sizeof(hex), buf, print_len);
 		app_log("bno085: no product ID entries, %u of %u bytes: %s\r\n", print_len, len, hex);
 	}
+}
+
+void test_bno085_rotation_vector(bno085_t *p)
+{
+	bno085_drain(p);
+
+	/* 100ms report interval (10Hz) */
+	if (bno085_set_feature(p, BNO085_REPORT_ROTATION_VECTOR, 100000) != HAL_OK) {
+		app_log("bno085: rotation vector set feature failed\r\n");
+		return;
+	}
+
+	HAL_Delay(150);
+
+	uint8_t buf[32];
+	uint16_t len = 0;
+	HAL_StatusTypeDef status = bno085_read_packet(p, buf, sizeof(buf), &len);
+	if (status != HAL_OK) {
+		app_log("bno085: rotation vector read failed: %d\r\n", status);
+		return;
+	}
+
+	uint16_t print_len = (len < sizeof(buf)) ? len : (uint16_t)sizeof(buf);
+
+	if (buf[2] != BNO085_CHANNEL_REPORTS) {
+		char hex[128];
+		hex_dump(hex, sizeof(hex), buf, print_len);
+		app_log("bno085: unexpected response on ch%u (%s) seq=%u, %u of %u bytes: %s\r\n",
+				buf[2], channel_name(buf[2]), buf[3], print_len, len, hex);
+		return;
+	}
+
+	const uint8_t *payload = &buf[BNO085_SHTP_HEADER_SIZE];
+	uint16_t available = (uint16_t)(print_len - BNO085_SHTP_HEADER_SIZE);
+	uint16_t off = 0;
+
+	if (off < available && payload[off] == BNO085_REPORT_BASE_TIMESTAMP_REFERENCE) {
+		off += BNO085_BASE_TIMESTAMP_REFERENCE_SIZE;
+	}
+
+	if ((uint16_t)(off + BNO085_ROTATION_VECTOR_SIZE) <= available && payload[off] == BNO085_REPORT_ROTATION_VECTOR) {
+		print_rotation_vector(&payload[off]);
+	} else {
+		char hex[128];
+		hex_dump(hex, sizeof(hex), buf, print_len);
+		app_log("bno085: no rotation vector report, %u of %u bytes: %s\r\n", print_len, len, hex);
+	}
+}
+
+void test_bno085_rotation_vector_enable(bno085_t *p)
+{
+	bno085_drain(p);
+
+	/* 100ms report interval (10Hz) */
+	if (bno085_set_feature(p, BNO085_REPORT_ROTATION_VECTOR, 100000) != HAL_OK) {
+		app_log("bno085: rotation vector set feature failed\r\n");
+	}
+}
+
+void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t exec_us)
+{
+	uint8_t buf[32];
+	uint16_t len = 0;
+
+	if (bno085_read_packet(p, buf, sizeof(buf), &len) != HAL_OK) {
+		return;
+	}
+
+	uint16_t print_len = (len < sizeof(buf)) ? len : (uint16_t)sizeof(buf);
+
+	if (buf[2] != BNO085_CHANNEL_REPORTS) {
+		return;
+	}
+
+	const uint8_t *payload = &buf[BNO085_SHTP_HEADER_SIZE];
+	uint16_t available = (uint16_t)(print_len - BNO085_SHTP_HEADER_SIZE);
+	uint16_t off = 0;
+
+	if (off < available && payload[off] == BNO085_REPORT_BASE_TIMESTAMP_REFERENCE) {
+		off += BNO085_BASE_TIMESTAMP_REFERENCE_SIZE;
+	}
+
+	if (!((uint16_t)(off + BNO085_ROTATION_VECTOR_SIZE) <= available && payload[off] == BNO085_REPORT_ROTATION_VECTOR)) {
+		return;
+	}
+
+	const uint8_t *r = &payload[off];
+	int16_t i_raw = (int16_t)(r[4] | (r[5] << 8));
+	int16_t j_raw = (int16_t)(r[6] | (r[7] << 8));
+	int16_t k_raw = (int16_t)(r[8] | (r[9] << 8));
+	int16_t real_raw = (int16_t)(r[10] | (r[11] << 8));
+	uint8_t accuracy = r[2] & 0x03u;
+
+	/* Q14 */
+	float qi = (float)i_raw / 16384.0f;
+	float qj = (float)j_raw / 16384.0f;
+	float qk = (float)k_raw / 16384.0f;
+	float qr = (float)real_raw / 16384.0f;
+
+	const float rad_to_deg = 57.29578f;
+	float roll  = atan2f(2.0f * (qr * qi + qj * qk), 1.0f - 2.0f * (qi * qi + qj * qj)) * rad_to_deg;
+	float pitch = asinf(fmaxf(-1.0f, fminf(1.0f, 2.0f * (qr * qj - qk * qi)))) * rad_to_deg;
+	float yaw   = atan2f(2.0f * (qr * qk + qi * qj), 1.0f - 2.0f * (qj * qj + qk * qk)) * rad_to_deg;
+
+	char roll_s[16], pitch_s[16], yaw_s[16];
+	format_degrees(roll_s, sizeof(roll_s), roll);
+	format_degrees(pitch_s, sizeof(pitch_s), pitch);
+	format_degrees(yaw_s, sizeof(yaw_s), yaw);
+
+	char line[24];
+
+	ssd1309_clear(oled);
+	ssd1309_draw_string(oled, &font5x7, 0, 0, "Rotation Vector", SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Roll : %s", roll_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 10, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Pitch: %s", pitch_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 20, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Yaw  : %s", yaw_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 30, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Accuracy: %u/3", accuracy);
+	ssd1309_draw_string(oled, &font5x7, 0, 40, line, SSD1309_COLOR_ON);
+
+	if (exec_us > 0) {
+		snprintf(line, sizeof(line), "Time : %lu us", (unsigned long)exec_us);
+		ssd1309_draw_string(oled, &font5x7, 0, 50, line, SSD1309_COLOR_ON);
+	}
+
+	ssd1309_flush(oled);
 }
 
 #endif /* TEST_BNO085 */

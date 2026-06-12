@@ -30,6 +30,8 @@ void app_1ms(void)
 {
 	COUNTER_TIMER(   cnt_10ms,   10, flag_set_10MS   );
 	COUNTER_TIMER(  cnt_100ms,  100, flag_set_100MS  );
+	COUNTER_TIMER(  cnt_200ms,  100, flag_set_200MS  );
+	COUNTER_TIMER(  cnt_500ms,  100, flag_set_500MS  );
 	COUNTER_TIMER( cnt_1000ms, 1000, flag_set_1000MS );
 }
 
@@ -47,6 +49,11 @@ void app_log(const char *fmt, ...)
 
 void app_init(void)
 {
+	/* Enable the DWT cycle counter (CYCCNT) for microsecond-resolution timing */
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
@@ -59,6 +66,10 @@ void app_init(void)
 
 	bno085_init(&bno085, &hi2c1, BNO085_I2C_ADDRESS);
 
+#ifdef TEST_BNO085
+	test_bno085_rotation_vector_enable(&bno085);
+#endif /* TEST_BNO085 */
+
 	app_log("Start up\r\n");
 
 	app_tests();
@@ -66,9 +77,17 @@ void app_init(void)
 
 void app_loop(void)
 {
+	static uint32_t exec_us = 0;
+
 	while(true) {
-		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		HAL_Delay(250);
+		uint32_t start_time = DWT->CYCCNT;
+		test_bno085_rotation_vector_display(&bno085, &oled, exec_us);
+		uint32_t cycles = DWT->CYCCNT - start_time;
+		exec_us = cycles / (HAL_RCC_GetHCLKFreq() / 1000000);
+
+		if(flag_get_500MS()) {
+			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+		}
 	}
 }
 
@@ -84,5 +103,6 @@ static void app_tests(void)
 #ifdef TEST_BNO085
 	test_bno085_hello(&bno085);
 	test_bno085_product_id(&bno085);
+	test_bno085_rotation_vector(&bno085);
 #endif /* TEST_BNO085 */
 }

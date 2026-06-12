@@ -10,11 +10,15 @@
 enum {
 	FLAG_10MS,
 	FLAG_100MS,
+	FLAG_200MS,
+	FLAG_500MS,
 	FLAG_1000MS,
 };
 
 static const uint32_t FLAG_MASK_10MS       = (1UL << FLAG_10MS);
 static const uint32_t FLAG_MASK_100MS      = (1UL << FLAG_100MS);
+static const uint32_t FLAG_MASK_200MS      = (1UL << FLAG_200MS);
+static const uint32_t FLAG_MASK_500MS      = (1UL << FLAG_500MS);
 static const uint32_t FLAG_MASK_1000MS     = (1UL << FLAG_1000MS);
 
 static volatile uint32_t flags = 0;
@@ -43,4 +47,6 @@ static volatile uint32_t flags = 0;
 
 MAKE_C(10MS)
 MAKE_C(100MS)
+MAKE_C(200MS)
+MAKE_C(500MS)
 MAKE_C(1000MS)

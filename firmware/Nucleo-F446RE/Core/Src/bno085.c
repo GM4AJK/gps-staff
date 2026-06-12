@@ -70,3 +70,17 @@ void bno085_drain(bno085_t *p)
 		}
 	} while (len > BNO085_SHTP_HEADER_SIZE);
 }
+
+HAL_StatusTypeDef bno085_set_feature(bno085_t *p, uint8_t report_id, uint32_t report_interval_us)
+{
+	uint8_t cmd[BNO085_SET_FEATURE_CMD_SIZE] = { 0 };
+
+	cmd[0] = BNO085_REPORT_SET_FEATURE_COMMAND;
+	cmd[1] = report_id;
+	cmd[5] = (uint8_t)(report_interval_us & 0xFFu);
+	cmd[6] = (uint8_t)((report_interval_us >> 8) & 0xFFu);
+	cmd[7] = (uint8_t)((report_interval_us >> 16) & 0xFFu);
+	cmd[8] = (uint8_t)((report_interval_us >> 24) & 0xFFu);
+
+	return bno085_write_packet(p, BNO085_CHANNEL_CONTROL, cmd, sizeof(cmd));
+}
