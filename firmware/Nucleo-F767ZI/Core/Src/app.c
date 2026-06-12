@@ -54,6 +54,8 @@ void app_init(void)
 		return;
 	}
 
+	app_log("Start up\r\n");
+
 	app_tests();
 }
 
