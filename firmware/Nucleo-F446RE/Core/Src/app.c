@@ -10,10 +10,13 @@
 #include "flags.h"
 #include "ssd1309.h"
 #include "Tests/test_ssd1309.h"
+#include "bno085.h"
+#include "Tests/test_bno085.h"
 
 static void app_tests(void);
 
 static ssd1309_t oled;
+static bno085_t bno085;
 
 #define COUNTER_TIMER(x, y, z) \
 	static volatile int x = 0; \
@@ -54,6 +57,8 @@ void app_init(void)
 		return;
 	}
 
+	bno085_init(&bno085, &hi2c1, BNO085_I2C_ADDRESS);
+
 	app_log("Start up\r\n");
 
 	app_tests();
@@ -75,4 +80,9 @@ static void app_tests(void)
 		app_log("ssd1309_flush failed: %d\r\n", r);
 	}
 #endif /* TEST_SSD1309 */
+
+#ifdef TEST_BNO085
+	test_bno085_hello(&bno085);
+	test_bno085_product_id(&bno085);
+#endif /* TEST_BNO085 */
 }
