@@ -1,0 +1,10 @@
+Debug/*
+Release/*
+*.lck
+*.zip
+fp-info-cache
+*auto_saved_files*
+_autosave*
+temp/
+temp/*
+*.FCBak
