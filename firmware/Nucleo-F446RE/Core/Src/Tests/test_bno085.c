@@ -299,4 +299,85 @@ void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t 
 	ssd1309_flush(oled);
 }
 
+void test_bno085_game_rotation_vector_enable(bno085_t *p)
+{
+	bno085_drain(p);
+
+	/* 100ms report interval (10Hz) */
+	if (bno085_set_feature(p, BNO085_REPORT_GAME_ROTATION_VECTOR, 100000) != HAL_OK) {
+		app_log("bno085: game rotation vector set feature failed\r\n");
+	}
+}
+
+void test_bno085_game_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t exec_us)
+{
+	uint8_t buf[32];
+	uint16_t len = 0;
+
+	if (bno085_read_packet(p, buf, sizeof(buf), &len) != HAL_OK) {
+		return;
+	}
+
+	uint16_t print_len = (len < sizeof(buf)) ? len : (uint16_t)sizeof(buf);
+
+	if (buf[2] != BNO085_CHANNEL_REPORTS) {
+		return;
+	}
+
+	const uint8_t *payload = &buf[BNO085_SHTP_HEADER_SIZE];
+	uint16_t available = (uint16_t)(print_len - BNO085_SHTP_HEADER_SIZE);
+	uint16_t off = 0;
+
+	if (off < available && payload[off] == BNO085_REPORT_BASE_TIMESTAMP_REFERENCE) {
+		off += BNO085_BASE_TIMESTAMP_REFERENCE_SIZE;
+	}
+
+	if (!((uint16_t)(off + BNO085_GAME_ROTATION_VECTOR_SIZE) <= available && payload[off] == BNO085_REPORT_GAME_ROTATION_VECTOR)) {
+		return;
+	}
+
+	const uint8_t *r = &payload[off];
+	int16_t i_raw = (int16_t)(r[4] | (r[5] << 8));
+	int16_t j_raw = (int16_t)(r[6] | (r[7] << 8));
+	int16_t k_raw = (int16_t)(r[8] | (r[9] << 8));
+	int16_t real_raw = (int16_t)(r[10] | (r[11] << 8));
+
+	/* Q14 */
+	float qi = (float)i_raw / 16384.0f;
+	float qj = (float)j_raw / 16384.0f;
+	float qk = (float)k_raw / 16384.0f;
+	float qr = (float)real_raw / 16384.0f;
+
+	const float rad_to_deg = 57.29578f;
+	float roll  = atan2f(2.0f * (qr * qi + qj * qk), 1.0f - 2.0f * (qi * qi + qj * qj)) * rad_to_deg;
+	float pitch = asinf(fmaxf(-1.0f, fminf(1.0f, 2.0f * (qr * qj - qk * qi)))) * rad_to_deg;
+	float yaw   = atan2f(2.0f * (qr * qk + qi * qj), 1.0f - 2.0f * (qj * qj + qk * qk)) * rad_to_deg;
+
+	char roll_s[16], pitch_s[16], yaw_s[16];
+	format_degrees(roll_s, sizeof(roll_s), roll);
+	format_degrees(pitch_s, sizeof(pitch_s), pitch);
+	format_degrees(yaw_s, sizeof(yaw_s), yaw);
+
+	char line[24];
+
+	ssd1309_clear(oled);
+	ssd1309_draw_string(oled, &font5x7, 0, 0, "Game Rotation Vector", SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Roll : %s", roll_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 10, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Pitch: %s", pitch_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 20, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Yaw  : %s", yaw_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 30, line, SSD1309_COLOR_ON);
+
+	if (exec_us > 0) {
+		snprintf(line, sizeof(line), "Time : %lu us", (unsigned long)exec_us);
+		ssd1309_draw_string(oled, &font5x7, 0, 40, line, SSD1309_COLOR_ON);
+	}
+
+	ssd1309_flush(oled);
+}
+
 #endif /* TEST_BNO085 */

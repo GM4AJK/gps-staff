@@ -67,6 +67,33 @@ void test_bno085_rotation_vector_enable(bno085_t *p);
  */
 void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t exec_us);
 
+/**
+ * test_bno085_game_rotation_vector_enable
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Drains any pending packets, then sends a Set Feature Command (0xFD) to
+ * enable the Game Rotation Vector report (0x08) at a 100ms (10Hz) interval.
+ * Call once during init; the device then streams reports on its own.
+ */
+void test_bno085_game_rotation_vector_enable(bno085_t *p);
+
+/**
+ * test_bno085_game_rotation_vector_display
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param oled - Pointer to an initialized, brought-up ssd1309_t struct
+ * @param exec_us - Execution time of the previous call, in microseconds, to
+ *                   display alongside the orientation (0 to omit)
+ *
+ * Reads one SHTP packet (non-blocking, no drain or delay). If it contains a
+ * Game Rotation Vector report (0x08) on the sensor reports channel, converts
+ * the quaternion to roll/pitch/yaw (degrees) and draws them on the OLED
+ * along with exec_us (no accuracy estimate - Game Rotation Vector has none).
+ * Otherwise leaves the display unchanged. Intended to be called periodically
+ * from app_loop() after test_bno085_game_rotation_vector_enable() has been
+ * called once.
+ */
+void test_bno085_game_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t exec_us);
+
 #endif /* TEST_BNO085 */
 
 #endif /* INC_TESTS_TEST_BNO085_H_ */

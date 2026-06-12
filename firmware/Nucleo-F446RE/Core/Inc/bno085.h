@@ -31,6 +31,9 @@
 #define BNO085_REPORT_ROTATION_VECTOR          0x05
 #define BNO085_ROTATION_VECTOR_SIZE            14
 
+#define BNO085_REPORT_GAME_ROTATION_VECTOR     0x08
+#define BNO085_GAME_ROTATION_VECTOR_SIZE       12
+
 typedef struct {
 	I2C_HandleTypeDef *port;
 	uint16_t address;
