@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <string.h>
+#include <stdarg.h>
 
 #include "main.h"
 #include "flags.h"
@@ -21,6 +21,18 @@ static ssd1309_t oled;
 		x = 0; \
 		z(); \
 	}
+
+void app_log(const char *fmt, ...)
+{
+	char buf[128];
+	va_list args;
+
+	va_start(args, fmt);
+	int len = vsnprintf(buf, sizeof(buf), fmt, args);
+	va_end(args);
+
+	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
+}
 
 void app_1ms(void)
 {
@@ -40,8 +52,7 @@ void app_init(void)
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
 
 	if (ssd1309_bringup(&oled) != HAL_OK) {
-		const char *msg = "ssd1309_bringup failed\r\n";
-		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
+		app_log("ssd1309_bringup failed\r\n");
 		return;
 	}
 
@@ -64,9 +75,9 @@ void app_loop(void)
 static void app_tests(void)
 {
 #ifdef TEST_SSD1309
-	if (test_ssd1309_shapes(&oled) != HAL_OK) {
-		const char *msg = "ssd1309_flush failed\r\n";
-		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
+	HAL_StatusTypeDef r = test_ssd1309_shapes(&oled);
+	if (r != HAL_OK) {
+		app_log("ssd1309_flush failed: %d\r\n", r);
 	}
 #endif /* TEST_SSD1309 */
 }
