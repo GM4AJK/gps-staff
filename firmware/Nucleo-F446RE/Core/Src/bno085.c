@@ -84,3 +84,17 @@ HAL_StatusTypeDef bno085_set_feature(bno085_t *p, uint8_t report_id, uint32_t re
 
 	return bno085_write_packet(p, BNO085_CHANNEL_CONTROL, cmd, sizeof(cmd));
 }
+
+HAL_StatusTypeDef bno085_set_calibration(bno085_t *p, bool accel, bool gyro, bool mag)
+{
+	uint8_t cmd[BNO085_COMMAND_REQUEST_SIZE] = { 0 };
+
+	cmd[0] = BNO085_REPORT_COMMAND_REQUEST;
+	cmd[2] = BNO085_COMMAND_ME_CALIBRATION;
+	cmd[3] = accel ? 1 : 0;
+	cmd[4] = gyro ? 1 : 0;
+	cmd[5] = mag ? 1 : 0;
+	cmd[6] = BNO085_ME_CALIBRATION_CONFIGURE;
+
+	return bno085_write_packet(p, BNO085_CHANNEL_CONTROL, cmd, sizeof(cmd));
+}

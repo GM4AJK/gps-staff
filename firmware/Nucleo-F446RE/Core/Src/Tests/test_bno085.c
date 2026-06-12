@@ -380,4 +380,140 @@ void test_bno085_game_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint
 	ssd1309_flush(oled);
 }
 
+void test_bno085_compass_enable(bno085_t *p)
+{
+	bno085_drain(p);
+
+	/* Enable continuous calibration so the accuracy estimates can climb */
+	if (bno085_set_calibration(p, true, true, true) != HAL_OK) {
+		app_log("bno085: set calibration failed\r\n");
+	}
+
+	/* 100ms report interval (10Hz) for both reports */
+	if (bno085_set_feature(p, BNO085_REPORT_ROTATION_VECTOR, 100000) != HAL_OK) {
+		app_log("bno085: rotation vector set feature failed\r\n");
+	}
+
+	if (bno085_set_feature(p, BNO085_REPORT_MAGNETIC_FIELD_CALIBRATED, 100000) != HAL_OK) {
+		app_log("bno085: magnetic field set feature failed\r\n");
+	}
+}
+
+/* 8-point compass label for a 0-360 degree bearing */
+static const char *compass_point(float bearing)
+{
+	static const char *points[8] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+	int idx = (int)((bearing + 22.5f) / 45.0f) % 8;
+
+	if (idx < 0) {
+		idx += 8;
+	}
+
+	return points[idx];
+}
+
+void test_bno085_compass_display(bno085_t *p, ssd1309_t *oled)
+{
+	static float bearing_deg = 0.0f;
+	static float field_ut = 0.0f;
+	static uint8_t accuracy = 0;
+	static uint8_t mag_accuracy = 0;
+
+	uint8_t buf[32];
+	uint16_t len = 0;
+
+	if (bno085_read_packet(p, buf, sizeof(buf), &len) != HAL_OK) {
+		return;
+	}
+
+	uint16_t print_len = (len < sizeof(buf)) ? len : (uint16_t)sizeof(buf);
+
+	if (buf[2] != BNO085_CHANNEL_REPORTS) {
+		return;
+	}
+
+	const uint8_t *payload = &buf[BNO085_SHTP_HEADER_SIZE];
+	uint16_t available = (uint16_t)(print_len - BNO085_SHTP_HEADER_SIZE);
+	uint16_t off = 0;
+	bool updated = false;
+
+	while (off < available) {
+		uint8_t report_id = payload[off];
+
+		if (report_id == BNO085_REPORT_BASE_TIMESTAMP_REFERENCE
+				&& (uint16_t)(off + BNO085_BASE_TIMESTAMP_REFERENCE_SIZE) <= available) {
+			off += BNO085_BASE_TIMESTAMP_REFERENCE_SIZE;
+		} else if (report_id == BNO085_REPORT_ROTATION_VECTOR
+				&& (uint16_t)(off + BNO085_ROTATION_VECTOR_SIZE) <= available) {
+			const uint8_t *r = &payload[off];
+			int16_t k_raw = (int16_t)(r[8] | (r[9] << 8));
+			int16_t real_raw = (int16_t)(r[10] | (r[11] << 8));
+
+			/* Q14 */
+			float qk = (float)k_raw / 16384.0f;
+			float qr = (float)real_raw / 16384.0f;
+
+			/* Yaw only (i/j not needed for a heading) */
+			int16_t i_raw = (int16_t)(r[4] | (r[5] << 8));
+			int16_t j_raw = (int16_t)(r[6] | (r[7] << 8));
+			float qi = (float)i_raw / 16384.0f;
+			float qj = (float)j_raw / 16384.0f;
+
+			const float rad_to_deg = 57.29578f;
+			float yaw = atan2f(2.0f * (qr * qk + qi * qj), 1.0f - 2.0f * (qj * qj + qk * qk)) * rad_to_deg;
+
+			float bearing = (yaw < 0.0f) ? yaw + 360.0f : yaw;
+
+			/* The BNO085's yaw=0 reference is 180 degrees from this board's
+			 * Y+ silkscreen direction */
+			bearing_deg = fmodf(bearing + 180.0f, 360.0f);
+			accuracy = r[2] & 0x03u;
+			updated = true;
+			off += BNO085_ROTATION_VECTOR_SIZE;
+		} else if (report_id == BNO085_REPORT_MAGNETIC_FIELD_CALIBRATED
+				&& (uint16_t)(off + BNO085_MAGNETIC_FIELD_CALIBRATED_SIZE) <= available) {
+			const uint8_t *r = &payload[off];
+			int16_t x_raw = (int16_t)(r[4] | (r[5] << 8));
+			int16_t y_raw = (int16_t)(r[6] | (r[7] << 8));
+			int16_t z_raw = (int16_t)(r[8] | (r[9] << 8));
+
+			/* Q4, uTesla */
+			float x = (float)x_raw / 16.0f;
+			float y = (float)y_raw / 16.0f;
+			float z = (float)z_raw / 16.0f;
+
+			field_ut = sqrtf(x * x + y * y + z * z);
+			mag_accuracy = r[2] & 0x03u;
+			updated = true;
+			off += BNO085_MAGNETIC_FIELD_CALIBRATED_SIZE;
+		} else {
+			break;
+		}
+	}
+
+	if (!updated) {
+		return;
+	}
+
+	char bearing_s[16], field_s[16];
+	format_degrees(bearing_s, sizeof(bearing_s), bearing_deg);
+	format_degrees(field_s, sizeof(field_s), field_ut);
+
+	char line[32];
+
+	ssd1309_clear(oled);
+	ssd1309_draw_string(oled, &font5x7, 0, 0, "Compass", SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Bearing: %s %s", bearing_s, compass_point(bearing_deg));
+	ssd1309_draw_string(oled, &font5x7, 0, 10, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Field : %s uT", field_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 20, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Acc: %u/3 (mag %u/3)", accuracy, mag_accuracy);
+	ssd1309_draw_string(oled, &font5x7, 0, 30, line, SSD1309_COLOR_ON);
+
+	ssd1309_flush(oled);
+}
+
 #endif /* TEST_BNO085 */

@@ -67,7 +67,7 @@ void app_init(void)
 	bno085_init(&bno085, &hi2c1, BNO085_I2C_ADDRESS);
 
 #ifdef TEST_BNO085
-	test_bno085_game_rotation_vector_enable(&bno085);
+	test_bno085_compass_enable(&bno085);
 #endif /* TEST_BNO085 */
 
 	app_log("Start up\r\n");
@@ -77,13 +77,23 @@ void app_init(void)
 
 void app_loop(void)
 {
-	static uint32_t exec_us = 0;
+	static uint32_t exec_sum = 0;
+	static uint32_t exec_count = 0;
 
 	while(true) {
 		uint32_t start_time = DWT->CYCCNT;
-		test_bno085_game_rotation_vector_display(&bno085, &oled, exec_us);
+		test_bno085_compass_display(&bno085, &oled);
 		uint32_t cycles = DWT->CYCCNT - start_time;
-		exec_us = cycles / (HAL_RCC_GetHCLKFreq() / 1000000);
+		uint32_t exec_us = cycles / (HAL_RCC_GetHCLKFreq() / 1000000);
+
+		exec_sum += exec_us;
+		exec_count++;
+
+		if(flag_get_1000MS()) {
+			app_log("bno085: avg exec time: %lu us\r\n", (unsigned long)(exec_sum / exec_count));
+			exec_sum = 0;
+			exec_count = 0;
+		}
 
 		if(flag_get_500MS()) {
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);

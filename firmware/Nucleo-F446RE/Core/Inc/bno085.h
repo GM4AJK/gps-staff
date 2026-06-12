@@ -4,6 +4,7 @@
 
 #include "main.h"
 #include <stdint.h>
+#include <stdbool.h>
 
 /* Default 7-bit I2C address (SA0/ADR strapped low) */
 #define BNO085_I2C_ADDRESS 0x4A
@@ -23,6 +24,11 @@
 #define BNO085_REPORT_SET_FEATURE_COMMAND    0xFD
 #define BNO085_SET_FEATURE_CMD_SIZE          17
 
+#define BNO085_REPORT_COMMAND_REQUEST        0xF2
+#define BNO085_COMMAND_ME_CALIBRATION        0x07
+#define BNO085_ME_CALIBRATION_CONFIGURE      0x00
+#define BNO085_COMMAND_REQUEST_SIZE          12
+
 /* SH-2 sensor report (channel 3) report IDs and sizes, including the
  * 1-byte report ID */
 #define BNO085_REPORT_BASE_TIMESTAMP_REFERENCE 0xFB
@@ -33,6 +39,9 @@
 
 #define BNO085_REPORT_GAME_ROTATION_VECTOR     0x08
 #define BNO085_GAME_ROTATION_VECTOR_SIZE       12
+
+#define BNO085_REPORT_MAGNETIC_FIELD_CALIBRATED 0x03
+#define BNO085_MAGNETIC_FIELD_CALIBRATED_SIZE   10
 
 typedef struct {
 	I2C_HandleTypeDef *port;
@@ -124,5 +133,22 @@ void bno085_drain(bno085_t *p);
  *         transfer.
  */
 HAL_StatusTypeDef bno085_set_feature(bno085_t *p, uint8_t report_id, uint32_t report_interval_us);
+
+/**
+ * bno085_set_calibration
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param accel - Enable continuous accelerometer calibration
+ * @param gyro - Enable continuous gyroscope calibration
+ * @param mag - Enable continuous magnetometer calibration
+ *
+ * Sends a Configure ME Calibration command (0xF2, command 0x07) on the SH-2
+ * control channel, enabling or disabling the sensor hub's continuous
+ * calibration routines for the accelerometer, gyro and magnetometer. Planar
+ * accelerometer and on-table calibration are left disabled.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed I2C
+ *         transfer.
+ */
+HAL_StatusTypeDef bno085_set_calibration(bno085_t *p, bool accel, bool gyro, bool mag);
 
 #endif /* INC_BNO085_H_ */

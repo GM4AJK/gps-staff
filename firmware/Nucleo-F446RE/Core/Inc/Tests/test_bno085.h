@@ -94,6 +94,41 @@ void test_bno085_game_rotation_vector_enable(bno085_t *p);
  */
 void test_bno085_game_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t exec_us);
 
+/**
+ * test_bno085_compass_enable
+ * @param p - Pointer to an initialized bno085_t struct
+ *
+ * Drains any pending packets, sends a Configure ME Calibration command
+ * (0xF2) to enable continuous accelerometer, gyro and magnetometer
+ * calibration, then sends Set Feature Commands (0xFD) to enable both the
+ * Rotation Vector report (0x05) and the Magnetic Field Calibrated report
+ * (0x03), each at a 100ms (10Hz) interval. Call once during init; the
+ * device then streams both reports on its own.
+ */
+void test_bno085_compass_enable(bno085_t *p);
+
+/**
+ * test_bno085_compass_display
+ * @param p - Pointer to an initialized bno085_t struct
+ * @param oled - Pointer to an initialized, brought-up ssd1309_t struct
+ *
+ * Reads one SHTP packet (non-blocking, no drain or delay). If it contains a
+ * Rotation Vector report (0x05), converts the quaternion's yaw to a 0-360
+ * degree bearing plus an 8-point compass label (N/NE/E/.../NW), and reads
+ * its status accuracy estimate (0-3). If it contains a Magnetic Field
+ * Calibrated report (0x03), computes the total field strength in uT as a
+ * sanity check (Earth's field is roughly 25-65uT) and reads its own status
+ * accuracy estimate (0-3), which reflects the magnetometer's calibration
+ * confidence independently of the fused Rotation Vector accuracy. Both
+ * reports may arrive in the same packet; whichever is present updates a
+ * cached value, and the OLED is redrawn with the latest bearing, direction,
+ * field strength and both accuracy estimates. Otherwise leaves the display
+ * unchanged. Intended to be called
+ * periodically from app_loop() after test_bno085_compass_enable() has been
+ * called once.
+ */
+void test_bno085_compass_display(bno085_t *p, ssd1309_t *oled);
+
 #endif /* TEST_BNO085 */
 
 #endif /* INC_TESTS_TEST_BNO085_H_ */
