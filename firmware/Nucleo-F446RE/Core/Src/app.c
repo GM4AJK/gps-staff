@@ -8,6 +8,12 @@
 
 #include "main.h"
 #include "flags.h"
+#include "ssd1309.h"
+#include "Tests/test_ssd1309.h"
+
+static void app_tests(void);
+
+static ssd1309_t oled;
 
 #define COUNTER_TIMER(x, y, z) \
 	static volatile int x = 0; \
@@ -41,7 +47,16 @@ void app_init(void)
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
+	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
+
+	if (ssd1309_bringup(&oled) != HAL_OK) {
+		app_log("ssd1309_bringup failed\r\n");
+		return;
+	}
+
 	app_log("Start up\r\n");
+
+	app_tests();
 }
 
 void app_loop(void)
@@ -50,4 +65,14 @@ void app_loop(void)
 		HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		HAL_Delay(250);
 	}
+}
+
+static void app_tests(void)
+{
+#ifdef TEST_SSD1309
+	HAL_StatusTypeDef r = test_ssd1309_shapes(&oled);
+	if (r != HAL_OK) {
+		app_log("ssd1309_flush failed: %d\r\n", r);
+	}
+#endif /* TEST_SSD1309 */
 }
