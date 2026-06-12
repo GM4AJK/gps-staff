@@ -9,6 +9,9 @@
 #include "main.h"
 #include "flags.h"
 #include "ssd1309.h"
+#include "Tests/test_ssd1309.h"
+
+static void app_tests(void);
 
 static ssd1309_t oled;
 
@@ -42,39 +45,7 @@ void app_init(void)
 		return;
 	}
 
-	ssd1309_clear(&oled);
-	ssd1309_draw_string(&oled, &font5x7, 0, 0, "Nucleo-F767ZI OK", SSD1309_COLOR_ON);
-	ssd1309_draw_line(&oled, 0, 9, oled.width - 1, 9, SSD1309_COLOR_ON);
-	ssd1309_draw_rect(&oled, 0, 14, 20, 34, false, SSD1309_COLOR_ON);
-	ssd1309_draw_rect(&oled, 26, 14, 46, 34, true, SSD1309_COLOR_ON);
-	ssd1309_draw_circle(&oled, 75, 24, 10, false, SSD1309_COLOR_ON);
-	ssd1309_draw_circle(&oled, 105, 24, 10, true, SSD1309_COLOR_ON);
-	ssd1309_draw_arrow(&oled, 10, 45, 50, 60, 6, SSD1309_COLOR_ON);
-	ssd1309_draw_triangle(&oled, 70, 45, 90, 45, 80, 62, false, SSD1309_COLOR_ON);
-
-	static const ssd1309_point_t pentagon[] = {
-		{ 59, 45 },
-		{ 67, 51 },
-		{ 64, 60 },
-		{ 54, 60 },
-		{ 51, 51 },
-	};
-	ssd1309_draw_polygon(&oled, pentagon, 5, true, SSD1309_COLOR_ON);
-
-	static const ssd1309_point_t hexagon[] = {
-		{ 105, 46 },
-		{ 112, 50 },
-		{ 112, 58 },
-		{ 105, 62 },
-		{ 98, 58 },
-		{ 98, 50 },
-	};
-	ssd1309_draw_polygon(&oled, hexagon, 6, false, SSD1309_COLOR_ON);
-
-	if (ssd1309_flush(&oled) != HAL_OK) {
-		const char *msg = "ssd1309_flush failed\r\n";
-		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
-	}
+	app_tests();
 }
 
 void app_loop(void)
@@ -88,4 +59,14 @@ void app_loop(void)
 
 		HAL_Delay(500);
 	}
+}
+
+static void app_tests(void)
+{
+#ifdef TEST_SSD1309
+	if (test_ssd1309_shapes(&oled) != HAL_OK) {
+		const char *msg = "ssd1309_flush failed\r\n";
+		HAL_UART_Transmit(&huart3, (uint8_t *)msg, strlen(msg), 100);
+	}
+#endif /* TEST_SSD1309 */
 }
