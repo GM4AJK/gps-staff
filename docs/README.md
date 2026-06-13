@@ -18,6 +18,7 @@ A catalog of reference documents kept in this repo.
 | [um2448-stlinkv3set-debuggerprogrammer-for-stm8-and-stm32-stmicroelectronics-1.pdf](datasheets/um2448-stlinkv3set-debuggerprogrammer-for-stm8-and-stm32-stmicroelectronics-1.pdf) | STMicroelectronics UM2448 -- ST-LINK V3SET debugger/programmer user manual. Reference for CN2/CN3 connector pinouts used when wiring to the Nucleo-F767ZI bench board |
 | [SSD1309.pdf](datasheets/SSD1309.pdf) | Solomon Systech SSD1309 OLED display controller datasheet -- the controller for the I2C1 OLED module being added to the Nucleo-F767ZI sandbox |
 | [LSM6DSOX.pdf](datasheets/LSM6DSOX.pdf) | STMicroelectronics LSM6DSOX accelerometer + gyroscope datasheet -- the IMU specced for tilt compensation and the bubble-level display, replacing the BNO085 |
+| [adafruit_LSM6DSOX_BOB.png](datasheets/adafruit_LSM6DSOX_BOB.png) | Adafruit LSM6DSOX breakout (#4438) schematic -- shows the I2C/SPI signals and address strapping for the breakout board |
 | [um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf](datasheets/um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf) | STMicroelectronics UM1724 -- STM32 Nucleo-64 boards (MB1136) user manual. Reference for power supply options (Section 7.5), JP5/JP6 (IDD) jumper configuration, and connector pinouts for the Nucleo-F446RE/G491RE bench boards |
 
 ## BNO085 (`datasheets/bno085/`)
