@@ -73,6 +73,19 @@ static void format_degrees(char *out, size_t out_size, float val)
 	snprintf(out, out_size, "%s%3ld.%01ld", negative ? "-" : "", (long)(scaled / 10), (long)(scaled % 10));
 }
 
+/* 8-point compass label for a 0-360 degree bearing */
+static const char *compass_point(float bearing)
+{
+	static const char *points[8] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+	int idx = (int)((bearing + 22.5f) / 45.0f) % 8;
+
+	if (idx < 0) {
+		idx += 8;
+	}
+
+	return points[idx];
+}
+
 /* Decodes a 14-byte Rotation Vector report (SH-2 ref manual 6.5.7): report
  * ID, sequence, status, delay, then i/j/k/real (Q14) and accuracy (Q12) */
 static void print_rotation_vector(const uint8_t *r)
@@ -224,7 +237,7 @@ void test_bno085_rotation_vector_enable(bno085_t *p)
 	}
 }
 
-void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t exec_us)
+void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled)
 {
 	uint8_t buf[32];
 	uint16_t len = 0;
@@ -269,15 +282,28 @@ void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t 
 	float pitch = asinf(fmaxf(-1.0f, fminf(1.0f, 2.0f * (qr * qj - qk * qi)))) * rad_to_deg;
 	float yaw   = atan2f(2.0f * (qr * qk + qi * qj), 1.0f - 2.0f * (qj * qj + qk * qk)) * rad_to_deg;
 
-	char roll_s[16], pitch_s[16], yaw_s[16];
+	float bearing = (yaw < 0.0f) ? yaw + 360.0f : yaw;
+
+	/* The BNO085's yaw=0 reference is 180 degrees from this board's Y+
+	 * silkscreen direction */
+	bearing = fmodf(bearing + 180.0f, 360.0f);
+
+	/* Angle between the board's Z axis and vertical (0 = level) */
+	float tilt = acosf(fmaxf(-1.0f, fminf(1.0f, 1.0f - 2.0f * (qi * qi + qj * qj)))) * rad_to_deg;
+
+	char roll_s[16], pitch_s[16], yaw_s[16], bearing_s[16], tilt_s[16];
 	format_degrees(roll_s, sizeof(roll_s), roll);
 	format_degrees(pitch_s, sizeof(pitch_s), pitch);
 	format_degrees(yaw_s, sizeof(yaw_s), yaw);
+	format_degrees(bearing_s, sizeof(bearing_s), bearing);
+	format_degrees(tilt_s, sizeof(tilt_s), tilt);
 
-	char line[24];
+	char line[32];
 
 	ssd1309_clear(oled);
-	ssd1309_draw_string(oled, &font5x7, 0, 0, "Rotation Vector", SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "Rotation Vector (%u/3)", accuracy);
+	ssd1309_draw_string(oled, &font5x7, 0, 0, line, SSD1309_COLOR_ON);
 
 	snprintf(line, sizeof(line), "Roll : %s", roll_s);
 	ssd1309_draw_string(oled, &font5x7, 0, 10, line, SSD1309_COLOR_ON);
@@ -288,13 +314,11 @@ void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t 
 	snprintf(line, sizeof(line), "Yaw  : %s", yaw_s);
 	ssd1309_draw_string(oled, &font5x7, 0, 30, line, SSD1309_COLOR_ON);
 
-	snprintf(line, sizeof(line), "Accuracy: %u/3", accuracy);
+	snprintf(line, sizeof(line), "Bearing: %s %s", bearing_s, compass_point(bearing));
 	ssd1309_draw_string(oled, &font5x7, 0, 40, line, SSD1309_COLOR_ON);
 
-	if (exec_us > 0) {
-		snprintf(line, sizeof(line), "Time : %lu us", (unsigned long)exec_us);
-		ssd1309_draw_string(oled, &font5x7, 0, 50, line, SSD1309_COLOR_ON);
-	}
+	snprintf(line, sizeof(line), "Tilt : %s", tilt_s);
+	ssd1309_draw_string(oled, &font5x7, 0, 50, line, SSD1309_COLOR_ON);
 
 	ssd1309_flush(oled);
 }
@@ -397,19 +421,6 @@ void test_bno085_compass_enable(bno085_t *p)
 	if (bno085_set_feature(p, BNO085_REPORT_MAGNETIC_FIELD_CALIBRATED, 100000) != HAL_OK) {
 		app_log("bno085: magnetic field set feature failed\r\n");
 	}
-}
-
-/* 8-point compass label for a 0-360 degree bearing */
-static const char *compass_point(float bearing)
-{
-	static const char *points[8] = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
-	int idx = (int)((bearing + 22.5f) / 45.0f) % 8;
-
-	if (idx < 0) {
-		idx += 8;
-	}
-
-	return points[idx];
 }
 
 void test_bno085_compass_display(bno085_t *p, ssd1309_t *oled)

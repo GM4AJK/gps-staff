@@ -55,17 +55,20 @@ void test_bno085_rotation_vector_enable(bno085_t *p);
  * test_bno085_rotation_vector_display
  * @param p - Pointer to an initialized bno085_t struct
  * @param oled - Pointer to an initialized, brought-up ssd1309_t struct
- * @param exec_us - Execution time of the previous call, in microseconds, to
- *                   display alongside the orientation (0 to omit)
  *
  * Reads one SHTP packet (non-blocking, no drain or delay). If it contains a
  * Rotation Vector report (0x05) on the sensor reports channel, converts the
- * quaternion to roll/pitch/yaw (degrees) plus the status accuracy field, and
- * draws them on the OLED along with exec_us. Otherwise leaves the display
- * unchanged. Intended to be called periodically from app_loop() after
- * test_bno085_rotation_vector_enable() has been called once.
+ * quaternion to roll/pitch/yaw (degrees), derives a 0-360 degree bearing
+ * (with a fixed 180 degree correction for this board's silkscreen
+ * orientation) plus an 8-point compass label, and computes a tilt angle -
+ * the angle between the board's Z axis and vertical, 0 when level. Draws
+ * the title with the status accuracy field ("Rotation Vector (x/3)"), plus
+ * roll/pitch/yaw, bearing/direction and tilt, on the OLED. Otherwise
+ * leaves the display unchanged. Intended to be called periodically from
+ * app_loop() after test_bno085_rotation_vector_enable() has been called
+ * once.
  */
-void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled, uint32_t exec_us);
+void test_bno085_rotation_vector_display(bno085_t *p, ssd1309_t *oled);
 
 /**
  * test_bno085_game_rotation_vector_enable
