@@ -43,6 +43,7 @@ extern "C" {
 /* USER CODE BEGIN EC */
 
 extern I2C_HandleTypeDef hi2c1;
+extern SPI_HandleTypeDef hspi2;
 extern UART_HandleTypeDef huart2;
 
 /* USER CODE END EC */
@@ -62,12 +63,32 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define B1_Pin GPIO_PIN_13
 #define B1_GPIO_Port GPIOC
+#define SX1262_SPI_MOSI_Pin GPIO_PIN_1
+#define SX1262_SPI_MOSI_GPIO_Port GPIOC
+#define SX1262_SPI_MISO_Pin GPIO_PIN_2
+#define SX1262_SPI_MISO_GPIO_Port GPIOC
 #define USART_TX_Pin GPIO_PIN_2
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
 #define USART_RX_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
+#define SX1262_SPI_SCLK_Pin GPIO_PIN_10
+#define SX1262_SPI_SCLK_GPIO_Port GPIOB
+#define SX1262_SPI_CS_Pin GPIO_PIN_12
+#define SX1262_SPI_CS_GPIO_Port GPIOB
+#define SX1262_SPI_RESET_Pin GPIO_PIN_13
+#define SX1262_SPI_RESET_GPIO_Port GPIOB
+#define SX1262_SPI_BUSY_Pin GPIO_PIN_14
+#define SX1262_SPI_BUSY_GPIO_Port GPIOB
+#define SX1262_SPI_TxENABLE_Pin GPIO_PIN_6
+#define SX1262_SPI_TxENABLE_GPIO_Port GPIOC
+#define SX1262_SPI_RxENABLE_Pin GPIO_PIN_7
+#define SX1262_SPI_RxENABLE_GPIO_Port GPIOC
+#define SX1262_SPI_DIO2_Pin GPIO_PIN_8
+#define SX1262_SPI_DIO2_GPIO_Port GPIOC
+#define SX1262_SPI_DIO1_Pin GPIO_PIN_9
+#define SX1262_SPI_DIO1_GPIO_Port GPIOC
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14

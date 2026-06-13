@@ -10,13 +10,13 @@
 #include "flags.h"
 #include "ssd1309.h"
 #include "Tests/test_ssd1309.h"
-#include "bno085.h"
-#include "Tests/test_bno085.h"
+#include "sx1262.h"
+#include "Tests/test_sx1262.h"
 
 static void app_tests(void);
 
 static ssd1309_t oled;
-static bno085_t bno085;
+static sx1262_t sx1262;
 
 #define COUNTER_TIMER(x, y, z) \
 	static volatile int x = 0; \
@@ -49,11 +49,6 @@ void app_log(const char *fmt, ...)
 
 void app_init(void)
 {
-	/* Enable the DWT cycle counter (CYCCNT) for microsecond-resolution timing */
-	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-	DWT->CYCCNT = 0;
-	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
@@ -64,11 +59,12 @@ void app_init(void)
 		return;
 	}
 
-	bno085_init(&bno085, &hi2c1, BNO085_I2C_ADDRESS);
-
-#ifdef TEST_BNO085
-	test_bno085_rotation_vector_enable(&bno085);
-#endif /* TEST_BNO085 */
+	sx1262_init(
+		&sx1262, &hspi2,
+		SX1262_SPI_CS_GPIO_Port, SX1262_SPI_CS_Pin,
+		SX1262_SPI_RESET_GPIO_Port, SX1262_SPI_RESET_Pin,
+		SX1262_SPI_BUSY_GPIO_Port, SX1262_SPI_BUSY_Pin
+	);
 
 	app_log("Start up\r\n");
 
@@ -77,26 +73,13 @@ void app_init(void)
 
 void app_loop(void)
 {
-	static uint32_t exec_sum = 0;
-	static uint32_t exec_count = 0;
-
 	while(true) {
-		uint32_t start_time = DWT->CYCCNT;
-		test_bno085_rotation_vector_display(&bno085, &oled);
-		uint32_t cycles = DWT->CYCCNT - start_time;
-		uint32_t exec_us = cycles / (HAL_RCC_GetHCLKFreq() / 1000000);
-
-		exec_sum += exec_us;
-		exec_count++;
-
-		if(flag_get_1000MS()) {
-			app_log("bno085: avg exec time: %lu us\r\n", (unsigned long)(exec_sum / exec_count));
-			exec_sum = 0;
-			exec_count = 0;
-		}
-
 		if(flag_get_500MS()) {
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+#ifdef TEST_SX1262
+			test_sx1262_hello(&sx1262);
+#endif /* TEST_SX1262 */
 		}
 	}
 }
@@ -109,10 +92,4 @@ static void app_tests(void)
 		app_log("ssd1309_flush failed: %d\r\n", r);
 	}
 #endif /* TEST_SSD1309 */
-
-#ifdef TEST_BNO085
-	test_bno085_hello(&bno085);
-	test_bno085_product_id(&bno085);
-	test_bno085_rotation_vector(&bno085);
-#endif /* TEST_BNO085 */
 }
