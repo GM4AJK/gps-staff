@@ -118,6 +118,19 @@
 #define SX1262_IRQ_TIMEOUT      (1U << 9)
 #define SX1262_IRQ_ALL          0x03FFU
 
+/* GetDeviceErrors / ClearDeviceErrors (datasheet 13.6.1 / 13.6.2 / Table 13-85) */
+#define SX1262_OP_GET_DEVICE_ERRORS   0x17
+#define SX1262_OP_CLEAR_DEVICE_ERRORS 0x07
+
+#define SX1262_OP_ERR_RC64K_CALIB (1U << 0)
+#define SX1262_OP_ERR_RC13M_CALIB (1U << 1)
+#define SX1262_OP_ERR_PLL_CALIB   (1U << 2)
+#define SX1262_OP_ERR_ADC_CALIB   (1U << 3)
+#define SX1262_OP_ERR_IMG_CALIB   (1U << 4)
+#define SX1262_OP_ERR_XOSC_START  (1U << 5)
+#define SX1262_OP_ERR_PLL_LOCK    (1U << 6)
+#define SX1262_OP_ERR_PA_RAMP     (1U << 8)
+
 #define SX1262_SPI_TIMEOUT_MS  100
 #define SX1262_BUSY_TIMEOUT_MS 1000
 
@@ -391,5 +404,26 @@ HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
+
+/**
+ * sx1262_get_device_errors
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param out_errors - Receives the 16-bit OpError register (Table 13-85)
+ *
+ * Sends the GetDeviceErrors (0x17) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_get_device_errors(sx1262_t *p, uint16_t *out_errors);
+
+/**
+ * sx1262_clear_device_errors
+ * @param p - Pointer to an initialized sx1262_t struct
+ *
+ * Sends the ClearDeviceErrors (0x07) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_clear_device_errors(sx1262_t *p);
 
 #endif /* INC_SX1262_H_ */

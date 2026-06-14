@@ -257,3 +257,34 @@ HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask)
 
 	return sx1262_write(p, tx, sizeof(tx));
 }
+
+HAL_StatusTypeDef sx1262_get_device_errors(sx1262_t *p, uint16_t *out_errors)
+{
+	uint8_t tx[4] = { SX1262_OP_GET_DEVICE_ERRORS, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP };
+	uint8_t rx[4] = { 0 };
+	HAL_StatusTypeDef status;
+
+	status = sx1262_wait_busy(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	status = HAL_SPI_TransmitReceive(p->port, tx, rx, sizeof(tx), SX1262_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	*out_errors = ((uint16_t)rx[2] << 8) | rx[3];
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef sx1262_clear_device_errors(sx1262_t *p)
+{
+	uint8_t tx[3] = { SX1262_OP_CLEAR_DEVICE_ERRORS, 0x00, 0x00 };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
