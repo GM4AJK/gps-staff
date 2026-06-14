@@ -41,7 +41,7 @@ void sx1262_init(
 	p->tx_timeout = NULL;
 }
 
-void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db))
 {
 	p->rx_done = callback;
 }

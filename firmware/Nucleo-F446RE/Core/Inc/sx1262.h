@@ -40,12 +40,17 @@
  *        callback below.
  *
  * Callbacks:
- *   sx1262_set_rx_done_callback() / sx1262_set_tx_done_callback() and
- *   sx1262_set_rx_timeout_callback() / sx1262_set_tx_timeout_callback()
- *   each register a void(*)(sx1262_t *p) callback, invoked with the
- *   instance pointer by the corresponding service function depending on
- *   whether it observes RxDone/TxDone or Timeout. All four are NULL after
- *   sx1262_init(); set to NULL to disable.
+ *   sx1262_set_tx_done_callback(), sx1262_set_rx_timeout_callback() and
+ *   sx1262_set_tx_timeout_callback() each register a void(*)(sx1262_t *p)
+ *   callback, invoked with the instance pointer by the corresponding
+ *   service function when it observes TxDone or Timeout.
+ *
+ *   sx1262_set_rx_done_callback() registers a callback invoked with the
+ *   instance pointer plus the received payload (pointer + length), RSSI
+ *   and raw SnrPkt value, since RxDone results are not otherwise
+ *   available via the sx1262_t struct.
+ *
+ *   All four are NULL after sx1262_init(); set to NULL to disable.
  */
 
 /* GetStatus (datasheet 13.5.1) */
@@ -195,7 +200,7 @@ typedef struct sx1262_s {
 	GPIO_PIN_DEF(cs_port, cs_pin);
 	GPIO_PIN_DEF(reset_port, reset_pin);
 	GPIO_PIN_DEF(busy_port, busy_pin);
-	void (*rx_done)(struct sx1262_s *p);
+	void (*rx_done)(struct sx1262_s *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db);
 	void (*tx_done)(struct sx1262_s *p);
 	void (*rx_timeout)(struct sx1262_s *p);
 	void (*tx_timeout)(struct sx1262_s *p);
@@ -227,10 +232,14 @@ void sx1262_init(
  *                    to disable
  *
  * Registers a callback to be invoked when a valid packet (RxDone) is
- * detected. The callback receives the sx1262_t instance pointer. Stored
- * in p->rx_done; NULL by default after sx1262_init().
+ * detected. The callback receives the sx1262_t instance pointer, a
+ * pointer to the received payload, its length in bytes, the averaged
+ * RSSI in dBm, and the raw SnrPkt register value in steps of 0.25dB (see
+ * sx1262_get_packet_status()). The payload pointer is only valid for the
+ * duration of the callback. Stored in p->rx_done; NULL by default after
+ * sx1262_init().
  */
-void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db));
 
 /**
  * sx1262_set_tx_done_callback

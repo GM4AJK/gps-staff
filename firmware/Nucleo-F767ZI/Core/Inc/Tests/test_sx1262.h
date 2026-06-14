@@ -87,14 +87,19 @@ bool test_sx1262_rx_done(sx1262_t *p);
 /**
  * test_sx1262_rx_done_handler
  * @param p - Pointer to the sx1262_t instance that received the packet
+ * @param payload - Pointer to the received payload, valid only for the
+ *                   duration of this call
+ * @param len - Length of payload in bytes
+ * @param rssi - Averaged RSSI of the received packet, in dBm
+ * @param snr_quarter_db - Raw SnrPkt register value, in steps of 0.25dB
  *
  * Toggles LD2, then (if an OLED has been registered via
- * test_sx1262_set_oled()) clears the display and shows the last received
+ * test_sx1262_set_oled()) clears the display and shows the received
  * packet's payload, RSSI and SNR. Registered via
  * sx1262_set_rx_done_callback() in test_sx1262_config() - called from
  * test_sx1262_rx_done() whenever a packet is actually received.
  */
-void test_sx1262_rx_done_handler(sx1262_t *p);
+void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db);
 
 /**
  * test_sx1262_tx_done_toggle_led

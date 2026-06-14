@@ -2,7 +2,6 @@
 #include "app.h"
 
 #include <stdio.h>
-#include <string.h>
 
 #ifdef TEST_SX1262
 
@@ -119,14 +118,10 @@ void test_sx1262_config(sx1262_t *p)
 	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +17dBm\r\n");
 }
 
-static uint8_t rx_payload[9] = { 0 };
-static int8_t rx_rssi = 0;
-static int8_t rx_snr_quarter_db = 0;
-
-void test_sx1262_rx_done_handler(sx1262_t *p)
+void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db)
 {
 	char line[24];
-	int snr_centi_db = (int)rx_snr_quarter_db * 25;
+	int snr_centi_db = (int)snr_quarter_db * 25;
 	int snr_neg = (snr_centi_db < 0);
 
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
@@ -141,10 +136,10 @@ void test_sx1262_rx_done_handler(sx1262_t *p)
 
 	ssd1309_clear(oled);
 
-	snprintf(line, sizeof(line), "RX: %.8s", rx_payload);
+	snprintf(line, sizeof(line), "RX: %.*s", (int)len, payload);
 	ssd1309_draw_string(oled, &font5x7, 0, 0, line, SSD1309_COLOR_ON);
 
-	snprintf(line, sizeof(line), "RSSI: %ddBm", rx_rssi);
+	snprintf(line, sizeof(line), "RSSI: %ddBm", rssi);
 	ssd1309_draw_string(oled, &font5x7, 0, 10, line, SSD1309_COLOR_ON);
 
 	snprintf(line, sizeof(line), "SNR: %s%d.%02ddB", snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
@@ -227,6 +222,8 @@ bool test_sx1262_rx_done(sx1262_t *p)
 	uint8_t payload[8] = { 0 };
 	HAL_StatusTypeDef status;
 	uint16_t irq = 0;
+	int8_t rssi = 0;
+	int8_t snr_quarter_db = 0;
 
 	status = sx1262_get_irq_status(p, &irq);
 	if (status != HAL_OK) {
@@ -238,34 +235,22 @@ bool test_sx1262_rx_done(sx1262_t *p)
 		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));
 		if (status != HAL_OK) {
 			app_log("sx1262: rx read buffer failed: %d\r\n", status);
-		} else {
-			int8_t rssi = 0;
-			int8_t snr_quarter_db = 0;
+		} else if (sx1262_get_packet_status(p, &rssi, &snr_quarter_db) == HAL_OK) {
+			int snr_centi_db = (int)snr_quarter_db * 25;
+			int snr_neg = (snr_centi_db < 0);
 
-			if (sx1262_get_packet_status(p, &rssi, &snr_quarter_db) == HAL_OK) {
-				int snr_centi_db = (int)snr_quarter_db * 25;
-				int snr_neg = (snr_centi_db < 0);
-
-				if (snr_neg) {
-					snr_centi_db = -snr_centi_db;
-				}
-
-				app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB\r\n",
-					payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
-
-				rx_rssi = rssi;
-				rx_snr_quarter_db = snr_quarter_db;
-			} else {
-				app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
-
-				rx_rssi = 0;
-				rx_snr_quarter_db = 0;
+			if (snr_neg) {
+				snr_centi_db = -snr_centi_db;
 			}
 
-			memcpy(rx_payload, payload, sizeof(payload));
+			app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB\r\n",
+				payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
+		} else {
+			app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
 		}
+
 		if (p->rx_done != NULL) {
-			p->rx_done(p);
+			p->rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
 		}
 	} else {
 		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);
