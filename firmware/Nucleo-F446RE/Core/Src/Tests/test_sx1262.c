@@ -48,6 +48,12 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
+	status = sx1262_calibrate_image(p, SX1262_CAL_IMG_430_440_FREQ1, SX1262_CAL_IMG_430_440_FREQ2);
+	if (status != HAL_OK) {
+		app_log("sx1262: calibrate image failed: %d\r\n", status);
+		return;
+	}
+
 	status = sx1262_set_modulation_params_lora(p, SX1262_LORA_SF7, SX1262_LORA_BW_125, SX1262_LORA_CR_4_5, SX1262_LORA_LDRO_OFF);
 	if (status != HAL_OK) {
 		app_log("sx1262: set modulation params failed: %d\r\n", status);

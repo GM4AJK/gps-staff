@@ -19,6 +19,11 @@
 #define SX1262_OP_SET_RF_FREQUENCY 0x86
 #define SX1262_XTAL_HZ              32000000UL
 
+/* CalibrateImage (datasheet 13.1.13 / Table 9-2) */
+#define SX1262_OP_CALIBRATE_IMAGE 0x98
+#define SX1262_CAL_IMG_430_440_FREQ1 0x6B
+#define SX1262_CAL_IMG_430_440_FREQ2 0x6F
+
 /* SetModulationParams (datasheet 13.4.5) */
 #define SX1262_OP_SET_MODULATION_PARAMS 0x8B
 
@@ -205,6 +210,22 @@ HAL_StatusTypeDef sx1262_set_packet_type(sx1262_t *p, uint8_t packet_type);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz);
+
+/**
+ * sx1262_calibrate_image
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param freq1, freq2 - Calibration band bounds, e.g.
+ *                        SX1262_CAL_IMG_430_440_FREQ1/FREQ2
+ *
+ * Sends the CalibrateImage (0x98) command. The factory-default image
+ * calibration only covers 902-928MHz; operating outside that band
+ * requires calibrating the corresponding band first, or SetTx/SetRx
+ * will fail (chip stays in STBY_RC, cmd status = failure to execute).
+ * Must be issued from STDBY_RC mode.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_calibrate_image(sx1262_t *p, uint8_t freq1, uint8_t freq2);
 
 /**
  * sx1262_set_modulation_params_lora
