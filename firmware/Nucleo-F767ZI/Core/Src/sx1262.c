@@ -39,12 +39,12 @@ void sx1262_init(
 	p->tx_done = NULL;
 }
 
-void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(void))
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
 {
 	p->rx_done = callback;
 }
 
-void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(void))
+void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
 {
 	p->tx_done = callback;
 }

@@ -75,21 +75,23 @@ bool test_sx1262_rx_done(sx1262_t *p);
 
 /**
  * test_sx1262_rx_done_toggle_led
+ * @param p - Pointer to the sx1262_t instance that received the packet
  *
  * Toggles LD2. Registered via sx1262_set_rx_done_callback() in
  * test_sx1262_config() as a demo of the rx_done callback - called from
  * test_sx1262_rx_done() whenever a packet is actually received.
  */
-void test_sx1262_rx_done_toggle_led(void);
+void test_sx1262_rx_done_toggle_led(sx1262_t *p);
 
 /**
  * test_sx1262_tx_done_toggle_led
+ * @param p - Pointer to the sx1262_t instance that completed transmission
  *
  * Toggles LD2. Registered via sx1262_set_tx_done_callback() in
  * test_sx1262_config() as a demo of the tx_done callback - called from
  * test_sx1262_tx_done() whenever a transmission actually completes.
  */
-void test_sx1262_tx_done_toggle_led(void);
+void test_sx1262_tx_done_toggle_led(sx1262_t *p);
 
 #endif /* TEST_SX1262 */
 

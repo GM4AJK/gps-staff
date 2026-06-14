@@ -148,13 +148,13 @@
 #define SX1262_SPI_TIMEOUT_MS  100
 #define SX1262_BUSY_TIMEOUT_MS 1000
 
-typedef struct {
+typedef struct sx1262_s {
 	SPI_HandleTypeDef *port;
 	GPIO_PIN_DEF(cs_port, cs_pin);
 	GPIO_PIN_DEF(reset_port, reset_pin);
 	GPIO_PIN_DEF(busy_port, busy_pin);
-	void (*rx_done)(void);
-	void (*tx_done)(void);
+	void (*rx_done)(struct sx1262_s *p);
+	void (*tx_done)(struct sx1262_s *p);
 } sx1262_t;
 
 /**
@@ -183,9 +183,10 @@ void sx1262_init(
  *                    to disable
  *
  * Registers a callback to be invoked when a valid packet (RxDone) is
- * detected. Stored in p->rx_done; NULL by default after sx1262_init().
+ * detected. The callback receives the sx1262_t instance pointer. Stored
+ * in p->rx_done; NULL by default after sx1262_init().
  */
-void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(void));
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
 
 /**
  * sx1262_set_tx_done_callback
@@ -193,10 +194,11 @@ void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(void));
  * @param callback - Function to call when a transmission completes, or
  *                    NULL to disable
  *
- * Registers a callback to be invoked when TxDone is detected. Stored in
+ * Registers a callback to be invoked when TxDone is detected. The
+ * callback receives the sx1262_t instance pointer. Stored in
  * p->tx_done; NULL by default after sx1262_init().
  */
-void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(void));
+void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
 
 /**
  * sx1262_wait_busy

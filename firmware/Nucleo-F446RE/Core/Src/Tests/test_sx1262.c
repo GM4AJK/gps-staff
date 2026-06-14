@@ -109,12 +109,12 @@ void test_sx1262_config(sx1262_t *p)
 	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +17dBm\r\n");
 }
 
-void test_sx1262_rx_done_toggle_led(void)
+void test_sx1262_rx_done_toggle_led(sx1262_t *p)
 {
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 }
 
-void test_sx1262_tx_done_toggle_led(void)
+void test_sx1262_tx_done_toggle_led(sx1262_t *p)
 {
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 }
@@ -159,7 +159,7 @@ bool test_sx1262_tx_done(sx1262_t *p)
 		app_log("sx1262: tx done, payload=\"%.8s\"\r\n", tx_payload);
 
 		if (p->tx_done != NULL) {
-			p->tx_done();
+			p->tx_done(p);
 		}
 	} else {
 		app_log("sx1262: tx timeout (irq=0x%04X)\r\n", irq);
@@ -214,7 +214,7 @@ bool test_sx1262_rx_done(sx1262_t *p)
 			}
 		}
 		if (p->rx_done != NULL) {
-			p->rx_done();
+			p->rx_done(p);
 		}
 	} else {
 		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);
