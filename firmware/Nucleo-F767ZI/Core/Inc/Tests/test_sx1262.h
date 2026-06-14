@@ -72,6 +72,15 @@ void test_sx1262_rx_start(sx1262_t *p);
  */
 bool test_sx1262_rx_done(sx1262_t *p);
 
+/**
+ * test_sx1262_rx_done_toggle_led
+ *
+ * Toggles LD2. Registered via sx1262_set_rx_done_callback() in
+ * test_sx1262_config() as a demo of the rx_done callback - called from
+ * test_sx1262_rx_done() whenever a packet is actually received.
+ */
+void test_sx1262_rx_done_toggle_led(void);
+
 #endif /* TEST_SX1262 */
 
 #endif /* INC_TESTS_TEST_SX1262_H_ */

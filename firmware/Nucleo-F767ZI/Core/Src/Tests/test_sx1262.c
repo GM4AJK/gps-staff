@@ -103,7 +103,14 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
+	sx1262_set_rx_done_callback(p, test_sx1262_rx_done_toggle_led);
+
 	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +17dBm\r\n");
+}
+
+void test_sx1262_rx_done_toggle_led(void)
+{
+	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 }
 
 static uint8_t tx_payload[8] = "PING0000";
@@ -193,6 +200,9 @@ bool test_sx1262_rx_done(sx1262_t *p)
 			} else {
 				app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
 			}
+		}
+		if (p->rx_done != NULL) {
+			p->rx_done();
 		}
 	} else {
 		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);

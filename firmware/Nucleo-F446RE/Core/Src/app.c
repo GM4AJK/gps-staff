@@ -87,9 +87,7 @@ void app_loop(void)
 		}
 
 		if(flag_get_SX1262_DIO1()) {
-			if (test_sx1262_rx_done(&sx1262)) {
-				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-			}
+			test_sx1262_rx_done(&sx1262);
 		}
 #endif /* TEST_SX1262 */
 	}

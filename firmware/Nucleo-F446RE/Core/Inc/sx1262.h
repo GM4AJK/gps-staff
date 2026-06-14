@@ -153,6 +153,7 @@ typedef struct {
 	GPIO_PIN_DEF(cs_port, cs_pin);
 	GPIO_PIN_DEF(reset_port, reset_pin);
 	GPIO_PIN_DEF(busy_port, busy_pin);
+	void (*rx_done)(void);
 } sx1262_t;
 
 /**
@@ -173,6 +174,17 @@ void sx1262_init(
 	GPIO_TypeDef *reset_port, uint16_t reset_pin,
 	GPIO_TypeDef *busy_port, uint16_t busy_pin
 );
+
+/**
+ * sx1262_set_rx_done_callback
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param callback - Function to call when a packet is received, or NULL
+ *                    to disable
+ *
+ * Registers a callback to be invoked when a valid packet (RxDone) is
+ * detected. Stored in p->rx_done; NULL by default after sx1262_init().
+ */
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(void));
 
 /**
  * sx1262_wait_busy

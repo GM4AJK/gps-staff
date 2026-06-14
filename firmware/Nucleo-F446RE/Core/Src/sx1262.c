@@ -35,6 +35,12 @@ void sx1262_init(
 	p->reset_pin = reset_pin;
 	p->busy_port = busy_port;
 	p->busy_pin = busy_pin;
+	p->rx_done = NULL;
+}
+
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(void))
+{
+	p->rx_done = callback;
 }
 
 HAL_StatusTypeDef sx1262_wait_busy(sx1262_t *p)
