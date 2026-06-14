@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+#define GPIO_PIN_DEF(x,y) GPIO_TypeDef *x; uint16_t y;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
