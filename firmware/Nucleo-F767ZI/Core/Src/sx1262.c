@@ -3,6 +3,7 @@
 #include "sx1262.h"
 
 #include <stddef.h>
+#include <string.h>
 
 static HAL_StatusTypeDef sx1262_write(sx1262_t *p, const uint8_t *data, size_t len)
 {
@@ -121,6 +122,118 @@ HAL_StatusTypeDef sx1262_set_packet_params_lora(sx1262_t *p, uint16_t preamble_l
 		crc_type,
 		invert_iq
 	};
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_set_pa_config(sx1262_t *p, uint8_t pa_duty_cycle, uint8_t hp_max, uint8_t device_sel)
+{
+	uint8_t tx[5] = { SX1262_OP_SET_PA_CONFIG, pa_duty_cycle, hp_max, device_sel, 0x01 };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_set_tx_params(sx1262_t *p, int8_t power, uint8_t ramp_time)
+{
+	uint8_t tx[3] = { SX1262_OP_SET_TX_PARAMS, (uint8_t)power, ramp_time };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_set_buffer_base_address(sx1262_t *p, uint8_t tx_base_addr, uint8_t rx_base_addr)
+{
+	uint8_t tx[3] = { SX1262_OP_SET_BUFFER_BASE_ADDRESS, tx_base_addr, rx_base_addr };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_write_buffer(sx1262_t *p, uint8_t offset, const uint8_t *data, size_t len)
+{
+	uint8_t tx[2 + SX1262_MAX_PAYLOAD_LEN];
+
+	if (len > SX1262_MAX_PAYLOAD_LEN) {
+		return HAL_ERROR;
+	}
+
+	tx[0] = SX1262_OP_WRITE_BUFFER;
+	tx[1] = offset;
+	memcpy(&tx[2], data, len);
+
+	return sx1262_write(p, tx, 2 + len);
+}
+
+HAL_StatusTypeDef sx1262_read_buffer(sx1262_t *p, uint8_t offset, uint8_t *out_data, size_t len)
+{
+	uint8_t tx[3 + SX1262_MAX_PAYLOAD_LEN] = { 0 };
+	uint8_t rx[3 + SX1262_MAX_PAYLOAD_LEN] = { 0 };
+	HAL_StatusTypeDef status;
+
+	if (len > SX1262_MAX_PAYLOAD_LEN) {
+		return HAL_ERROR;
+	}
+
+	tx[0] = SX1262_OP_READ_BUFFER;
+	tx[1] = offset;
+
+	status = sx1262_wait_busy(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	status = HAL_SPI_TransmitReceive(p->port, tx, rx, 3 + len, SX1262_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	memcpy(out_data, &rx[3], len);
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef sx1262_set_tx(sx1262_t *p, uint32_t timeout)
+{
+	uint8_t tx[4] = { SX1262_OP_SET_TX, (uint8_t)(timeout >> 16), (uint8_t)(timeout >> 8), (uint8_t)(timeout) };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_set_rx(sx1262_t *p, uint32_t timeout)
+{
+	uint8_t tx[4] = { SX1262_OP_SET_RX, (uint8_t)(timeout >> 16), (uint8_t)(timeout >> 8), (uint8_t)(timeout) };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq)
+{
+	uint8_t tx[4] = { SX1262_OP_GET_IRQ_STATUS, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP };
+	uint8_t rx[4] = { 0 };
+	HAL_StatusTypeDef status;
+
+	status = sx1262_wait_busy(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	status = HAL_SPI_TransmitReceive(p->port, tx, rx, sizeof(tx), SX1262_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	*out_irq = ((uint16_t)rx[2] << 8) | rx[3];
+
+	return HAL_OK;
+}
+
+HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask)
+{
+	uint8_t tx[3] = { SX1262_OP_CLEAR_IRQ_STATUS, (uint8_t)(clear_mask >> 8), (uint8_t)(clear_mask) };
 
 	return sx1262_write(p, tx, sizeof(tx));
 }

@@ -77,6 +77,12 @@ void app_loop(void)
 		if(flag_get_500MS()) {
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 		}
+
+#ifdef TEST_SX1262
+		if(flag_get_1000MS()) {
+			test_sx1262_tx(&sx1262);
+		}
+#endif /* TEST_SX1262 */
 	}
 }
 

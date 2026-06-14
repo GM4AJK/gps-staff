@@ -60,7 +60,108 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC\r\n");
+	status = sx1262_set_buffer_base_address(p, 0, 0);
+	if (status != HAL_OK) {
+		app_log("sx1262: set buffer base address failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_pa_config(p, 0x02, 0x02, SX1262_PA_CONFIG_SX1262);
+	if (status != HAL_OK) {
+		app_log("sx1262: set pa config failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_tx_params(p, 14, SX1262_RAMP_200U);
+	if (status != HAL_OK) {
+		app_log("sx1262: set tx params failed: %d\r\n", status);
+		return;
+	}
+
+	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +14dBm\r\n");
+}
+
+void test_sx1262_tx(sx1262_t *p)
+{
+	static uint8_t counter = 0;
+	uint8_t payload[8] = "PING0000";
+	HAL_StatusTypeDef status;
+	uint16_t irq = 0;
+	uint32_t start;
+
+	payload[7] = '0' + counter;
+	counter = (counter + 1) % 10;
+
+	status = sx1262_write_buffer(p, 0, payload, sizeof(payload));
+	if (status != HAL_OK) {
+		app_log("sx1262: tx write buffer failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_tx(p, SX1262_RX_TX_TIMEOUT_NONE);
+	if (status != HAL_OK) {
+		app_log("sx1262: set tx failed: %d\r\n", status);
+		return;
+	}
+
+	start = HAL_GetTick();
+	do {
+		status = sx1262_get_irq_status(p, &irq);
+		if (status != HAL_OK) {
+			app_log("sx1262: tx get irq status failed: %d\r\n", status);
+			return;
+		}
+		if (irq & (SX1262_IRQ_TX_DONE | SX1262_IRQ_TIMEOUT)) {
+			break;
+		}
+	} while ((HAL_GetTick() - start) < 2000);
+
+	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
+
+	if (irq & SX1262_IRQ_TX_DONE) {
+		app_log("sx1262: tx done, payload=\"%.8s\"\r\n", payload);
+	} else {
+		app_log("sx1262: tx timeout (irq=0x%04X)\r\n", irq);
+	}
+}
+
+void test_sx1262_rx(sx1262_t *p)
+{
+	uint8_t payload[8] = { 0 };
+	HAL_StatusTypeDef status;
+	uint16_t irq = 0;
+	uint32_t start;
+
+	status = sx1262_set_rx(p, 64000UL);
+	if (status != HAL_OK) {
+		app_log("sx1262: set rx failed: %d\r\n", status);
+		return;
+	}
+
+	start = HAL_GetTick();
+	do {
+		status = sx1262_get_irq_status(p, &irq);
+		if (status != HAL_OK) {
+			app_log("sx1262: rx get irq status failed: %d\r\n", status);
+			return;
+		}
+		if (irq & (SX1262_IRQ_RX_DONE | SX1262_IRQ_TIMEOUT)) {
+			break;
+		}
+	} while ((HAL_GetTick() - start) < 1100);
+
+	if (irq & SX1262_IRQ_RX_DONE) {
+		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));
+		if (status != HAL_OK) {
+			app_log("sx1262: rx read buffer failed: %d\r\n", status);
+		} else {
+			app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
+		}
+	} else {
+		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);
+	}
+
+	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
 }
 
 #endif /* TEST_SX1262 */

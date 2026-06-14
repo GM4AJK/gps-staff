@@ -4,6 +4,7 @@
 
 #include "main.h"
 #include <stdint.h>
+#include <stddef.h>
 
 /* GetStatus (datasheet 13.5.1) */
 #define SX1262_OP_GET_STATUS 0xC0
@@ -67,6 +68,49 @@
 /* LoRa PacketParam6 - InvertIQ (datasheet Table 13-70) */
 #define SX1262_LORA_IQ_STANDARD 0x00
 #define SX1262_LORA_IQ_INVERTED 0x01
+
+/* SetPaConfig (datasheet 13.1.14) */
+#define SX1262_OP_SET_PA_CONFIG 0x95
+#define SX1262_PA_CONFIG_SX1262 0x00
+#define SX1262_PA_CONFIG_SX1261 0x01
+
+/* SetTxParams (datasheet 13.4.4 / Table 13-41) */
+#define SX1262_OP_SET_TX_PARAMS 0x8E
+#define SX1262_RAMP_10U   0x00
+#define SX1262_RAMP_20U   0x01
+#define SX1262_RAMP_40U   0x02
+#define SX1262_RAMP_80U   0x03
+#define SX1262_RAMP_200U  0x04
+#define SX1262_RAMP_800U  0x05
+#define SX1262_RAMP_1700U 0x06
+#define SX1262_RAMP_3400U 0x07
+
+/* SetBufferBaseAddress (datasheet 13.4.8) */
+#define SX1262_OP_SET_BUFFER_BASE_ADDRESS 0x8F
+
+/* WriteBuffer / ReadBuffer (datasheet 13.2.3 / 13.2.4) */
+#define SX1262_OP_WRITE_BUFFER 0x0E
+#define SX1262_OP_READ_BUFFER  0x1E
+#define SX1262_MAX_PAYLOAD_LEN 32
+
+/* SetTx / SetRx (datasheet 13.1.4 / 13.1.5) */
+#define SX1262_OP_SET_TX 0x83
+#define SX1262_OP_SET_RX 0x82
+#define SX1262_RX_TX_TIMEOUT_NONE    0x000000UL
+#define SX1262_RX_TIMEOUT_CONTINUOUS 0xFFFFFFUL
+
+/* GetIrqStatus / ClearIrqStatus (datasheet 13.3.1 / 13.3.3 / Table 13-29) */
+#define SX1262_OP_GET_IRQ_STATUS   0x12
+#define SX1262_OP_CLEAR_IRQ_STATUS 0x02
+
+#define SX1262_IRQ_TX_DONE      (1U << 0)
+#define SX1262_IRQ_RX_DONE      (1U << 1)
+#define SX1262_IRQ_PREAMBLE_DET (1U << 2)
+#define SX1262_IRQ_HEADER_VALID (1U << 4)
+#define SX1262_IRQ_HEADER_ERR   (1U << 5)
+#define SX1262_IRQ_CRC_ERR      (1U << 6)
+#define SX1262_IRQ_TIMEOUT      (1U << 9)
+#define SX1262_IRQ_ALL          0x03FFU
 
 #define SX1262_SPI_TIMEOUT_MS  100
 #define SX1262_BUSY_TIMEOUT_MS 1000
@@ -194,5 +238,119 @@ HAL_StatusTypeDef sx1262_set_modulation_params_lora(sx1262_t *p, uint8_t sf, uin
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_set_packet_params_lora(sx1262_t *p, uint16_t preamble_len, uint8_t header_type, uint8_t payload_len, uint8_t crc_type, uint8_t invert_iq);
+
+/**
+ * sx1262_set_pa_config
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param pa_duty_cycle - paDutyCycle (Table 13-21)
+ * @param hp_max - hpMax, PA size for the SX1262 (Table 13-21)
+ * @param device_sel - SX1262_PA_CONFIG_SX1262 or _SX1261
+ *
+ * Sends the SetPaConfig (0x95) command. paLut is always sent as 0x01 per
+ * the datasheet.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_pa_config(sx1262_t *p, uint8_t pa_duty_cycle, uint8_t hp_max, uint8_t device_sel);
+
+/**
+ * sx1262_set_tx_params
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param power - Output power in dBm (Section 13.4.4)
+ * @param ramp_time - One of SX1262_RAMP_*
+ *
+ * Sends the SetTxParams (0x8E) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_tx_params(sx1262_t *p, int8_t power, uint8_t ramp_time);
+
+/**
+ * sx1262_set_buffer_base_address
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param tx_base_addr - TX base address in the data buffer
+ * @param rx_base_addr - RX base address in the data buffer
+ *
+ * Sends the SetBufferBaseAddress (0x8F) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_buffer_base_address(sx1262_t *p, uint8_t tx_base_addr, uint8_t rx_base_addr);
+
+/**
+ * sx1262_write_buffer
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param offset - Offset into the data buffer to start writing at
+ * @param data - Bytes to write
+ * @param len - Number of bytes to write, up to SX1262_MAX_PAYLOAD_LEN
+ *
+ * Sends the WriteBuffer (0x0E) command to store a TX payload.
+ *
+ * @return HAL_OK on success, HAL_ERROR if len > SX1262_MAX_PAYLOAD_LEN, or
+ *         the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_write_buffer(sx1262_t *p, uint8_t offset, const uint8_t *data, size_t len);
+
+/**
+ * sx1262_read_buffer
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param offset - Offset into the data buffer to start reading from
+ * @param out_data - Receives the bytes read
+ * @param len - Number of bytes to read, up to SX1262_MAX_PAYLOAD_LEN
+ *
+ * Sends the ReadBuffer (0x1E) command to retrieve a received payload.
+ *
+ * @return HAL_OK on success, HAL_ERROR if len > SX1262_MAX_PAYLOAD_LEN, or
+ *         the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_read_buffer(sx1262_t *p, uint8_t offset, uint8_t *out_data, size_t len);
+
+/**
+ * sx1262_set_tx
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param timeout - Timeout in steps of 15.625us, or SX1262_RX_TX_TIMEOUT_NONE
+ *                  for Tx single mode with no timeout
+ *
+ * Sends the SetTx (0x83) command, starting transmission of the payload
+ * previously written with sx1262_write_buffer().
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_tx(sx1262_t *p, uint32_t timeout);
+
+/**
+ * sx1262_set_rx
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param timeout - Timeout in steps of 15.625us, SX1262_RX_TX_TIMEOUT_NONE
+ *                  for Rx single mode with no timeout, or
+ *                  SX1262_RX_TIMEOUT_CONTINUOUS for Rx continuous mode
+ *
+ * Sends the SetRx (0x82) command, putting the radio in receive mode.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_rx(sx1262_t *p, uint32_t timeout);
+
+/**
+ * sx1262_get_irq_status
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param out_irq - Receives the 16-bit IRQ status register (Table 13-29)
+ *
+ * Sends the GetIrqStatus (0x12) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq);
+
+/**
+ * sx1262_clear_irq_status
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param clear_mask - Bitmask of IRQs to clear, e.g. SX1262_IRQ_ALL
+ *
+ * Sends the ClearIrqStatus (0x02) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
 
 #endif /* INC_SX1262_H_ */
