@@ -4,6 +4,7 @@
 
 #include "main.h"
 #include <stdint.h>
+#include <stddef.h>
 
 /* GetStatus (datasheet 13.5.1) */
 #define SX1262_OP_GET_STATUS 0xC0
@@ -17,6 +18,22 @@
 /* SetRfFrequency (datasheet 13.4.1) */
 #define SX1262_OP_SET_RF_FREQUENCY 0x86
 #define SX1262_XTAL_HZ              32000000UL
+
+/* CalibrateImage (datasheet 13.1.13 / Table 9-2) */
+#define SX1262_OP_CALIBRATE_IMAGE 0x98
+#define SX1262_CAL_IMG_430_440_FREQ1 0x6B
+#define SX1262_CAL_IMG_430_440_FREQ2 0x6F
+
+/* SetDIO3AsTCXOCtrl (datasheet 13.3.6 / Table 13-35) */
+#define SX1262_OP_SET_DIO3_AS_TCXO_CTRL 0x97
+#define SX1262_TCXO_VOLTAGE_1_6 0x00
+#define SX1262_TCXO_VOLTAGE_1_7 0x01
+#define SX1262_TCXO_VOLTAGE_1_8 0x02
+#define SX1262_TCXO_VOLTAGE_2_2 0x03
+#define SX1262_TCXO_VOLTAGE_2_4 0x04
+#define SX1262_TCXO_VOLTAGE_2_7 0x05
+#define SX1262_TCXO_VOLTAGE_3_0 0x06
+#define SX1262_TCXO_VOLTAGE_3_3 0x07
 
 /* SetModulationParams (datasheet 13.4.5) */
 #define SX1262_OP_SET_MODULATION_PARAMS 0x8B
@@ -67,6 +84,63 @@
 /* LoRa PacketParam6 - InvertIQ (datasheet Table 13-70) */
 #define SX1262_LORA_IQ_STANDARD 0x00
 #define SX1262_LORA_IQ_INVERTED 0x01
+
+/* SetPaConfig (datasheet 13.1.14) */
+#define SX1262_OP_SET_PA_CONFIG 0x95
+#define SX1262_PA_CONFIG_SX1262 0x00
+#define SX1262_PA_CONFIG_SX1261 0x01
+
+/* SetTxParams (datasheet 13.4.4 / Table 13-41) */
+#define SX1262_OP_SET_TX_PARAMS 0x8E
+#define SX1262_RAMP_10U   0x00
+#define SX1262_RAMP_20U   0x01
+#define SX1262_RAMP_40U   0x02
+#define SX1262_RAMP_80U   0x03
+#define SX1262_RAMP_200U  0x04
+#define SX1262_RAMP_800U  0x05
+#define SX1262_RAMP_1700U 0x06
+#define SX1262_RAMP_3400U 0x07
+
+/* SetBufferBaseAddress (datasheet 13.4.8) */
+#define SX1262_OP_SET_BUFFER_BASE_ADDRESS 0x8F
+
+/* WriteBuffer / ReadBuffer (datasheet 13.2.3 / 13.2.4) */
+#define SX1262_OP_WRITE_BUFFER 0x0E
+#define SX1262_OP_READ_BUFFER  0x1E
+#define SX1262_MAX_PAYLOAD_LEN 32
+
+/* SetTx / SetRx (datasheet 13.1.4 / 13.1.5) */
+#define SX1262_OP_SET_TX 0x83
+#define SX1262_OP_SET_RX 0x82
+#define SX1262_RX_TX_TIMEOUT_NONE    0x000000UL
+#define SX1262_RX_TIMEOUT_CONTINUOUS 0xFFFFFFUL
+
+/* SetDioIrqParams / GetIrqStatus / ClearIrqStatus (datasheet 13.3.1 / 13.3.1 / 13.3.3 / Table 13-29) */
+#define SX1262_OP_SET_DIO_IRQ_PARAMS 0x08
+#define SX1262_OP_GET_IRQ_STATUS     0x12
+#define SX1262_OP_CLEAR_IRQ_STATUS   0x02
+
+#define SX1262_IRQ_TX_DONE      (1U << 0)
+#define SX1262_IRQ_RX_DONE      (1U << 1)
+#define SX1262_IRQ_PREAMBLE_DET (1U << 2)
+#define SX1262_IRQ_HEADER_VALID (1U << 4)
+#define SX1262_IRQ_HEADER_ERR   (1U << 5)
+#define SX1262_IRQ_CRC_ERR      (1U << 6)
+#define SX1262_IRQ_TIMEOUT      (1U << 9)
+#define SX1262_IRQ_ALL          0x03FFU
+
+/* GetDeviceErrors / ClearDeviceErrors (datasheet 13.6.1 / 13.6.2 / Table 13-85) */
+#define SX1262_OP_GET_DEVICE_ERRORS   0x17
+#define SX1262_OP_CLEAR_DEVICE_ERRORS 0x07
+
+#define SX1262_OP_ERR_RC64K_CALIB (1U << 0)
+#define SX1262_OP_ERR_RC13M_CALIB (1U << 1)
+#define SX1262_OP_ERR_PLL_CALIB   (1U << 2)
+#define SX1262_OP_ERR_ADC_CALIB   (1U << 3)
+#define SX1262_OP_ERR_IMG_CALIB   (1U << 4)
+#define SX1262_OP_ERR_XOSC_START  (1U << 5)
+#define SX1262_OP_ERR_PLL_LOCK    (1U << 6)
+#define SX1262_OP_ERR_PA_RAMP     (1U << 8)
 
 #define SX1262_SPI_TIMEOUT_MS  100
 #define SX1262_BUSY_TIMEOUT_MS 1000
@@ -162,6 +236,40 @@ HAL_StatusTypeDef sx1262_set_packet_type(sx1262_t *p, uint8_t packet_type);
 HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz);
 
 /**
+ * sx1262_calibrate_image
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param freq1, freq2 - Calibration band bounds, e.g.
+ *                        SX1262_CAL_IMG_430_440_FREQ1/FREQ2
+ *
+ * Sends the CalibrateImage (0x98) command. The factory-default image
+ * calibration only covers 902-928MHz; operating outside that band
+ * requires calibrating the corresponding band first, or SetTx/SetRx
+ * will fail (chip stays in STBY_RC, cmd status = failure to execute).
+ * Must be issued from STDBY_RC mode.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_calibrate_image(sx1262_t *p, uint8_t freq1, uint8_t freq2);
+
+/**
+ * sx1262_set_dio3_as_tcxo_ctrl
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param tcxo_voltage - One of SX1262_TCXO_VOLTAGE_*
+ * @param delay - Startup delay in steps of 15.625us before XOSC_START_ERR
+ *                is flagged if 32MHz has not appeared
+ *
+ * Sends the SetDIO3AsTCXOCtrl (0x97) command. The Waveshare Core1262-LF
+ * module's 32MHz reference is a TCXO powered from DIO3 (see
+ * Core1262-LF-Schematic.pdf) rather than a passive crystal on XTA/XTB -
+ * without this command DIO3 never supplies the TCXO and XOSC_START_ERR
+ * is set, leaving the chip unable to leave STBY_RC for TX/RX. Should be
+ * issued first, before any other configuration.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_dio3_as_tcxo_ctrl(sx1262_t *p, uint8_t tcxo_voltage, uint32_t delay);
+
+/**
  * sx1262_set_modulation_params_lora
  * @param p - Pointer to an initialized sx1262_t struct
  * @param sf - Spreading factor, one of SX1262_LORA_SF5..SX1262_LORA_SF12
@@ -194,5 +302,157 @@ HAL_StatusTypeDef sx1262_set_modulation_params_lora(sx1262_t *p, uint8_t sf, uin
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_set_packet_params_lora(sx1262_t *p, uint16_t preamble_len, uint8_t header_type, uint8_t payload_len, uint8_t crc_type, uint8_t invert_iq);
+
+/**
+ * sx1262_set_pa_config
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param pa_duty_cycle - paDutyCycle (Table 13-21)
+ * @param hp_max - hpMax, PA size for the SX1262 (Table 13-21)
+ * @param device_sel - SX1262_PA_CONFIG_SX1262 or _SX1261
+ *
+ * Sends the SetPaConfig (0x95) command. paLut is always sent as 0x01 per
+ * the datasheet.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_pa_config(sx1262_t *p, uint8_t pa_duty_cycle, uint8_t hp_max, uint8_t device_sel);
+
+/**
+ * sx1262_set_tx_params
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param power - Output power in dBm (Section 13.4.4)
+ * @param ramp_time - One of SX1262_RAMP_*
+ *
+ * Sends the SetTxParams (0x8E) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_tx_params(sx1262_t *p, int8_t power, uint8_t ramp_time);
+
+/**
+ * sx1262_set_buffer_base_address
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param tx_base_addr - TX base address in the data buffer
+ * @param rx_base_addr - RX base address in the data buffer
+ *
+ * Sends the SetBufferBaseAddress (0x8F) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_buffer_base_address(sx1262_t *p, uint8_t tx_base_addr, uint8_t rx_base_addr);
+
+/**
+ * sx1262_write_buffer
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param offset - Offset into the data buffer to start writing at
+ * @param data - Bytes to write
+ * @param len - Number of bytes to write, up to SX1262_MAX_PAYLOAD_LEN
+ *
+ * Sends the WriteBuffer (0x0E) command to store a TX payload.
+ *
+ * @return HAL_OK on success, HAL_ERROR if len > SX1262_MAX_PAYLOAD_LEN, or
+ *         the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_write_buffer(sx1262_t *p, uint8_t offset, const uint8_t *data, size_t len);
+
+/**
+ * sx1262_read_buffer
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param offset - Offset into the data buffer to start reading from
+ * @param out_data - Receives the bytes read
+ * @param len - Number of bytes to read, up to SX1262_MAX_PAYLOAD_LEN
+ *
+ * Sends the ReadBuffer (0x1E) command to retrieve a received payload.
+ *
+ * @return HAL_OK on success, HAL_ERROR if len > SX1262_MAX_PAYLOAD_LEN, or
+ *         the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_read_buffer(sx1262_t *p, uint8_t offset, uint8_t *out_data, size_t len);
+
+/**
+ * sx1262_set_tx
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param timeout - Timeout in steps of 15.625us, or SX1262_RX_TX_TIMEOUT_NONE
+ *                  for Tx single mode with no timeout
+ *
+ * Sends the SetTx (0x83) command, starting transmission of the payload
+ * previously written with sx1262_write_buffer().
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_tx(sx1262_t *p, uint32_t timeout);
+
+/**
+ * sx1262_set_rx
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param timeout - Timeout in steps of 15.625us, SX1262_RX_TX_TIMEOUT_NONE
+ *                  for Rx single mode with no timeout, or
+ *                  SX1262_RX_TIMEOUT_CONTINUOUS for Rx continuous mode
+ *
+ * Sends the SetRx (0x82) command, putting the radio in receive mode.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_rx(sx1262_t *p, uint32_t timeout);
+
+/**
+ * sx1262_set_dio_irq_params
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param irq_mask - Bitmask of IRQs to enable in the IRQ status register
+ *                   (Table 13-29), e.g. SX1262_IRQ_ALL
+ * @param dio1_mask, dio2_mask, dio3_mask - Bitmasks of IRQs to route to
+ *                   each DIO pin; 0 if not using DIO-driven interrupts
+ *
+ * Sends the SetDioIrqParams (0x08) command. By default all IRQs are
+ * masked, so the IRQ status register never latches any event until this
+ * is called - required even when polling GetIrqStatus rather than using
+ * the DIO pins.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_dio_irq_params(sx1262_t *p, uint16_t irq_mask, uint16_t dio1_mask, uint16_t dio2_mask, uint16_t dio3_mask);
+
+/**
+ * sx1262_get_irq_status
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param out_irq - Receives the 16-bit IRQ status register (Table 13-29)
+ *
+ * Sends the GetIrqStatus (0x12) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq);
+
+/**
+ * sx1262_clear_irq_status
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param clear_mask - Bitmask of IRQs to clear, e.g. SX1262_IRQ_ALL
+ *
+ * Sends the ClearIrqStatus (0x02) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
+
+/**
+ * sx1262_get_device_errors
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param out_errors - Receives the 16-bit OpError register (Table 13-85)
+ *
+ * Sends the GetDeviceErrors (0x17) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_get_device_errors(sx1262_t *p, uint16_t *out_errors);
+
+/**
+ * sx1262_clear_device_errors
+ * @param p - Pointer to an initialized sx1262_t struct
+ *
+ * Sends the ClearDeviceErrors (0x07) command.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_clear_device_errors(sx1262_t *p);
 
 #endif /* INC_SX1262_H_ */
