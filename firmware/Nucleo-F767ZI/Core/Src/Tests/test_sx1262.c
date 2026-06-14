@@ -85,13 +85,13 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	status = sx1262_set_pa_config(p, 0x02, 0x02, SX1262_PA_CONFIG_SX1262);
+	status = sx1262_set_pa_config(p, 0x02, 0x03, SX1262_PA_CONFIG_SX1262);
 	if (status != HAL_OK) {
 		app_log("sx1262: set pa config failed: %d\r\n", status);
 		return;
 	}
 
-	status = sx1262_set_tx_params(p, 14, SX1262_RAMP_200U);
+	status = sx1262_set_tx_params(p, 17, SX1262_RAMP_200U);
 	if (status != HAL_OK) {
 		app_log("sx1262: set tx params failed: %d\r\n", status);
 		return;
@@ -103,7 +103,7 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +14dBm\r\n");
+	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +17dBm\r\n");
 }
 
 static uint8_t tx_payload[8] = "PING0000";
