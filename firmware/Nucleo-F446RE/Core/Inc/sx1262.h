@@ -6,6 +6,47 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/**
+ * sx1262.h - SX1262 LoRa transceiver driver
+ *
+ * Thin wrapper around the SX1262's SPI command set (datasheet section 13),
+ * covering the subset needed for basic LoRa TX/RX: reset, configuration,
+ * buffer access, TX/RX triggering and IRQ status.
+ *
+ * Typical bring-up sequence:
+ *   sx1262_init()
+ *   sx1262_reset()
+ *   sx1262_set_dio3_as_tcxo_ctrl()   (Waveshare Core1262-LF only)
+ *   sx1262_clear_device_errors()
+ *   sx1262_set_packet_type(LORA)
+ *   sx1262_set_rf_frequency()
+ *   sx1262_calibrate_image()         (if operating outside 902-928MHz)
+ *   sx1262_set_modulation_params_lora()
+ *   sx1262_set_packet_params_lora()
+ *   sx1262_set_buffer_base_address()
+ *   sx1262_set_pa_config() / sx1262_set_tx_params()   (TX only)
+ *   sx1262_set_dio_irq_params()
+ *
+ * Interrupt-driven TX/RX:
+ *   DIO1 can be configured via sx1262_set_dio_irq_params() to assert on
+ *   TxDone/RxDone/Timeout. The expected application pattern is:
+ *     1. Route DIO1 to an EXTI line and set an atomic flag from the ISR.
+ *     2. From the idle loop, start a transmission with sx1262_set_tx() or
+ *        start listening with sx1262_set_rx().
+ *     3. When the DIO1 flag is set, call a "service" function (e.g.
+ *        test_sx1262_tx_done()/test_sx1262_rx_done()) which reads
+ *        GetIrqStatus, clears it, and - only if the event was a real
+ *        TxDone/RxDone rather than a Timeout - invokes the registered
+ *        callback below.
+ *
+ * Callbacks:
+ *   sx1262_set_rx_done_callback() / sx1262_set_tx_done_callback() register
+ *   a void(*)(sx1262_t *p) callback, invoked with the instance pointer by
+ *   the corresponding service function whenever it observes a real
+ *   RxDone/TxDone (never on Timeout). Both are NULL after sx1262_init();
+ *   set to NULL to disable.
+ */
+
 /* GetStatus (datasheet 13.5.1) */
 #define SX1262_OP_GET_STATUS 0xC0
 #define SX1262_OP_NOP        0x00
