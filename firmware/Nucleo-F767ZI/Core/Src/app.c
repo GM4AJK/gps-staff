@@ -90,12 +90,12 @@ void app_loop(void)
 
 #ifdef TEST_SX1262
 		if(flag_get_1000MS()) {
-			test_sx1262_tx(&sx1262);
+			test_sx1262_tx_start(&sx1262);
 		}
 
 		if(sx1262_dio1_irq) {
 			sx1262_dio1_irq = false;
-			app_log("sx1262: DIO1 IRQ\r\n");
+			test_sx1262_tx_done(&sx1262);
 		}
 #endif /* TEST_SX1262 */
 	}

@@ -106,18 +106,17 @@ void test_sx1262_config(sx1262_t *p)
 	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +14dBm\r\n");
 }
 
-void test_sx1262_tx(sx1262_t *p)
+static uint8_t tx_payload[8] = "PING0000";
+
+void test_sx1262_tx_start(sx1262_t *p)
 {
 	static uint8_t counter = 0;
-	uint8_t payload[8] = "PING0000";
 	HAL_StatusTypeDef status;
-	uint16_t irq = 0;
-	uint32_t start;
 
-	payload[7] = '0' + counter;
+	tx_payload[7] = '0' + counter;
 	counter = (counter + 1) % 10;
 
-	status = sx1262_write_buffer(p, 0, payload, sizeof(payload));
+	status = sx1262_write_buffer(p, 0, tx_payload, sizeof(tx_payload));
 	if (status != HAL_OK) {
 		app_log("sx1262: tx write buffer failed: %d\r\n", status);
 		return;
@@ -128,52 +127,50 @@ void test_sx1262_tx(sx1262_t *p)
 		app_log("sx1262: set tx failed: %d\r\n", status);
 		return;
 	}
+}
 
-	start = HAL_GetTick();
-	do {
-		status = sx1262_get_irq_status(p, &irq);
-		if (status != HAL_OK) {
-			app_log("sx1262: tx get irq status failed: %d\r\n", status);
-			return;
-		}
-		if (irq & (SX1262_IRQ_TX_DONE | SX1262_IRQ_TIMEOUT)) {
-			break;
-		}
-	} while ((HAL_GetTick() - start) < 2000);
+void test_sx1262_tx_done(sx1262_t *p)
+{
+	HAL_StatusTypeDef status;
+	uint16_t irq = 0;
+
+	status = sx1262_get_irq_status(p, &irq);
+	if (status != HAL_OK) {
+		app_log("sx1262: tx get irq status failed: %d\r\n", status);
+		return;
+	}
 
 	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
 
 	if (irq & SX1262_IRQ_TX_DONE) {
-		app_log("sx1262: tx done, payload=\"%.8s\"\r\n", payload);
+		app_log("sx1262: tx done, payload=\"%.8s\"\r\n", tx_payload);
 	} else {
 		app_log("sx1262: tx timeout (irq=0x%04X)\r\n", irq);
 	}
 }
 
-void test_sx1262_rx(sx1262_t *p)
+void test_sx1262_rx_start(sx1262_t *p)
 {
-	uint8_t payload[8] = { 0 };
 	HAL_StatusTypeDef status;
-	uint16_t irq = 0;
-	uint32_t start;
 
 	status = sx1262_set_rx(p, 64000UL);
 	if (status != HAL_OK) {
 		app_log("sx1262: set rx failed: %d\r\n", status);
 		return;
 	}
+}
 
-	start = HAL_GetTick();
-	do {
-		status = sx1262_get_irq_status(p, &irq);
-		if (status != HAL_OK) {
-			app_log("sx1262: rx get irq status failed: %d\r\n", status);
-			return;
-		}
-		if (irq & (SX1262_IRQ_RX_DONE | SX1262_IRQ_TIMEOUT)) {
-			break;
-		}
-	} while ((HAL_GetTick() - start) < 1100);
+void test_sx1262_rx_done(sx1262_t *p)
+{
+	uint8_t payload[8] = { 0 };
+	HAL_StatusTypeDef status;
+	uint16_t irq = 0;
+
+	status = sx1262_get_irq_status(p, &irq);
+	if (status != HAL_OK) {
+		app_log("sx1262: rx get irq status failed: %d\r\n", status);
+		return;
+	}
 
 	if (irq & SX1262_IRQ_RX_DONE) {
 		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));

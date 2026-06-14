@@ -31,26 +31,44 @@ void test_sx1262_hello(sx1262_t *p);
 void test_sx1262_config(sx1262_t *p);
 
 /**
- * test_sx1262_tx
+ * test_sx1262_tx_start
  * @param p - Pointer to an initialized sx1262_t struct
  *
  * Writes an 8-byte "PING000x" payload (x = rotating counter digit) to
- * the radio's TX buffer and triggers a single SetTx. Polls
- * GetIrqStatus for TxDone/Timeout (up to 2s) before logging the result
- * over app_log() and clearing the IRQ flags.
+ * the radio's TX buffer and triggers a single SetTx. Returns
+ * immediately; completion is signalled by the DIO1 IRQ and handled by
+ * test_sx1262_tx_done().
  */
-void test_sx1262_tx(sx1262_t *p);
+void test_sx1262_tx_start(sx1262_t *p);
 
 /**
- * test_sx1262_rx
+ * test_sx1262_tx_done
  * @param p - Pointer to an initialized sx1262_t struct
  *
- * Triggers a single SetRx with a ~1s radio timeout. Polls GetIrqStatus
- * for RxDone/Timeout (up to 1.1s); on RxDone reads back the 8-byte
- * payload via ReadBuffer. Logs the result over app_log() and clears the
- * IRQ flags.
+ * Called once the DIO1 IRQ fires for a pending TX. Reads GetIrqStatus,
+ * logs TxDone/Timeout over app_log() and clears the IRQ flags.
  */
-void test_sx1262_rx(sx1262_t *p);
+void test_sx1262_tx_done(sx1262_t *p);
+
+/**
+ * test_sx1262_rx_start
+ * @param p - Pointer to an initialized sx1262_t struct
+ *
+ * Triggers a single SetRx with a ~1s radio timeout. Returns
+ * immediately; completion is signalled by the DIO1 IRQ and handled by
+ * test_sx1262_rx_done().
+ */
+void test_sx1262_rx_start(sx1262_t *p);
+
+/**
+ * test_sx1262_rx_done
+ * @param p - Pointer to an initialized sx1262_t struct
+ *
+ * Called once the DIO1 IRQ fires for a pending RX. Reads GetIrqStatus;
+ * on RxDone reads back the 8-byte payload via ReadBuffer. Logs the
+ * result over app_log() and clears the IRQ flags.
+ */
+void test_sx1262_rx_done(sx1262_t *p);
 
 #endif /* TEST_SX1262 */
 
