@@ -99,9 +99,10 @@
 #define SX1262_RX_TX_TIMEOUT_NONE    0x000000UL
 #define SX1262_RX_TIMEOUT_CONTINUOUS 0xFFFFFFUL
 
-/* GetIrqStatus / ClearIrqStatus (datasheet 13.3.1 / 13.3.3 / Table 13-29) */
-#define SX1262_OP_GET_IRQ_STATUS   0x12
-#define SX1262_OP_CLEAR_IRQ_STATUS 0x02
+/* SetDioIrqParams / GetIrqStatus / ClearIrqStatus (datasheet 13.3.1 / 13.3.1 / 13.3.3 / Table 13-29) */
+#define SX1262_OP_SET_DIO_IRQ_PARAMS 0x08
+#define SX1262_OP_GET_IRQ_STATUS     0x12
+#define SX1262_OP_CLEAR_IRQ_STATUS   0x02
 
 #define SX1262_IRQ_TX_DONE      (1U << 0)
 #define SX1262_IRQ_RX_DONE      (1U << 1)
@@ -330,6 +331,23 @@ HAL_StatusTypeDef sx1262_set_tx(sx1262_t *p, uint32_t timeout);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_set_rx(sx1262_t *p, uint32_t timeout);
+
+/**
+ * sx1262_set_dio_irq_params
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param irq_mask - Bitmask of IRQs to enable in the IRQ status register
+ *                   (Table 13-29), e.g. SX1262_IRQ_ALL
+ * @param dio1_mask, dio2_mask, dio3_mask - Bitmasks of IRQs to route to
+ *                   each DIO pin; 0 if not using DIO-driven interrupts
+ *
+ * Sends the SetDioIrqParams (0x08) command. By default all IRQs are
+ * masked, so the IRQ status register never latches any event until this
+ * is called - required even when polling GetIrqStatus rather than using
+ * the DIO pins.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_dio_irq_params(sx1262_t *p, uint16_t irq_mask, uint16_t dio1_mask, uint16_t dio2_mask, uint16_t dio3_mask);
 
 /**
  * sx1262_get_irq_status

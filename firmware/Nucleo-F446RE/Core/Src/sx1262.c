@@ -207,6 +207,19 @@ HAL_StatusTypeDef sx1262_set_rx(sx1262_t *p, uint32_t timeout)
 	return sx1262_write(p, tx, sizeof(tx));
 }
 
+HAL_StatusTypeDef sx1262_set_dio_irq_params(sx1262_t *p, uint16_t irq_mask, uint16_t dio1_mask, uint16_t dio2_mask, uint16_t dio3_mask)
+{
+	uint8_t tx[9] = {
+		SX1262_OP_SET_DIO_IRQ_PARAMS,
+		(uint8_t)(irq_mask >> 8), (uint8_t)(irq_mask),
+		(uint8_t)(dio1_mask >> 8), (uint8_t)(dio1_mask),
+		(uint8_t)(dio2_mask >> 8), (uint8_t)(dio2_mask),
+		(uint8_t)(dio3_mask >> 8), (uint8_t)(dio3_mask)
+	};
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
 HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq)
 {
 	uint8_t tx[4] = { SX1262_OP_GET_IRQ_STATUS, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP };

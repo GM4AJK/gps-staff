@@ -78,6 +78,12 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
+	status = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, 0, 0, 0);
+	if (status != HAL_OK) {
+		app_log("sx1262: set dio irq params failed: %d\r\n", status);
+		return;
+	}
+
 	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +14dBm\r\n");
 }
 
