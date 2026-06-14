@@ -47,9 +47,10 @@ void test_sx1262_tx_start(sx1262_t *p);
  * @param p - Pointer to an initialized sx1262_t struct
  *
  * Called once the DIO1 IRQ fires for a pending TX. Reads GetIrqStatus,
- * logs TxDone/Timeout over app_log() and clears the IRQ flags.
+ * logs TxDone/Timeout over app_log() and clears the IRQ flags. Returns
+ * true if the IRQ was TxDone, false on timeout.
  */
-void test_sx1262_tx_done(sx1262_t *p);
+bool test_sx1262_tx_done(sx1262_t *p);
 
 /**
  * test_sx1262_rx_start
@@ -80,6 +81,15 @@ bool test_sx1262_rx_done(sx1262_t *p);
  * test_sx1262_rx_done() whenever a packet is actually received.
  */
 void test_sx1262_rx_done_toggle_led(void);
+
+/**
+ * test_sx1262_tx_done_toggle_led
+ *
+ * Toggles LD2. Registered via sx1262_set_tx_done_callback() in
+ * test_sx1262_config() as a demo of the tx_done callback - called from
+ * test_sx1262_tx_done() whenever a transmission actually completes.
+ */
+void test_sx1262_tx_done_toggle_led(void);
 
 #endif /* TEST_SX1262 */
 

@@ -104,11 +104,17 @@ void test_sx1262_config(sx1262_t *p)
 	}
 
 	sx1262_set_rx_done_callback(p, test_sx1262_rx_done_toggle_led);
+	sx1262_set_tx_done_callback(p, test_sx1262_tx_done_toggle_led);
 
 	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +17dBm\r\n");
 }
 
 void test_sx1262_rx_done_toggle_led(void)
+{
+	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+}
+
+void test_sx1262_tx_done_toggle_led(void)
 {
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 }
@@ -136,7 +142,7 @@ void test_sx1262_tx_start(sx1262_t *p)
 	}
 }
 
-void test_sx1262_tx_done(sx1262_t *p)
+bool test_sx1262_tx_done(sx1262_t *p)
 {
 	HAL_StatusTypeDef status;
 	uint16_t irq = 0;
@@ -144,16 +150,22 @@ void test_sx1262_tx_done(sx1262_t *p)
 	status = sx1262_get_irq_status(p, &irq);
 	if (status != HAL_OK) {
 		app_log("sx1262: tx get irq status failed: %d\r\n", status);
-		return;
+		return false;
 	}
 
 	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
 
 	if (irq & SX1262_IRQ_TX_DONE) {
 		app_log("sx1262: tx done, payload=\"%.8s\"\r\n", tx_payload);
+
+		if (p->tx_done != NULL) {
+			p->tx_done();
+		}
 	} else {
 		app_log("sx1262: tx timeout (irq=0x%04X)\r\n", irq);
 	}
+
+	return (irq & SX1262_IRQ_TX_DONE) != 0;
 }
 
 void test_sx1262_rx_start(sx1262_t *p)
