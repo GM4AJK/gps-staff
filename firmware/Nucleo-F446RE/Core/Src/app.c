@@ -66,6 +66,10 @@ void app_init(void)
 		return;
 	}
 
+#ifdef TEST_SX1262
+	test_sx1262_set_oled(&oled);
+#endif /* TEST_SX1262 */
+
 	sx1262_init(
 		&sx1262, &hspi2,
 		SX1262_SPI_CS_GPIO_Port, SX1262_SPI_CS_Pin,
@@ -87,7 +91,6 @@ void app_loop(void)
 		}
 
 		if(flag_get_SX1262_DIO1()) {
-			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			test_sx1262_rx_done(&sx1262);
 		}
 #endif /* TEST_SX1262 */
