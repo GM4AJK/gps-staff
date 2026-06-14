@@ -6,6 +6,53 @@
 #include <stdint.h>
 #include <stddef.h>
 
+/**
+ * sx1262.h - SX1262 LoRa transceiver driver
+ *
+ * Thin wrapper around the SX1262's SPI command set (datasheet section 13),
+ * covering the subset needed for basic LoRa TX/RX: reset, configuration,
+ * buffer access, TX/RX triggering and IRQ status.
+ *
+ * Typical bring-up sequence:
+ *   sx1262_init()
+ *   sx1262_reset()
+ *   sx1262_set_dio3_as_tcxo_ctrl()   (Waveshare Core1262-LF only)
+ *   sx1262_clear_device_errors()
+ *   sx1262_set_packet_type(LORA)
+ *   sx1262_set_rf_frequency()
+ *   sx1262_calibrate_image()         (if operating outside 902-928MHz)
+ *   sx1262_set_modulation_params_lora()
+ *   sx1262_set_packet_params_lora()
+ *   sx1262_set_buffer_base_address()
+ *   sx1262_set_pa_config() / sx1262_set_tx_params()   (TX only)
+ *   sx1262_set_dio_irq_params()
+ *
+ * Interrupt-driven TX/RX:
+ *   DIO1 can be configured via sx1262_set_dio_irq_params() to assert on
+ *   TxDone/RxDone/Timeout. The expected application pattern is:
+ *     1. Route DIO1 to an EXTI line and set an atomic flag from the ISR.
+ *     2. From the idle loop, start a transmission with sx1262_set_tx() or
+ *        start listening with sx1262_set_rx().
+ *     3. When the DIO1 flag is set, call a "service" function (e.g.
+ *        test_sx1262_tx_done()/test_sx1262_rx_done()) which reads
+ *        GetIrqStatus, clears it, and - only if the event was a real
+ *        TxDone/RxDone rather than a Timeout - invokes the registered
+ *        callback below.
+ *
+ * Callbacks:
+ *   sx1262_set_tx_done_callback(), sx1262_set_rx_timeout_callback() and
+ *   sx1262_set_tx_timeout_callback() each register a void(*)(sx1262_t *p)
+ *   callback, invoked with the instance pointer by the corresponding
+ *   service function when it observes TxDone or Timeout.
+ *
+ *   sx1262_set_rx_done_callback() registers a callback invoked with the
+ *   instance pointer plus the received payload (pointer + length), RSSI
+ *   and raw SnrPkt value, since RxDone results are not otherwise
+ *   available via the sx1262_t struct.
+ *
+ *   All four are NULL after sx1262_init(); set to NULL to disable.
+ */
+
 /* GetStatus (datasheet 13.5.1) */
 #define SX1262_OP_GET_STATUS 0xC0
 #define SX1262_OP_NOP        0x00
@@ -153,8 +200,10 @@ typedef struct sx1262_s {
 	GPIO_PIN_DEF(cs_port, cs_pin);
 	GPIO_PIN_DEF(reset_port, reset_pin);
 	GPIO_PIN_DEF(busy_port, busy_pin);
-	void (*rx_done)(struct sx1262_s *p);
+	void (*rx_done)(struct sx1262_s *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db);
 	void (*tx_done)(struct sx1262_s *p);
+	void (*rx_timeout)(struct sx1262_s *p);
+	void (*tx_timeout)(struct sx1262_s *p);
 } sx1262_t;
 
 /**
@@ -183,10 +232,14 @@ void sx1262_init(
  *                    to disable
  *
  * Registers a callback to be invoked when a valid packet (RxDone) is
- * detected. The callback receives the sx1262_t instance pointer. Stored
- * in p->rx_done; NULL by default after sx1262_init().
+ * detected. The callback receives the sx1262_t instance pointer, a
+ * pointer to the received payload, its length in bytes, the averaged
+ * RSSI in dBm, and the raw SnrPkt register value in steps of 0.25dB (see
+ * sx1262_get_packet_status()). The payload pointer is only valid for the
+ * duration of the callback. Stored in p->rx_done; NULL by default after
+ * sx1262_init().
  */
-void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db));
 
 /**
  * sx1262_set_tx_done_callback
@@ -199,6 +252,30 @@ void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
  * p->tx_done; NULL by default after sx1262_init().
  */
 void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+
+/**
+ * sx1262_set_rx_timeout_callback
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param callback - Function to call when an Rx operation times out
+ *                    without receiving a packet, or NULL to disable
+ *
+ * Registers a callback to be invoked when an Rx operation completes with
+ * Timeout rather than RxDone. The callback receives the sx1262_t instance
+ * pointer. Stored in p->rx_timeout; NULL by default after sx1262_init().
+ */
+void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+
+/**
+ * sx1262_set_tx_timeout_callback
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param callback - Function to call when a Tx operation times out
+ *                    without completing, or NULL to disable
+ *
+ * Registers a callback to be invoked when a Tx operation completes with
+ * Timeout rather than TxDone. The callback receives the sx1262_t instance
+ * pointer. Stored in p->tx_timeout; NULL by default after sx1262_init().
+ */
+void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
 
 /**
  * sx1262_wait_busy

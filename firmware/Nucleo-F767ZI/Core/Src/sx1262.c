@@ -37,9 +37,11 @@ void sx1262_init(
 	p->busy_pin = busy_pin;
 	p->rx_done = NULL;
 	p->tx_done = NULL;
+	p->rx_timeout = NULL;
+	p->tx_timeout = NULL;
 }
 
-void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
+void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db))
 {
 	p->rx_done = callback;
 }
@@ -47,6 +49,16 @@ void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
 void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
 {
 	p->tx_done = callback;
+}
+
+void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
+{
+	p->rx_timeout = callback;
+}
+
+void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
+{
+	p->tx_timeout = callback;
 }
 
 HAL_StatusTypeDef sx1262_wait_busy(sx1262_t *p)
