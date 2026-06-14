@@ -1,6 +1,7 @@
 
 
 #include "sx1262.h"
+#include "app.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -312,6 +313,82 @@ HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask)
 	uint8_t tx[3] = { SX1262_OP_CLEAR_IRQ_STATUS, (uint8_t)(clear_mask >> 8), (uint8_t)(clear_mask) };
 
 	return sx1262_write(p, tx, sizeof(tx));
+}
+
+bool sx1262_service_tx(sx1262_t *p)
+{
+	HAL_StatusTypeDef status;
+	uint16_t irq = 0;
+
+	status = sx1262_get_irq_status(p, &irq);
+	if (status != HAL_OK) {
+		app_log("sx1262: tx get irq status failed: %d\r\n", status);
+		return false;
+	}
+
+	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
+
+	if (irq & SX1262_IRQ_TX_DONE) {
+		if (p->tx_done != NULL) {
+			p->tx_done(p);
+		}
+	} else {
+		app_log("sx1262: tx timeout (irq=0x%04X)\r\n", irq);
+
+		if (p->tx_timeout != NULL) {
+			p->tx_timeout(p);
+		}
+	}
+
+	return (irq & SX1262_IRQ_TX_DONE) != 0;
+}
+
+bool sx1262_service_rx(sx1262_t *p)
+{
+	uint8_t payload[8] = { 0 };
+	HAL_StatusTypeDef status;
+	uint16_t irq = 0;
+	int8_t rssi = 0;
+	int8_t snr_quarter_db = 0;
+
+	status = sx1262_get_irq_status(p, &irq);
+	if (status != HAL_OK) {
+		app_log("sx1262: rx get irq status failed: %d\r\n", status);
+		return false;
+	}
+
+	if (irq & SX1262_IRQ_RX_DONE) {
+		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));
+		if (status != HAL_OK) {
+			app_log("sx1262: rx read buffer failed: %d\r\n", status);
+		} else if (sx1262_get_packet_status(p, &rssi, &snr_quarter_db) == HAL_OK) {
+			int snr_centi_db = (int)snr_quarter_db * 25;
+			int snr_neg = (snr_centi_db < 0);
+
+			if (snr_neg) {
+				snr_centi_db = -snr_centi_db;
+			}
+
+			app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB\r\n",
+				payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
+		} else {
+			app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
+		}
+
+		if (p->rx_done != NULL) {
+			p->rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
+		}
+	} else {
+		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);
+
+		if (p->rx_timeout != NULL) {
+			p->rx_timeout(p);
+		}
+	}
+
+	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
+
+	return (irq & SX1262_IRQ_RX_DONE) != 0;
 }
 
 HAL_StatusTypeDef sx1262_get_device_errors(sx1262_t *p, uint16_t *out_errors)

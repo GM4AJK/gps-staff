@@ -3,7 +3,6 @@
 
 #include "sx1262.h"
 #include "ssd1309.h"
-#include <stdbool.h>
 
 /* Comment out to exclude the sx1262 bench test from the build */
 #define TEST_SX1262
@@ -49,19 +48,9 @@ void test_sx1262_config(sx1262_t *p);
  * Writes an 8-byte "PING000x" payload (x = rotating counter digit) to
  * the radio's TX buffer and triggers a single SetTx. Returns
  * immediately; completion is signalled by the DIO1 IRQ and handled by
- * test_sx1262_tx_done().
+ * sx1262_service_tx().
  */
 void test_sx1262_tx_start(sx1262_t *p);
-
-/**
- * test_sx1262_tx_done
- * @param p - Pointer to an initialized sx1262_t struct
- *
- * Called once the DIO1 IRQ fires for a pending TX. Reads GetIrqStatus,
- * logs TxDone/Timeout over app_log() and clears the IRQ flags. Returns
- * true if the IRQ was TxDone, false on timeout.
- */
-bool test_sx1262_tx_done(sx1262_t *p);
 
 /**
  * test_sx1262_rx_start
@@ -69,20 +58,9 @@ bool test_sx1262_tx_done(sx1262_t *p);
  *
  * Triggers a single SetRx with a ~1s radio timeout. Returns
  * immediately; completion is signalled by the DIO1 IRQ and handled by
- * test_sx1262_rx_done().
+ * sx1262_service_rx().
  */
 void test_sx1262_rx_start(sx1262_t *p);
-
-/**
- * test_sx1262_rx_done
- * @param p - Pointer to an initialized sx1262_t struct
- *
- * Called once the DIO1 IRQ fires for a pending RX. Reads GetIrqStatus;
- * on RxDone reads back the 8-byte payload via ReadBuffer. Logs the
- * result over app_log() and clears the IRQ flags. Returns true if the
- * IRQ was RxDone (a packet was actually received), false on timeout.
- */
-bool test_sx1262_rx_done(sx1262_t *p);
 
 /**
  * test_sx1262_rx_done_handler
@@ -97,7 +75,7 @@ bool test_sx1262_rx_done(sx1262_t *p);
  * test_sx1262_set_oled()) clears the display and shows the received
  * packet's payload, RSSI and SNR. Registered via
  * sx1262_set_rx_done_callback() in test_sx1262_config() - called from
- * test_sx1262_rx_done() whenever a packet is actually received.
+ * sx1262_service_rx() whenever a packet is actually received.
  */
 void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db);
 
@@ -105,9 +83,10 @@ void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len
  * test_sx1262_tx_done_toggle_led
  * @param p - Pointer to the sx1262_t instance that completed transmission
  *
- * Toggles LD2. Registered via sx1262_set_tx_done_callback() in
- * test_sx1262_config() as a demo of the tx_done callback - called from
- * test_sx1262_tx_done() whenever a transmission actually completes.
+ * Logs the completed TX payload over app_log() and toggles LD2.
+ * Registered via sx1262_set_tx_done_callback() in test_sx1262_config() -
+ * called from sx1262_service_tx() whenever a transmission actually
+ * completes.
  */
 void test_sx1262_tx_done_toggle_led(sx1262_t *p);
 

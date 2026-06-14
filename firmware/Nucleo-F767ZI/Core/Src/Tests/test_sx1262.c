@@ -148,12 +148,14 @@ void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len
 	ssd1309_flush(oled);
 }
 
+static uint8_t tx_payload[8] = "PING0000";
+
 void test_sx1262_tx_done_toggle_led(sx1262_t *p)
 {
+	app_log("sx1262: tx done, payload=\"%.8s\"\r\n", tx_payload);
+
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 }
-
-static uint8_t tx_payload[8] = "PING0000";
 
 void test_sx1262_tx_start(sx1262_t *p)
 {
@@ -176,36 +178,6 @@ void test_sx1262_tx_start(sx1262_t *p)
 	}
 }
 
-bool test_sx1262_tx_done(sx1262_t *p)
-{
-	HAL_StatusTypeDef status;
-	uint16_t irq = 0;
-
-	status = sx1262_get_irq_status(p, &irq);
-	if (status != HAL_OK) {
-		app_log("sx1262: tx get irq status failed: %d\r\n", status);
-		return false;
-	}
-
-	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
-
-	if (irq & SX1262_IRQ_TX_DONE) {
-		app_log("sx1262: tx done, payload=\"%.8s\"\r\n", tx_payload);
-
-		if (p->tx_done != NULL) {
-			p->tx_done(p);
-		}
-	} else {
-		app_log("sx1262: tx timeout (irq=0x%04X)\r\n", irq);
-
-		if (p->tx_timeout != NULL) {
-			p->tx_timeout(p);
-		}
-	}
-
-	return (irq & SX1262_IRQ_TX_DONE) != 0;
-}
-
 void test_sx1262_rx_start(sx1262_t *p)
 {
 	HAL_StatusTypeDef status;
@@ -215,54 +187,6 @@ void test_sx1262_rx_start(sx1262_t *p)
 		app_log("sx1262: set rx failed: %d\r\n", status);
 		return;
 	}
-}
-
-bool test_sx1262_rx_done(sx1262_t *p)
-{
-	uint8_t payload[8] = { 0 };
-	HAL_StatusTypeDef status;
-	uint16_t irq = 0;
-	int8_t rssi = 0;
-	int8_t snr_quarter_db = 0;
-
-	status = sx1262_get_irq_status(p, &irq);
-	if (status != HAL_OK) {
-		app_log("sx1262: rx get irq status failed: %d\r\n", status);
-		return false;
-	}
-
-	if (irq & SX1262_IRQ_RX_DONE) {
-		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));
-		if (status != HAL_OK) {
-			app_log("sx1262: rx read buffer failed: %d\r\n", status);
-		} else if (sx1262_get_packet_status(p, &rssi, &snr_quarter_db) == HAL_OK) {
-			int snr_centi_db = (int)snr_quarter_db * 25;
-			int snr_neg = (snr_centi_db < 0);
-
-			if (snr_neg) {
-				snr_centi_db = -snr_centi_db;
-			}
-
-			app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB\r\n",
-				payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
-		} else {
-			app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
-		}
-
-		if (p->rx_done != NULL) {
-			p->rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
-		}
-	} else {
-		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);
-
-		if (p->rx_timeout != NULL) {
-			p->rx_timeout(p);
-		}
-	}
-
-	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
-
-	return (irq & SX1262_IRQ_RX_DONE) != 0;
 }
 
 #endif /* TEST_SX1262 */

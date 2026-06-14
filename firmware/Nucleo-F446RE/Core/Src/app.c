@@ -91,7 +91,7 @@ void app_loop(void)
 		}
 
 		if(flag_get_SX1262_DIO1()) {
-			test_sx1262_rx_done(&sx1262);
+			sx1262_service_rx(&sx1262);
 		}
 #endif /* TEST_SX1262 */
 	}
