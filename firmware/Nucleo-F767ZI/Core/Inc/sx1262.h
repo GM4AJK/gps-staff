@@ -7,6 +7,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+/* Comment out to disable library logging via sx1262_set_logger_callback() */
+#define SX1262_WITH_LOGGING
+
 /**
  * sx1262.h - SX1262 LoRa transceiver driver
  *
@@ -52,6 +55,16 @@
  *   available via the sx1262_t struct.
  *
  *   All four are NULL after sx1262_init(); set to NULL to disable.
+ *
+ * Logging:
+ *   If SX1262_WITH_LOGGING is defined, sx1262_set_logger_callback()
+ *   registers a void(*)(const char *buf, int len) callback used by the
+ *   library to report errors, timeouts and RxDone/TxDone details. The
+ *   library formats messages internally (via vsnprintf) and passes the
+ *   resulting buffer and length to the callback, e.g. for transmission
+ *   over UART. NULL after sx1262_init(). If SX1262_WITH_LOGGING is not
+ *   defined, the logger field and all formatting/snprintf calls are
+ *   compiled out entirely.
  */
 
 /* GetStatus (datasheet 13.5.1) */
@@ -205,6 +218,9 @@ typedef struct sx1262_s {
 	void (*tx_done)(struct sx1262_s *p);
 	void (*rx_timeout)(struct sx1262_s *p);
 	void (*tx_timeout)(struct sx1262_s *p);
+#ifdef SX1262_WITH_LOGGING
+	void (*logger)(const char *buf, int len);
+#endif
 } sx1262_t;
 
 /**
@@ -277,6 +293,23 @@ void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
  * pointer. Stored in p->tx_timeout; NULL by default after sx1262_init().
  */
 void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+
+#ifdef SX1262_WITH_LOGGING
+/**
+ * sx1262_set_logger_callback
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param logger - Function to call with a formatted log message, or NULL
+ *                  to disable
+ *
+ * Registers a callback used by the library to report errors, timeouts
+ * and RxDone/TxDone details. Called with a buffer and its length (not
+ * NUL-terminated guaranteed, but always printable); the callback is
+ * expected to forward it verbatim, e.g. over UART. Stored in p->logger;
+ * NULL by default after sx1262_init(). Only declared if
+ * SX1262_WITH_LOGGING is defined.
+ */
+void sx1262_set_logger_callback(sx1262_t *p, void (*logger)(const char *buf, int len));
+#endif
 
 /**
  * sx1262_wait_busy
@@ -581,8 +614,8 @@ bool sx1262_service_rx(sx1262_t *p);
  *
  * Sends the GetPacketStatus (0x14) command for the LoRa packet status
  * (Table 13-79). RssiPkt is reported as -RssiPkt/2 dBm. SnrPkt is
- * returned raw (not converted to float) since app_log()'s nano-newlib
- * vsnprintf does not support %f.
+ * returned raw (not converted to float) since nano-newlib's vsnprintf
+ * does not support %f.
  *
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */

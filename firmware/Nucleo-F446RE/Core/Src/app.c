@@ -54,6 +54,13 @@ void app_log(const char *fmt, ...)
 	HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, 100);
 }
 
+#ifdef SX1262_WITH_LOGGING
+static void sx1262_logger(const char *buf, int len)
+{
+	HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, 100);
+}
+#endif /* SX1262_WITH_LOGGING */
+
 void app_init(void)
 {
 	/* Allow externally connected devices time to power up before init */
@@ -76,6 +83,10 @@ void app_init(void)
 		SX1262_SPI_RESET_GPIO_Port, SX1262_SPI_RESET_Pin,
 		SX1262_SPI_BUSY_GPIO_Port, SX1262_SPI_BUSY_Pin
 	);
+
+#ifdef SX1262_WITH_LOGGING
+	sx1262_set_logger_callback(&sx1262, sx1262_logger);
+#endif /* SX1262_WITH_LOGGING */
 
 	app_log("Start up\r\n");
 
