@@ -129,14 +129,6 @@ void test_sx1262_tx(sx1262_t *p)
 		return;
 	}
 
-	{
-		uint8_t value = 0;
-		uint16_t errors = 0;
-		sx1262_get_status(p, &value);
-		sx1262_get_device_errors(p, &errors);
-		app_log("sx1262: tx status=0x%02X (chip mode=%u, cmd status=%u), errors=0x%04X\r\n", value, (value >> 4) & 0x07, (value >> 1) & 0x07, errors);
-	}
-
 	start = HAL_GetTick();
 	do {
 		status = sx1262_get_irq_status(p, &irq);
@@ -169,14 +161,6 @@ void test_sx1262_rx(sx1262_t *p)
 	if (status != HAL_OK) {
 		app_log("sx1262: set rx failed: %d\r\n", status);
 		return;
-	}
-
-	{
-		uint8_t value = 0;
-		uint16_t errors = 0;
-		sx1262_get_status(p, &value);
-		sx1262_get_device_errors(p, &errors);
-		app_log("sx1262: rx status=0x%02X (chip mode=%u, cmd status=%u), errors=0x%04X\r\n", value, (value >> 4) & 0x07, (value >> 1) & 0x07, errors);
 	}
 
 	start = HAL_GetTick();
