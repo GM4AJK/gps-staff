@@ -10,10 +10,13 @@
 #include "flags.h"
 #include "ssd1309.h"
 #include "Tests/test_ssd1309.h"
+#include "sx1262.h"
+#include "Tests/test_sx1262.h"
 
 static void app_tests(void);
 
 static ssd1309_t oled;
+static sx1262_t sx1262;
 
 #define COUNTER_TIMER(x, y, z) \
 	static volatile int x = 0; \
@@ -54,6 +57,13 @@ void app_init(void)
 		return;
 	}
 
+	sx1262_init(
+		&sx1262, &hspi2,
+		SX1262_SPI_CS_GPIO_Port, SX1262_SPI_CS_Pin,
+		SX1262_SPI_RESET_GPIO_Port, SX1262_SPI_RESET_Pin,
+		SX1262_SPI_BUSY_GPIO_Port, SX1262_SPI_BUSY_Pin
+	);
+
 	app_log("Start up\r\n");
 
 	app_tests();
@@ -64,11 +74,15 @@ void app_loop(void)
 	bool flipper = false;
 
 	while(true) {
-		HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
-		HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
-		flipper = !flipper;
+		if(flag_get_100MS()) {
+			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
+			flipper = !flipper;
 
-		HAL_Delay(500);
+#ifdef TEST_SX1262
+			test_sx1262_hello(&sx1262);
+#endif /* TEST_SX1262 */
+		}
 	}
 }
 
