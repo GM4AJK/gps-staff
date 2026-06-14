@@ -5,6 +5,10 @@
 #include "main.h"
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
+
+/* Comment out to disable library logging via sx1262_set_logger_callback() */
+#define SX1262_WITH_LOGGING
 
 /**
  * sx1262.h - SX1262 LoRa transceiver driver
@@ -33,11 +37,11 @@
  *     1. Route DIO1 to an EXTI line and set an atomic flag from the ISR.
  *     2. From the idle loop, start a transmission with sx1262_set_tx() or
  *        start listening with sx1262_set_rx().
- *     3. When the DIO1 flag is set, call a "service" function (e.g.
- *        test_sx1262_tx_done()/test_sx1262_rx_done()) which reads
- *        GetIrqStatus, clears it, and - only if the event was a real
- *        TxDone/RxDone rather than a Timeout - invokes the registered
- *        callback below.
+ *     3. When the DIO1 flag is set, call sx1262_service_tx() or
+ *        sx1262_service_rx() - whichever matches the operation just
+ *        started - which reads GetIrqStatus, clears it, and dispatches
+ *        to the registered callback below depending on whether the IRQ
+ *        was TxDone/RxDone or Timeout.
  *
  * Callbacks:
  *   sx1262_set_tx_done_callback(), sx1262_set_rx_timeout_callback() and
@@ -51,6 +55,16 @@
  *   available via the sx1262_t struct.
  *
  *   All four are NULL after sx1262_init(); set to NULL to disable.
+ *
+ * Logging:
+ *   If SX1262_WITH_LOGGING is defined, sx1262_set_logger_callback()
+ *   registers a void(*)(const char *buf, int len) callback used by the
+ *   library to report errors, timeouts and RxDone/TxDone details. The
+ *   library formats messages internally (via vsnprintf) and passes the
+ *   resulting buffer and length to the callback, e.g. for transmission
+ *   over UART. NULL after sx1262_init(). If SX1262_WITH_LOGGING is not
+ *   defined, the logger field and all formatting/snprintf calls are
+ *   compiled out entirely.
  */
 
 /* GetStatus (datasheet 13.5.1) */
@@ -204,6 +218,9 @@ typedef struct sx1262_s {
 	void (*tx_done)(struct sx1262_s *p);
 	void (*rx_timeout)(struct sx1262_s *p);
 	void (*tx_timeout)(struct sx1262_s *p);
+#ifdef SX1262_WITH_LOGGING
+	void (*logger)(const char *buf, int len);
+#endif
 } sx1262_t;
 
 /**
@@ -276,6 +293,23 @@ void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
  * pointer. Stored in p->tx_timeout; NULL by default after sx1262_init().
  */
 void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+
+#ifdef SX1262_WITH_LOGGING
+/**
+ * sx1262_set_logger_callback
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param logger - Function to call with a formatted log message, or NULL
+ *                  to disable
+ *
+ * Registers a callback used by the library to report errors, timeouts
+ * and RxDone/TxDone details. Called with a buffer and its length (not
+ * NUL-terminated guaranteed, but always printable); the callback is
+ * expected to forward it verbatim, e.g. over UART. Stored in p->logger;
+ * NULL by default after sx1262_init(). Only declared if
+ * SX1262_WITH_LOGGING is defined.
+ */
+void sx1262_set_logger_callback(sx1262_t *p, void (*logger)(const char *buf, int len));
+#endif
 
 /**
  * sx1262_wait_busy
@@ -541,6 +575,37 @@ HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq);
 HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
 
 /**
+ * sx1262_service_tx
+ * @param p - Pointer to an initialized sx1262_t struct
+ *
+ * Called from the idle loop once the DIO1 IRQ fires for a TX started with
+ * sx1262_set_tx() - the application is expected to know a TX is in flight
+ * and call this rather than sx1262_service_rx(). Reads GetIrqStatus,
+ * clears it, and dispatches to the registered tx_done or tx_timeout
+ * callback depending on whether the IRQ was TxDone or Timeout.
+ *
+ * @return true if the IRQ was TxDone, false on Timeout or error.
+ */
+bool sx1262_service_tx(sx1262_t *p);
+
+/**
+ * sx1262_service_rx
+ * @param p - Pointer to an initialized sx1262_t struct
+ *
+ * Called from the idle loop once the DIO1 IRQ fires for an RX started
+ * with sx1262_set_rx() - the application is expected to know an RX is in
+ * flight and call this rather than sx1262_service_tx(). Reads
+ * GetIrqStatus; on RxDone reads back the 8-byte payload via ReadBuffer
+ * and the RSSI/SNR via GetPacketStatus, then dispatches to the registered
+ * rx_done callback. On Timeout dispatches to rx_timeout. Clears the IRQ
+ * status before returning.
+ *
+ * @return true if the IRQ was RxDone (a packet was actually received),
+ *         false on Timeout or error.
+ */
+bool sx1262_service_rx(sx1262_t *p);
+
+/**
  * sx1262_get_packet_status
  * @param p - Pointer to an initialized sx1262_t struct
  * @param out_rssi_pkt - Receives the averaged RSSI of the last packet, in dBm
@@ -549,8 +614,8 @@ HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
  *
  * Sends the GetPacketStatus (0x14) command for the LoRa packet status
  * (Table 13-79). RssiPkt is reported as -RssiPkt/2 dBm. SnrPkt is
- * returned raw (not converted to float) since app_log()'s nano-newlib
- * vsnprintf does not support %f.
+ * returned raw (not converted to float) since nano-newlib's vsnprintf
+ * does not support %f.
  *
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
