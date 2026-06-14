@@ -111,6 +111,13 @@ HAL_StatusTypeDef sx1262_calibrate_image(sx1262_t *p, uint8_t freq1, uint8_t fre
 	return sx1262_write(p, tx, sizeof(tx));
 }
 
+HAL_StatusTypeDef sx1262_set_dio3_as_tcxo_ctrl(sx1262_t *p, uint8_t tcxo_voltage, uint32_t delay)
+{
+	uint8_t tx[5] = { SX1262_OP_SET_DIO3_AS_TCXO_CTRL, tcxo_voltage, (uint8_t)(delay >> 16), (uint8_t)(delay >> 8), (uint8_t)(delay) };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
 HAL_StatusTypeDef sx1262_set_modulation_params_lora(sx1262_t *p, uint8_t sf, uint8_t bw, uint8_t cr, uint8_t ldro)
 {
 	uint8_t tx[9] = { SX1262_OP_SET_MODULATION_PARAMS, sf, bw, cr, ldro, 0x00, 0x00, 0x00, 0x00 };

@@ -36,6 +36,19 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
+	/* Waveshare Core1262-LF: 32MHz reference is a TCXO powered via DIO3 */
+	status = sx1262_set_dio3_as_tcxo_ctrl(p, SX1262_TCXO_VOLTAGE_1_8, 320);
+	if (status != HAL_OK) {
+		app_log("sx1262: set dio3 as tcxo ctrl failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_clear_device_errors(p);
+	if (status != HAL_OK) {
+		app_log("sx1262: clear device errors failed: %d\r\n", status);
+		return;
+	}
+
 	status = sx1262_set_packet_type(p, SX1262_PACKET_TYPE_LORA);
 	if (status != HAL_OK) {
 		app_log("sx1262: set packet type failed: %d\r\n", status);

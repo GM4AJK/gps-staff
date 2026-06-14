@@ -24,6 +24,17 @@
 #define SX1262_CAL_IMG_430_440_FREQ1 0x6B
 #define SX1262_CAL_IMG_430_440_FREQ2 0x6F
 
+/* SetDIO3AsTCXOCtrl (datasheet 13.3.6 / Table 13-35) */
+#define SX1262_OP_SET_DIO3_AS_TCXO_CTRL 0x97
+#define SX1262_TCXO_VOLTAGE_1_6 0x00
+#define SX1262_TCXO_VOLTAGE_1_7 0x01
+#define SX1262_TCXO_VOLTAGE_1_8 0x02
+#define SX1262_TCXO_VOLTAGE_2_2 0x03
+#define SX1262_TCXO_VOLTAGE_2_4 0x04
+#define SX1262_TCXO_VOLTAGE_2_7 0x05
+#define SX1262_TCXO_VOLTAGE_3_0 0x06
+#define SX1262_TCXO_VOLTAGE_3_3 0x07
+
 /* SetModulationParams (datasheet 13.4.5) */
 #define SX1262_OP_SET_MODULATION_PARAMS 0x8B
 
@@ -239,6 +250,24 @@ HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_calibrate_image(sx1262_t *p, uint8_t freq1, uint8_t freq2);
+
+/**
+ * sx1262_set_dio3_as_tcxo_ctrl
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param tcxo_voltage - One of SX1262_TCXO_VOLTAGE_*
+ * @param delay - Startup delay in steps of 15.625us before XOSC_START_ERR
+ *                is flagged if 32MHz has not appeared
+ *
+ * Sends the SetDIO3AsTCXOCtrl (0x97) command. The Waveshare Core1262-LF
+ * module's 32MHz reference is a TCXO powered from DIO3 (see
+ * Core1262-LF-Schematic.pdf) rather than a passive crystal on XTA/XTB -
+ * without this command DIO3 never supplies the TCXO and XOSC_START_ERR
+ * is set, leaving the chip unable to leave STBY_RC for TX/RX. Should be
+ * issued first, before any other configuration.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_dio3_as_tcxo_ctrl(sx1262_t *p, uint8_t tcxo_voltage, uint32_t delay);
 
 /**
  * sx1262_set_modulation_params_lora
