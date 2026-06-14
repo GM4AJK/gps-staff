@@ -53,6 +53,21 @@
 #define SX1262_LORA_LDRO_OFF 0x00
 #define SX1262_LORA_LDRO_ON  0x01
 
+/* SetPacketParams (datasheet 13.4.6) */
+#define SX1262_OP_SET_PACKET_PARAMS 0x8C
+
+/* LoRa PacketParam3 - HeaderType (datasheet Table 13-67) */
+#define SX1262_LORA_HEADER_EXPLICIT 0x00
+#define SX1262_LORA_HEADER_IMPLICIT 0x01
+
+/* LoRa PacketParam5 - CRCType (datasheet Table 13-69) */
+#define SX1262_LORA_CRC_OFF 0x00
+#define SX1262_LORA_CRC_ON  0x01
+
+/* LoRa PacketParam6 - InvertIQ (datasheet Table 13-70) */
+#define SX1262_LORA_IQ_STANDARD 0x00
+#define SX1262_LORA_IQ_INVERTED 0x01
+
 #define SX1262_SPI_TIMEOUT_MS  100
 #define SX1262_BUSY_TIMEOUT_MS 1000
 
@@ -161,5 +176,23 @@ HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_set_modulation_params_lora(sx1262_t *p, uint8_t sf, uint8_t bw, uint8_t cr, uint8_t ldro);
+
+/**
+ * sx1262_set_packet_params_lora
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param preamble_len - Preamble length in symbols (Table 13-66)
+ * @param header_type - SX1262_LORA_HEADER_EXPLICIT or _IMPLICIT
+ * @param payload_len - Payload length in bytes (Table 13-68)
+ * @param crc_type - SX1262_LORA_CRC_OFF or _ON
+ * @param invert_iq - SX1262_LORA_IQ_STANDARD or _INVERTED
+ *
+ * Sends the SetPacketParams (0x8C) command for LoRa packet type. Only
+ * valid after sx1262_set_packet_type(SX1262_PACKET_TYPE_LORA). payload_len
+ * is the size used for the next Tx/Rx and would normally be re-sent
+ * before each transaction.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_packet_params_lora(sx1262_t *p, uint16_t preamble_len, uint8_t header_type, uint8_t payload_len, uint8_t crc_type, uint8_t invert_iq);
 
 #endif /* INC_SX1262_H_ */
