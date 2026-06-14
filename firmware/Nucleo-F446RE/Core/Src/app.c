@@ -81,16 +81,13 @@ void app_init(void)
 void app_loop(void)
 {
 	while(true) {
-		if(flag_get_500MS()) {
-			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-		}
-
 #ifdef TEST_SX1262
 		if(flag_get_1000MS()) {
 			test_sx1262_rx_start(&sx1262);
 		}
 
 		if(flag_get_SX1262_DIO1()) {
+			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 			test_sx1262_rx_done(&sx1262);
 		}
 #endif /* TEST_SX1262 */

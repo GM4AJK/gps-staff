@@ -98,6 +98,7 @@ void Error_Handler(void);
 #define SX1262_SPI_DIO2_GPIO_Port GPIOC
 #define SX1262_SPI_DIO1_Pin GPIO_PIN_9
 #define SX1262_SPI_DIO1_GPIO_Port GPIOC
+#define SX1262_SPI_DIO1_EXTI_IRQn EXTI9_5_IRQn
 #define USB_SOF_Pin GPIO_PIN_8
 #define USB_SOF_GPIO_Port GPIOA
 #define USB_VBUS_Pin GPIO_PIN_9
