@@ -109,3 +109,18 @@ HAL_StatusTypeDef sx1262_set_modulation_params_lora(sx1262_t *p, uint8_t sf, uin
 
 	return sx1262_write(p, tx, sizeof(tx));
 }
+
+HAL_StatusTypeDef sx1262_set_packet_params_lora(sx1262_t *p, uint16_t preamble_len, uint8_t header_type, uint8_t payload_len, uint8_t crc_type, uint8_t invert_iq)
+{
+	uint8_t tx[7] = {
+		SX1262_OP_SET_PACKET_PARAMS,
+		(uint8_t)(preamble_len >> 8),
+		(uint8_t)(preamble_len),
+		header_type,
+		payload_len,
+		crc_type,
+		invert_iq
+	};
+
+	return sx1262_write(p, tx, sizeof(tx));
+}

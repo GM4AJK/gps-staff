@@ -54,7 +54,13 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5\r\n");
+	status = sx1262_set_packet_params_lora(p, 8, SX1262_LORA_HEADER_EXPLICIT, 8, SX1262_LORA_CRC_ON, SX1262_LORA_IQ_STANDARD);
+	if (status != HAL_OK) {
+		app_log("sx1262: set packet params failed: %d\r\n", status);
+		return;
+	}
+
+	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC\r\n");
 }
 
 #endif /* TEST_SX1262 */
