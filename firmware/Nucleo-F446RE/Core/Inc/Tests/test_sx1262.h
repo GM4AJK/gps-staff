@@ -18,6 +18,17 @@
  */
 void test_sx1262_hello(sx1262_t *p);
 
+/**
+ * test_sx1262_config
+ * @param p - Pointer to an initialized sx1262_t struct
+ *
+ * Resets the SX1262, then sends SetPacketType (LoRa) followed by
+ * SetRfFrequency (434.000MHz), logging the result of each step over
+ * app_log(). Bench test for basic LoRa radio configuration. Intended to
+ * be run once at startup.
+ */
+void test_sx1262_config(sx1262_t *p);
+
 #endif /* TEST_SX1262 */
 
 #endif /* INC_TESTS_TEST_SX1262_H_ */
