@@ -78,10 +78,6 @@ void app_loop(void)
 			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, !flipper);
 			flipper = !flipper;
-
-#ifdef TEST_SX1262
-			test_sx1262_hello(&sx1262);
-#endif /* TEST_SX1262 */
 		}
 	}
 }
