@@ -161,39 +161,40 @@ The base station has two operating modes -- same hardware and firmware in both:
   - ADC reads VBATT/2; firmware doubles reading to get VBATT, maps to battery %
   - LiPo range: 3.0V (0%) to 4.2V (100%) -- midpoint 1.5V to 2.1V, well within STM32 ADC range
   - Divider current: ~4.2V / 200K = ~21uA -- negligible quiescent drain
-- **Estimated current draw**: ~300-400 mA typical survey (F9P ~50mA, ANN-MB LNA ~15mA via bias-T, STM32F7 ~100mA, LoRa TX ~120mA, SD ~100mA peak, display ~10mA, LSM6DSOX+LIS3MDL ~1mA, buzzer ~20mA when active, USB3300 ~0.1mA suspend)
+- **Estimated current draw**: ~300-400 mA typical survey (F9P ~50mA, ANN-MB LNA ~15mA via bias-T, STM32F7 ~100mA, LoRa TX ~120mA, SD ~100mA peak, display ~10mA, LSM6DSRX+LIS3MDL ~1mA, buzzer ~20mA when active, USB3300 ~0.1mA suspend)
   - USB file transfer mode (rover): add ~55mA for USB3300 active + SD read current
 
-### IMU: LSM6DSOX + LIS3MDL
+### IMU: LSM6DSRX + LIS3MDL
 
-- **LSM6DSOX** (ST) -- 6-DOF IMU (3-axis accelerometer + 3-axis gyroscope)
+- **LSM6DSRX** (ST) -- 6-DOF IMU (3-axis accelerometer + 3-axis gyroscope)
 - **LIS3MDL** (ST) -- 3-axis magnetometer
 - Purpose: pole lean correction with full azimuth -- calculates corrected ground point position when pole is not perfectly vertical (same role as the originally-specced BNO085)
-- Replaces BNO085: BNO085 driver effort paused/abandoned during bring-up; LSM6DSOX + LIS3MDL is a simpler, well-supported I2C alternative -- accel-only tilt plus magnetometer azimuth is sufficient for a slow-moving survey pole, so the lack of an onboard fusion processor (vs BNO085's CEVA SH-2) is not a problem here
+- Replaces BNO085: BNO085 driver effort paused/abandoned during bring-up; LSM6DSRX + LIS3MDL is a simpler, well-supported I2C alternative -- accel-only tilt plus magnetometer azimuth is sufficient for a slow-moving survey pole, so the lack of an onboard fusion processor (vs BNO085's CEVA SH-2) is not a problem here
 - Datasheets:
-  - LSM6DSOX: https://www.st.com/resource/en/datasheet/lsm6dsox.pdf
+  - LSM6DSRX: https://www.st.com/resource/en/datasheet/lsm6dsrx.pdf
   - LIS3MDL: https://www.st.com/resource/en/datasheet/lis3mdl.pdf
-- Package: LSM6DSOX LGA-14 (2.5x3x0.83mm), LIS3MDL LGA-12 (2x2x1mm) -- both SMD, hand-solderable with hot air
+- Package: LSM6DSRX LGA-14 (2.5x3x0.83mm), LIS3MDL LGA-12 (2x2x1mm) -- both SMD, hand-solderable with hot air
 - Supply: both chips VDD/VDDIO 1.71-3.6V -- 3.3V rail compatible
 - Current draw: ~1mA combined typical -- well below BNO085's 6.1mA, negligible in power budget
 - Interface: **I2C**, sharing I2C1 with the display and EEPROM
-  - LSM6DSOX address: 0x6A (SDO/SA0 low) or 0x6B (high)
+  - LSM6DSRX address: 0x6A (SDO/SA0 low) or 0x6B (high) -- same SAD scheme as the LSM6DSOX
   - LIS3MDL address: 0x1C (SDO/SA1 low) or 0x1E (high)
   - No conflicts with SSD1309 display (0x3C/0x3D) or AT24C04 EEPROM (0x50-0x57)
   - Cooperative single-threaded `app_loop()` architecture -- no bus contention risk from sharing I2C1 with the display/EEPROM
   - Dedicated I2C bus (STM32F765 has multiple I2C peripherals) remains an option to revisit at PCB schematic stage if it simplifies routing
+- Pin-compatible with the LSM6DSOX (same LGA-14 package/pinout and register map), chosen after the LSM6DSOXTR went out of stock -- only difference of note is WHO_AM_I (0x6B for LSM6DSRX vs 0x6C for LSM6DSOX). The driver should accept either value, since the development breakout below uses the LSM6DSOX chip while the production BOM uses LSM6DSRX
 - Development: Adafruit LSM6DSOX + LIS3MDL breakout (STEMMA QT/Qwiic, product #4517) -- https://www.adafruit.com/product/4517
 - Outputs used:
-  - LSM6DSOX accelerometer: normalized accel vector as "gravity vector" for tilt (accel-only -- no gyro fusion needed for a slow-moving survey pole)
+  - LSM6DSRX accelerometer: normalized accel vector as "gravity vector" for tilt (accel-only -- no gyro fusion needed for a slow-moving survey pole)
   - LIS3MDL magnetometer: magnetic heading for azimuth-referenced lean correction
-  - LSM6DSOX gyroscope: not used initially -- reserved for future use (e.g. dynamic tilt rejection)
+  - LSM6DSRX gyroscope: not used initially -- reserved for future use (e.g. dynamic tilt rejection)
 - No onboard sensor fusion (unlike BNO085's SH-2) -- firmware computes tilt directly from the normalized accelerometer vector and combines it with magnetometer heading for azimuth
 - Magnetometer calibration: hard/soft iron compensation is a firmware responsibility (BNO085's automatic calibration is lost) -- TBD: simple ellipse-fit calibration routine run during setup, calibration parameters stored in EEPROM/backup SRAM
 
 **Lean correction algorithm:**
 
 ```
-gravity = normalize(LSM6DSOX_read_accel())          // raw accel, normalized -- accel-only "gravity vector"
+gravity = normalize(LSM6DSRX_read_accel())          // raw accel, normalized -- accel-only "gravity vector"
 tilt_direction_body = arctan2(gravity.y, gravity.x) // lean direction in device frame
 heading = LIS3MDL_read_heading()                    // magnetic heading of device reference axis, firmware-calibrated
 
@@ -212,7 +213,7 @@ corrected_lon = gnss_lon + (offset x sin(tilt_azimuth + 180)) / (earth_radius x 
     ground_height = gnss_height - (pole_height x cos(tilt_angle))
 - Bubble level display dot driven from gravity.x / gravity.y -- raw normalized accel, no additional filtering
 - Lean angle and correction magnitude shown on display
-- At 2m pole height: 1 degree lean = 35mm uncorrected error; LSM6DSOX+LIS3MDL correction reduces residual to ~3.5mm
+- At 2m pole height: 1 degree lean = 35mm uncorrected error; LSM6DSRX+LIS3MDL correction reduces residual to ~3.5mm
 
 ### Data Logging -- SD Card
 
@@ -444,7 +445,7 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
   - Dedicated I2C bus on STM32F765 (avoid sharing with F9P UART path)
   - Layout: split screen -- left panel bubble level, right panel data fields
     - Left ~40x48px: circular bubble level (Bresenham circle, filled dot)
-      - Dot position maps directly to LSM6DSOX ax/ay: dot_x = cx + (ax/g x scale), dot_y = cy + (ay/g x scale)
+      - Dot position maps directly to LSM6DSRX ax/ay: dot_x = cx + (ax/g x scale), dot_y = cy + (ay/g x scale)
       - Scale factor sets tilt angle at full deflection (e.g. 5 degrees = circle edge)
       - Inner ring indicates acceptable tilt threshold
       - Dot clamped to circle boundary when tilt exceeds display range
@@ -517,8 +518,8 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
 - [Microchip DS00001783C] USB3300 datasheet -- Hi-Speed USB ULPI PHY, 32-pin QFN
   https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/DataSheets/00001783C.pdf
 
-- [ST LSM6DSOX] LSM6DSOX datasheet -- 6-DOF IMU (accelerometer + gyroscope), LGA-14
-  https://www.st.com/resource/en/datasheet/lsm6dsox.pdf
+- [ST LSM6DSRX] LSM6DSRX datasheet -- 6-DOF IMU (accelerometer + gyroscope), LGA-14
+  https://www.st.com/resource/en/datasheet/lsm6dsrx.pdf
 
 - [ST LIS3MDL] LIS3MDL datasheet -- 3-axis magnetometer, LGA-12
   https://www.st.com/resource/en/datasheet/lis3mdl.pdf
@@ -535,7 +536,7 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 4. **MCU (STM32F765VIT6) peripheral pin assignment**: UART (F9P, plus a spare for the future daughter board), 2x dedicated SPI (LoRa, IMU), SDMMC1 4-bit (SD, fixed AF pins PC8-12/PD2), I2C1 (display + EEPROM), USB OTG FS (base build) or OTG HS + ULPI (rover build), ADC (battery divider), TIMx in encoder mode (rotary encoder A/B), PWM-capable TIMx_CHx pins (status LEDs + buzzer), SWD (program/debug) -- plus the many plain GPIOs enumerated below
 5. **Power supply chain**: TPS63020 buck-boost regulator with D1/C_SS soft-start network on the FB node, BQ24075 power-path management (EN1/EN2/SYSOFF/nCE control outputs and nPGOOD/nCHG status inputs all to STM32 GPIOs, TS pin tied to a fixed 10K resistor), 2-wire LP103454-PCM-LD battery connector, 100K/100K battery-voltage divider to an ADC pin
 6. **USB-C interfaces**: footprint #1 (base -- D+/D- direct to OTG FS PA11/PA12) and footprint #2 (rover -- via USB3300 ULPI PHY to OTG HS), CC1/CC2 5.1k pull-downs per footprint, USBLC6-2SC6 ESD protection per footprint, VBUS-presence sense divider to a GPIO, and for the rover's USB3300: 24MHz crystal, 12K RBIAS, full decoupling network, GND-flag via array, RESET to a STM32 GPIO
-7. **IMU (LSM6DSOX + LIS3MDL)**: I2C1 (shared with display + EEPROM), addresses 0x6A/0x6B (LSM6DSOX) and 0x1C/0x1E (LIS3MDL) -- no conflicts with display (0x3C/0x3D) or EEPROM (0x50-0x57); revisit dedicated I2C bus at schematic stage if routing benefits
+7. **IMU (LSM6DSRX + LIS3MDL)**: I2C1 (shared with display + EEPROM), addresses 0x6A/0x6B (LSM6DSRX) and 0x1C/0x1E (LIS3MDL) -- no conflicts with display (0x3C/0x3D) or EEPROM (0x50-0x57); revisit dedicated I2C bus at schematic stage if routing benefits
 8. **SD card**: SDMMC1 4-bit bus on the fixed alternate-function pins, card-detect line to a GPIO, well-decoupled VCC for write-current spikes
 9. **STM32 backup domain (VBAT)**: 3.3V rail -> Schottky diode -> VBAT pin, 100nF VBAT-to-GND
 10. **Configuration EEPROM (AT24C04/M24C04)**: shares I2C1 with the display, A0/A1/A2 address pins set so it doesn't collide with the display's 0x3C/0x3D
