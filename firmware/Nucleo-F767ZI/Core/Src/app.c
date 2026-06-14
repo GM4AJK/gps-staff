@@ -17,12 +17,11 @@ static void app_tests(void);
 
 static ssd1309_t oled;
 static sx1262_t sx1262;
-static volatile bool sx1262_dio1_irq = false;
 
 void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 {
 	if (gpio_pin == SX1262_SPI_DIO1_Pin) {
-		sx1262_dio1_irq = true;
+		flag_set_SX1262_DIO1();
 	}
 }
 
@@ -93,8 +92,7 @@ void app_loop(void)
 			test_sx1262_tx_start(&sx1262);
 		}
 
-		if(sx1262_dio1_irq) {
-			sx1262_dio1_irq = false;
+		if(flag_get_SX1262_DIO1()) {
 			test_sx1262_tx_done(&sx1262);
 		}
 #endif /* TEST_SX1262 */
