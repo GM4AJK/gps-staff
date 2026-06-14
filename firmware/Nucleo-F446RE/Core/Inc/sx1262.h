@@ -18,6 +18,41 @@
 #define SX1262_OP_SET_RF_FREQUENCY 0x86
 #define SX1262_XTAL_HZ              32000000UL
 
+/* SetModulationParams (datasheet 13.4.5) */
+#define SX1262_OP_SET_MODULATION_PARAMS 0x8B
+
+/* LoRa ModParam1 - SF (datasheet Table 13-47) */
+#define SX1262_LORA_SF5  0x05
+#define SX1262_LORA_SF6  0x06
+#define SX1262_LORA_SF7  0x07
+#define SX1262_LORA_SF8  0x08
+#define SX1262_LORA_SF9  0x09
+#define SX1262_LORA_SF10 0x0A
+#define SX1262_LORA_SF11 0x0B
+#define SX1262_LORA_SF12 0x0C
+
+/* LoRa ModParam2 - BW (datasheet Table 13-48) */
+#define SX1262_LORA_BW_7   0x00
+#define SX1262_LORA_BW_10  0x08
+#define SX1262_LORA_BW_15  0x01
+#define SX1262_LORA_BW_20  0x09
+#define SX1262_LORA_BW_31  0x02
+#define SX1262_LORA_BW_41  0x0A
+#define SX1262_LORA_BW_62  0x03
+#define SX1262_LORA_BW_125 0x04
+#define SX1262_LORA_BW_250 0x05
+#define SX1262_LORA_BW_500 0x06
+
+/* LoRa ModParam3 - CR (datasheet Table 13-49) */
+#define SX1262_LORA_CR_4_5 0x01
+#define SX1262_LORA_CR_4_6 0x02
+#define SX1262_LORA_CR_4_7 0x03
+#define SX1262_LORA_CR_4_8 0x04
+
+/* LoRa ModParam4 - LowDataRateOptimize (datasheet Table 13-50) */
+#define SX1262_LORA_LDRO_OFF 0x00
+#define SX1262_LORA_LDRO_ON  0x01
+
 #define SX1262_SPI_TIMEOUT_MS  100
 #define SX1262_BUSY_TIMEOUT_MS 1000
 
@@ -110,5 +145,21 @@ HAL_StatusTypeDef sx1262_set_packet_type(sx1262_t *p, uint8_t packet_type);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz);
+
+/**
+ * sx1262_set_modulation_params_lora
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param sf - Spreading factor, one of SX1262_LORA_SF5..SX1262_LORA_SF12
+ * @param bw - Bandwidth, one of SX1262_LORA_BW_*
+ * @param cr - Coding rate, one of SX1262_LORA_CR_4_5..SX1262_LORA_CR_4_8
+ * @param ldro - Low data rate optimize, SX1262_LORA_LDRO_OFF or _ON
+ *
+ * Sends the SetModulationParams (0x8B) command for LoRa packet type.
+ * ModParam5-8 are reserved and sent as 0x00. Only valid after
+ * sx1262_set_packet_type(SX1262_PACKET_TYPE_LORA).
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_modulation_params_lora(sx1262_t *p, uint8_t sf, uint8_t bw, uint8_t cr, uint8_t ldro);
 
 #endif /* INC_SX1262_H_ */

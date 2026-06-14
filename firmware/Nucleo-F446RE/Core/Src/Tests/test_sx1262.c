@@ -48,7 +48,13 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	app_log("sx1262: configured LoRa @ 434.000MHz\r\n");
+	status = sx1262_set_modulation_params_lora(p, SX1262_LORA_SF7, SX1262_LORA_BW_125, SX1262_LORA_CR_4_5, SX1262_LORA_LDRO_OFF);
+	if (status != HAL_OK) {
+		app_log("sx1262: set modulation params failed: %d\r\n", status);
+		return;
+	}
+
+	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5\r\n");
 }
 
 #endif /* TEST_SX1262 */
