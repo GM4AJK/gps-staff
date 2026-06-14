@@ -14,12 +14,9 @@
 
 typedef struct {
 	SPI_HandleTypeDef *port;
-	GPIO_TypeDef *cs_port;
-	uint16_t cs_pin;
-	GPIO_TypeDef *reset_port;
-	uint16_t reset_pin;
-	GPIO_TypeDef *busy_port;
-	uint16_t busy_pin;
+	GPIO_PIN_DEF(cs_port, cs_pin);
+	GPIO_PIN_DEF(reset_port, reset_pin);
+	GPIO_PIN_DEF(busy_port, busy_pin);
 } sx1262_t;
 
 /**
