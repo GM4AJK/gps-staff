@@ -76,10 +76,6 @@ void app_loop(void)
 	while(true) {
 		if(flag_get_500MS()) {
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
-#ifdef TEST_SX1262
-			test_sx1262_hello(&sx1262);
-#endif /* TEST_SX1262 */
 		}
 	}
 }
@@ -92,4 +88,8 @@ static void app_tests(void)
 		app_log("ssd1309_flush failed: %d\r\n", r);
 	}
 #endif /* TEST_SSD1309 */
+
+#ifdef TEST_SX1262
+	test_sx1262_config(&sx1262);
+#endif /* TEST_SX1262 */
 }

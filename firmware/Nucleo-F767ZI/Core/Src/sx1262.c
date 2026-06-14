@@ -2,6 +2,24 @@
 
 #include "sx1262.h"
 
+#include <stddef.h>
+
+static HAL_StatusTypeDef sx1262_write(sx1262_t *p, const uint8_t *data, size_t len)
+{
+	HAL_StatusTypeDef status;
+
+	status = sx1262_wait_busy(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	status = HAL_SPI_Transmit(p->port, (uint8_t *)data, len, SX1262_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	return status;
+}
+
 void sx1262_init(
 	sx1262_t *p,
 	SPI_HandleTypeDef *in_port,
@@ -62,4 +80,25 @@ HAL_StatusTypeDef sx1262_get_status(sx1262_t *p, uint8_t *out_status)
 	*out_status = rx[1];
 
 	return HAL_OK;
+}
+
+HAL_StatusTypeDef sx1262_set_packet_type(sx1262_t *p, uint8_t packet_type)
+{
+	uint8_t tx[2] = { SX1262_OP_SET_PACKET_TYPE, packet_type };
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz)
+{
+	uint32_t rf_freq = (uint32_t)(((uint64_t)freq_hz << 25) / SX1262_XTAL_HZ);
+	uint8_t tx[5] = {
+		SX1262_OP_SET_RF_FREQUENCY,
+		(uint8_t)(rf_freq >> 24),
+		(uint8_t)(rf_freq >> 16),
+		(uint8_t)(rf_freq >> 8),
+		(uint8_t)(rf_freq)
+	};
+
+	return sx1262_write(p, tx, sizeof(tx));
 }

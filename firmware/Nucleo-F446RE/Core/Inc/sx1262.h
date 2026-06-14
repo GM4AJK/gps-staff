@@ -9,6 +9,15 @@
 #define SX1262_OP_GET_STATUS 0xC0
 #define SX1262_OP_NOP        0x00
 
+/* SetPacketType (datasheet 13.4.2) */
+#define SX1262_OP_SET_PACKET_TYPE 0x8A
+#define SX1262_PACKET_TYPE_GFSK   0x00
+#define SX1262_PACKET_TYPE_LORA   0x01
+
+/* SetRfFrequency (datasheet 13.4.1) */
+#define SX1262_OP_SET_RF_FREQUENCY 0x86
+#define SX1262_XTAL_HZ              32000000UL
+
 #define SX1262_SPI_TIMEOUT_MS  100
 #define SX1262_BUSY_TIMEOUT_MS 1000
 
@@ -75,5 +84,31 @@ HAL_StatusTypeDef sx1262_reset(sx1262_t *p);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_get_status(sx1262_t *p, uint8_t *out_status);
+
+/**
+ * sx1262_set_packet_type
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param packet_type - SX1262_PACKET_TYPE_GFSK or SX1262_PACKET_TYPE_LORA
+ *
+ * Sends the SetPacketType (0x8A) command. Per the datasheet this must be
+ * the first command issued before going to Rx or Tx and before setting
+ * the RF frequency, modulation or packet parameters.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_packet_type(sx1262_t *p, uint8_t packet_type);
+
+/**
+ * sx1262_set_rf_frequency
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param freq_hz - Target RF frequency in Hz
+ *
+ * Sends the SetRfFrequency (0x86) command. freq_hz is converted to the
+ * SX1262's 32-bit RF frequency register value using
+ * RFfreq = freq_hz * 2^25 / SX1262_XTAL_HZ.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz);
 
 #endif /* INC_SX1262_H_ */
