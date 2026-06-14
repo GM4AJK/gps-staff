@@ -1,7 +1,17 @@
 #include "Tests/test_sx1262.h"
 #include "app.h"
 
+#include <stdio.h>
+#include <string.h>
+
 #ifdef TEST_SX1262
+
+static ssd1309_t *oled = NULL;
+
+void test_sx1262_set_oled(ssd1309_t *p)
+{
+	oled = p;
+}
 
 void test_sx1262_hello(sx1262_t *p)
 {
@@ -103,15 +113,44 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	sx1262_set_rx_done_callback(p, test_sx1262_rx_done_toggle_led);
+	sx1262_set_rx_done_callback(p, test_sx1262_rx_done_handler);
 	sx1262_set_tx_done_callback(p, test_sx1262_tx_done_toggle_led);
 
 	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +17dBm\r\n");
 }
 
-void test_sx1262_rx_done_toggle_led(sx1262_t *p)
+static uint8_t rx_payload[9] = { 0 };
+static int8_t rx_rssi = 0;
+static int8_t rx_snr_quarter_db = 0;
+
+void test_sx1262_rx_done_handler(sx1262_t *p)
 {
+	char line[24];
+	int snr_centi_db = (int)rx_snr_quarter_db * 25;
+	int snr_neg = (snr_centi_db < 0);
+
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+	if (oled == NULL) {
+		return;
+	}
+
+	if (snr_neg) {
+		snr_centi_db = -snr_centi_db;
+	}
+
+	ssd1309_clear(oled);
+
+	snprintf(line, sizeof(line), "RX: %.8s", rx_payload);
+	ssd1309_draw_string(oled, &font8x8, 0, 0, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "RSSI: %ddBm", rx_rssi);
+	ssd1309_draw_string(oled, &font8x8, 0, 16, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "SNR: %s%d.%02ddB", snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
+	ssd1309_draw_string(oled, &font8x8, 0, 32, line, SSD1309_COLOR_ON);
+
+	ssd1309_flush(oled);
 }
 
 void test_sx1262_tx_done_toggle_led(sx1262_t *p)
@@ -209,9 +248,17 @@ bool test_sx1262_rx_done(sx1262_t *p)
 
 				app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB\r\n",
 					payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
+
+				rx_rssi = rssi;
+				rx_snr_quarter_db = snr_quarter_db;
 			} else {
 				app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
+
+				rx_rssi = 0;
+				rx_snr_quarter_db = 0;
 			}
+
+			memcpy(rx_payload, payload, sizeof(payload));
 		}
 		if (p->rx_done != NULL) {
 			p->rx_done(p);

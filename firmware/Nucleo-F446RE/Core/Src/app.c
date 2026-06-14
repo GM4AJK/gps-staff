@@ -66,6 +66,10 @@ void app_init(void)
 		return;
 	}
 
+#ifdef TEST_SX1262
+	test_sx1262_set_oled(&oled);
+#endif /* TEST_SX1262 */
+
 	sx1262_init(
 		&sx1262, &hspi2,
 		SX1262_SPI_CS_GPIO_Port, SX1262_SPI_CS_Pin,
