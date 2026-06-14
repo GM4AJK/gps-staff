@@ -97,7 +97,7 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	status = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, 0, 0, 0);
+	status = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, SX1262_IRQ_TX_DONE | SX1262_IRQ_RX_DONE | SX1262_IRQ_TIMEOUT, 0, 0);
 	if (status != HAL_OK) {
 		app_log("sx1262: set dio irq params failed: %d\r\n", status);
 		return;
