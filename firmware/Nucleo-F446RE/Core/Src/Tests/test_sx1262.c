@@ -178,10 +178,18 @@ void test_sx1262_rx_done(sx1262_t *p)
 			app_log("sx1262: rx read buffer failed: %d\r\n", status);
 		} else {
 			int8_t rssi = 0;
-			float snr = 0.0f;
+			int8_t snr_quarter_db = 0;
 
-			if (sx1262_get_packet_status(p, &rssi, &snr) == HAL_OK) {
-				app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%.2fdB\r\n", payload, rssi, snr);
+			if (sx1262_get_packet_status(p, &rssi, &snr_quarter_db) == HAL_OK) {
+				int snr_centi_db = (int)snr_quarter_db * 25;
+				int snr_neg = (snr_centi_db < 0);
+
+				if (snr_neg) {
+					snr_centi_db = -snr_centi_db;
+				}
+
+				app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB\r\n",
+					payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
 			} else {
 				app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
 			}

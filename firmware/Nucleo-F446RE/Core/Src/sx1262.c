@@ -258,7 +258,7 @@ HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq)
 	return HAL_OK;
 }
 
-HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, float *out_snr_pkt)
+HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, int8_t *out_snr_pkt_quarter_db)
 {
 	uint8_t tx[5] = { SX1262_OP_GET_PACKET_STATUS, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP };
 	uint8_t rx[5] = { 0 };
@@ -278,7 +278,7 @@ HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, fl
 	}
 
 	*out_rssi_pkt = (int8_t)(-rx[2] / 2);
-	*out_snr_pkt = (int8_t)rx[3] / 4.0f;
+	*out_snr_pkt_quarter_db = (int8_t)rx[3];
 
 	return HAL_OK;
 }

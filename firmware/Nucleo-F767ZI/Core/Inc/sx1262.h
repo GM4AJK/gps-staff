@@ -441,15 +441,17 @@ HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
  * sx1262_get_packet_status
  * @param p - Pointer to an initialized sx1262_t struct
  * @param out_rssi_pkt - Receives the averaged RSSI of the last packet, in dBm
- * @param out_snr_pkt - Receives the SNR of the last packet, in dB
+ * @param out_snr_pkt_quarter_db - Receives the raw signed SnrPkt register
+ *                  value, in steps of 0.25dB (divide by 4 for dB)
  *
  * Sends the GetPacketStatus (0x14) command for the LoRa packet status
- * (Table 13-79). RssiPkt is reported as -RssiPkt/2 dBm; SnrPkt is a
- * signed value in steps of 0.25dB.
+ * (Table 13-79). RssiPkt is reported as -RssiPkt/2 dBm. SnrPkt is
+ * returned raw (not converted to float) since app_log()'s nano-newlib
+ * vsnprintf does not support %f.
  *
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
-HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, float *out_snr_pkt);
+HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, int8_t *out_snr_pkt_quarter_db);
 
 /**
  * sx1262_get_device_errors
