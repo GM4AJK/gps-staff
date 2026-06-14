@@ -40,11 +40,12 @@
  *        callback below.
  *
  * Callbacks:
- *   sx1262_set_rx_done_callback() / sx1262_set_tx_done_callback() register
- *   a void(*)(sx1262_t *p) callback, invoked with the instance pointer by
- *   the corresponding service function whenever it observes a real
- *   RxDone/TxDone (never on Timeout). Both are NULL after sx1262_init();
- *   set to NULL to disable.
+ *   sx1262_set_rx_done_callback() / sx1262_set_tx_done_callback() and
+ *   sx1262_set_rx_timeout_callback() / sx1262_set_tx_timeout_callback()
+ *   each register a void(*)(sx1262_t *p) callback, invoked with the
+ *   instance pointer by the corresponding service function depending on
+ *   whether it observes RxDone/TxDone or Timeout. All four are NULL after
+ *   sx1262_init(); set to NULL to disable.
  */
 
 /* GetStatus (datasheet 13.5.1) */
@@ -196,6 +197,8 @@ typedef struct sx1262_s {
 	GPIO_PIN_DEF(busy_port, busy_pin);
 	void (*rx_done)(struct sx1262_s *p);
 	void (*tx_done)(struct sx1262_s *p);
+	void (*rx_timeout)(struct sx1262_s *p);
+	void (*tx_timeout)(struct sx1262_s *p);
 } sx1262_t;
 
 /**
@@ -240,6 +243,30 @@ void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
  * p->tx_done; NULL by default after sx1262_init().
  */
 void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+
+/**
+ * sx1262_set_rx_timeout_callback
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param callback - Function to call when an Rx operation times out
+ *                    without receiving a packet, or NULL to disable
+ *
+ * Registers a callback to be invoked when an Rx operation completes with
+ * Timeout rather than RxDone. The callback receives the sx1262_t instance
+ * pointer. Stored in p->rx_timeout; NULL by default after sx1262_init().
+ */
+void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
+
+/**
+ * sx1262_set_tx_timeout_callback
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param callback - Function to call when a Tx operation times out
+ *                    without completing, or NULL to disable
+ *
+ * Registers a callback to be invoked when a Tx operation completes with
+ * Timeout rather than TxDone. The callback receives the sx1262_t instance
+ * pointer. Stored in p->tx_timeout; NULL by default after sx1262_init().
+ */
+void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
 
 /**
  * sx1262_wait_busy

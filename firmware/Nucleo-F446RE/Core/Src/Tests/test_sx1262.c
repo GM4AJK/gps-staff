@@ -202,6 +202,10 @@ bool test_sx1262_tx_done(sx1262_t *p)
 		}
 	} else {
 		app_log("sx1262: tx timeout (irq=0x%04X)\r\n", irq);
+
+		if (p->tx_timeout != NULL) {
+			p->tx_timeout(p);
+		}
 	}
 
 	return (irq & SX1262_IRQ_TX_DONE) != 0;
@@ -265,6 +269,10 @@ bool test_sx1262_rx_done(sx1262_t *p)
 		}
 	} else {
 		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);
+
+		if (p->rx_timeout != NULL) {
+			p->rx_timeout(p);
+		}
 	}
 
 	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
