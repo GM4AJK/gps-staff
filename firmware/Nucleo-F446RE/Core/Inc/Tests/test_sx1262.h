@@ -2,6 +2,7 @@
 #define INC_TESTS_TEST_SX1262_H_
 
 #include "sx1262.h"
+#include <stdbool.h>
 
 /* Comment out to exclude the sx1262 bench test from the build */
 #define TEST_SX1262
@@ -66,9 +67,10 @@ void test_sx1262_rx_start(sx1262_t *p);
  *
  * Called once the DIO1 IRQ fires for a pending RX. Reads GetIrqStatus;
  * on RxDone reads back the 8-byte payload via ReadBuffer. Logs the
- * result over app_log() and clears the IRQ flags.
+ * result over app_log() and clears the IRQ flags. Returns true if the
+ * IRQ was RxDone (a packet was actually received), false on timeout.
  */
-void test_sx1262_rx_done(sx1262_t *p);
+bool test_sx1262_rx_done(sx1262_t *p);
 
 #endif /* TEST_SX1262 */
 

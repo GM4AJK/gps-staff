@@ -160,7 +160,7 @@ void test_sx1262_rx_start(sx1262_t *p)
 	}
 }
 
-void test_sx1262_rx_done(sx1262_t *p)
+bool test_sx1262_rx_done(sx1262_t *p)
 {
 	uint8_t payload[8] = { 0 };
 	HAL_StatusTypeDef status;
@@ -169,7 +169,7 @@ void test_sx1262_rx_done(sx1262_t *p)
 	status = sx1262_get_irq_status(p, &irq);
 	if (status != HAL_OK) {
 		app_log("sx1262: rx get irq status failed: %d\r\n", status);
-		return;
+		return false;
 	}
 
 	if (irq & SX1262_IRQ_RX_DONE) {
@@ -199,6 +199,8 @@ void test_sx1262_rx_done(sx1262_t *p)
 	}
 
 	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
+
+	return (irq & SX1262_IRQ_RX_DONE) != 0;
 }
 
 #endif /* TEST_SX1262 */
