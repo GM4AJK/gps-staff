@@ -129,6 +129,9 @@
 #define SX1262_IRQ_TIMEOUT      (1U << 9)
 #define SX1262_IRQ_ALL          0x03FFU
 
+/* GetPacketStatus (datasheet 13.5.3 / Table 13-79, LoRa packet status) */
+#define SX1262_OP_GET_PACKET_STATUS 0x14
+
 /* GetDeviceErrors / ClearDeviceErrors (datasheet 13.6.1 / 13.6.2 / Table 13-85) */
 #define SX1262_OP_GET_DEVICE_ERRORS   0x17
 #define SX1262_OP_CLEAR_DEVICE_ERRORS 0x07
@@ -433,6 +436,20 @@ HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
+
+/**
+ * sx1262_get_packet_status
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param out_rssi_pkt - Receives the averaged RSSI of the last packet, in dBm
+ * @param out_snr_pkt - Receives the SNR of the last packet, in dB
+ *
+ * Sends the GetPacketStatus (0x14) command for the LoRa packet status
+ * (Table 13-79). RssiPkt is reported as -RssiPkt/2 dBm; SnrPkt is a
+ * signed value in steps of 0.25dB.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, float *out_snr_pkt);
 
 /**
  * sx1262_get_device_errors

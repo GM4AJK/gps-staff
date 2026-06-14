@@ -177,7 +177,14 @@ void test_sx1262_rx_done(sx1262_t *p)
 		if (status != HAL_OK) {
 			app_log("sx1262: rx read buffer failed: %d\r\n", status);
 		} else {
-			app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
+			int8_t rssi = 0;
+			float snr = 0.0f;
+
+			if (sx1262_get_packet_status(p, &rssi, &snr) == HAL_OK) {
+				app_log("sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%.2fdB\r\n", payload, rssi, snr);
+			} else {
+				app_log("sx1262: rx done, payload=\"%.8s\"\r\n", payload);
+			}
 		}
 	} else {
 		app_log("sx1262: rx timeout (irq=0x%04X)\r\n", irq);
