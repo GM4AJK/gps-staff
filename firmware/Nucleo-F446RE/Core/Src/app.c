@@ -80,7 +80,7 @@ void app_loop(void)
 
 #ifdef TEST_SX1262
 		if(flag_get_1000MS()) {
-			test_sx1262_tx(&sx1262);
+			test_sx1262_rx(&sx1262);
 		}
 #endif /* TEST_SX1262 */
 	}
