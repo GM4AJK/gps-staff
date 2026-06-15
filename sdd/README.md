@@ -70,6 +70,7 @@ This document is a pre-design requirements and decisions capture, maintained as 
   - Default: ISM no-duty-cycle sub-band 434.040-434.790 MHz (10mW limit, ~2.5% duty cycle at 1Hz/SF7/BW500)
   - Fallback: 70cm amateur band under GM4AJK licence (full 22dBm, no duty cycle restriction)
 - LoRa settings: SF7, BW500 -- ~25ms time-on-air per 700-byte RTCM packet
+- RTCM constellation selection: **GPS+GLONASS only** (drop Galileo/BeiDou) -- reduces the 1Hz RTCM3 stream from ~700 bytes (4-GNSS) to ~255-325 bytes (1005/1006 + 1074 GPS MSM4 + 1084 GLONASS MSM4 + 1230), small enough to fit in 2 SX1262 packets instead of 3-4 and roughly halving LoRa duty cycle
 - **Bidirectional half-duplex protocol** -- SX1262 is a transceiver, both units TX and RX
   - Primary: base -> rover RTCM stream at 1Hz
   - Secondary: rover -> base command channel in gaps between RTCM packets
@@ -339,7 +340,7 @@ BASE STATION                         ROVER
 
 - Single PCB design, identical firmware flashed to both units, mode (base/rover) selected by hardware jumper read at boot
 - F9P handles all RTK computation onboard -- STM32F7 is smart pipe + data logger
-- RTCM data rate: ~5 kbps for 4 constellations at 1 Hz -- well within LoRa capability
+- RTCM data rate: ~2-2.5 kbps for GPS+GLONASS at 1 Hz -- well within LoRa capability
 
 ---
 
