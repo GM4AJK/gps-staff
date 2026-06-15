@@ -26,9 +26,10 @@
 #define LIS3MDL_I2C_ADDR_SA1_LOW  0x1C
 #define LIS3MDL_I2C_ADDR_SA1_HIGH 0x1E
 
-typedef struct {
+typedef struct lis3mdl_s {
 	I2C_HandleTypeDef *port;
 	uint16_t address;
+	void (*mag_ready)(struct lis3mdl_s *p, int16_t x, int16_t y, int16_t z);
 } lis3mdl_t;
 
 /**
@@ -74,5 +75,29 @@ HAL_StatusTypeDef lis3mdl_data_ready(lis3mdl_t *p, bool *out_ready);
  * @return HAL_OK on successful I2C read
  */
 HAL_StatusTypeDef lis3mdl_read_mag(lis3mdl_t *p, int16_t *out_x, int16_t *out_y, int16_t *out_z);
+
+/**
+ * lis3mdl_set_mag_ready_callback
+ * @param p - Pointer to an initialized lis3mdl_t struct
+ * @param callback - Function to call when new magnetometer data is
+ *                    available, or NULL to disable
+ *
+ * Registers a callback invoked by lis3mdl_loop() with the raw
+ * magnetometer reading whenever STATUS_REG.ZYXDA is set. Stored in
+ * p->mag_ready; NULL by default.
+ */
+void lis3mdl_set_mag_ready_callback(lis3mdl_t *p, void (*callback)(lis3mdl_t *p, int16_t x, int16_t y, int16_t z));
+
+/**
+ * lis3mdl_loop
+ * @param p - Pointer to an initialized lis3mdl_t struct
+ * @return HAL_OK on successful I2C access
+ *
+ * Service handler - reads STATUS_REG and, if ZYXDA is set, reads the
+ * X/Y/Z axes and invokes the registered mag_ready callback (if any).
+ * Intended to be called from the idle loop, gated by a flags.h flag
+ * matching the configured ODR.
+ */
+HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p);
 
 #endif /* INC_LIS3MDL_H_ */
