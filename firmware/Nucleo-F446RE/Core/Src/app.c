@@ -14,7 +14,6 @@
 #include "Tests/test_sx1262.h"
 #include "lsm6dsrx.h"
 #include "lis3mdl.h"
-#include "Tests/test_lis3mdl.h"
 
 static void app_tests(void);
 
@@ -125,12 +124,6 @@ void app_loop(void)
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
 			flipper = !flipper;
 		}
-
-#ifdef TEST_LIS3MDL
-		if(flag_get_500MS()) {
-			test_lis3mdl_poll(&mag);
-		}
-#endif /* TEST_LIS3MDL */
 
 #ifdef TEST_SX1262
 		if(flag_get_SX1262_DIO1()) {
