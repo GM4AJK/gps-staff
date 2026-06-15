@@ -32,6 +32,14 @@ typedef struct lis3mdl_s {
 	void (*mag_ready)(struct lis3mdl_s *p, int16_t x, int16_t y, int16_t z);
 } lis3mdl_t;
 
+/* Running per-axis min/max of raw magnetometer readings, used by
+ * lis3mdl_apply_calibration() for a min/max hard/soft-iron correction. */
+typedef struct {
+	int16_t min_x, max_x;
+	int16_t min_y, max_y;
+	int16_t min_z, max_z;
+} lis3mdl_calibration_t;
+
 /**
  * lis3mdl_init
  * @param p - Pointer to the lis3mdl_t struct to populate
@@ -102,9 +110,11 @@ HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p);
 
 /**
  * lis3mdl_compute_heading
- * @param mx - Raw magnetometer X output (as from lis3mdl_read_mag)
- * @param my - Raw magnetometer Y output
- * @param mz - Raw magnetometer Z output
+ * @param mx - Magnetometer X reading - either raw (as from
+ *             lis3mdl_read_mag()) or hard/soft-iron corrected (as from
+ *             lis3mdl_apply_calibration())
+ * @param my - Magnetometer Y reading, same units as mx
+ * @param mz - Magnetometer Z reading, same units as mx
  * @param roll_deg - Roll angle in degrees, as computed by
  *                    lsm6dsrx_compute_tilt() for the paired IMU: rotation
  *                    about the shared X axis, positive when the +Y axis
@@ -118,14 +128,60 @@ HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p);
  * @param out_heading_deg - Tilt-compensated heading in degrees, in the
  *                           range [0, 360), measured clockwise from
  *                           magnetic north when sighting along the +X
- *                           axis with the sensor level. Not corrected
- *                           for hard/soft-iron error or magnetic
- *                           declination - both are future work.
+ *                           axis with the sensor level. Accuracy depends
+ *                           on whether mx/my/mz have been hard/soft-iron
+ *                           corrected; not corrected for magnetic
+ *                           declination - that remains future work.
  *
  * Pure math helper, no I2C traffic. Uses roll_deg/pitch_deg to rotate the
- * raw magnetometer vector back to level before computing heading, so the
- * result is valid even when the staff is tilted.
+ * mx/my/mz vector back to level before computing heading, so the result
+ * is valid even when the staff is tilted.
  */
-void lis3mdl_compute_heading(int16_t mx, int16_t my, int16_t mz, float roll_deg, float pitch_deg, float *out_heading_deg);
+void lis3mdl_compute_heading(float mx, float my, float mz, float roll_deg, float pitch_deg, float *out_heading_deg);
+
+/**
+ * lis3mdl_calibration_init
+ * @param cal - Pointer to the lis3mdl_calibration_t struct to reset
+ *
+ * Resets the running per-axis min/max to "no samples seen yet"
+ * (min = INT16_MAX, max = INT16_MIN for each axis), so the first call to
+ * lis3mdl_calibration_update() establishes the initial range.
+ */
+void lis3mdl_calibration_init(lis3mdl_calibration_t *cal);
+
+/**
+ * lis3mdl_calibration_update
+ * @param cal - Pointer to an initialized lis3mdl_calibration_t struct
+ * @param mx - Raw magnetometer X output (as from lis3mdl_read_mag)
+ * @param my - Raw magnetometer Y output
+ * @param mz - Raw magnetometer Z output
+ *
+ * Widens cal's per-axis min/max to include this sample. Call repeatedly
+ * while the sensor is rotated through as many orientations as possible -
+ * the more of the full sphere of orientations is covered, the more
+ * accurate the resulting calibration.
+ */
+void lis3mdl_calibration_update(lis3mdl_calibration_t *cal, int16_t mx, int16_t my, int16_t mz);
+
+/**
+ * lis3mdl_apply_calibration
+ * @param cal - Pointer to a lis3mdl_calibration_t populated via
+ *              lis3mdl_calibration_update()
+ * @param mx - Raw magnetometer X output (as from lis3mdl_read_mag)
+ * @param my - Raw magnetometer Y output
+ * @param mz - Raw magnetometer Z output
+ * @param out_x - Corrected X, suitable for lis3mdl_compute_heading()
+ * @param out_y - Corrected Y, suitable for lis3mdl_compute_heading()
+ * @param out_z - Corrected Z, suitable for lis3mdl_compute_heading()
+ *
+ * Pure math helper, no I2C traffic. For each axis, subtracts the
+ * midpoint of cal's min/max (hard-iron offset, recentres the reading
+ * ellipsoid on the origin) and scales by the average per-axis range
+ * divided by that axis's range (soft-iron correction, normalises the
+ * ellipsoid towards a sphere). Axes with no recorded range yet (min ==
+ * max, e.g. before lis3mdl_calibration_update() has been called) are
+ * left uncorrected (scale 1, offset 0) to avoid dividing by zero.
+ */
+void lis3mdl_apply_calibration(const lis3mdl_calibration_t *cal, int16_t mx, int16_t my, int16_t mz, float *out_x, float *out_y, float *out_z);
 
 #endif /* INC_LIS3MDL_H_ */
