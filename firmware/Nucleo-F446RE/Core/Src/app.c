@@ -13,7 +13,6 @@
 #include "sx1262.h"
 #include "Tests/test_sx1262.h"
 #include "lsm6dsrx.h"
-#include "Tests/test_lsm6dsrx.h"
 
 static void app_tests(void);
 
@@ -125,12 +124,6 @@ void app_loop(void)
 			test_sx1262_rx_start(&sx1262);
 		}
 #endif /* TEST_SX1262 */
-
-#ifdef TEST_LSM6DSRX
-		if(flag_get_500MS()) {
-			test_lsm6dsrx_poll(&imu);
-		}
-#endif /* TEST_LSM6DSRX */
 	}
 }
 
