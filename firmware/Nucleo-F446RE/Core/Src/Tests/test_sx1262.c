@@ -155,7 +155,7 @@ static uint8_t tx_payload[8] = "PING0000";
 
 void test_sx1262_tx_done_toggle_led(sx1262_t *p)
 {
-	app_log("sx1262: tx done, payload=\"%.8s\"\r\n", tx_payload);
+	app_log("sx1262: tx done, payload=\"%.8s\", cyc=%lu\r\n", tx_payload, (unsigned long)DWT->CYCCNT);
 
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 }
@@ -185,11 +185,13 @@ void test_sx1262_rx_start(sx1262_t *p)
 {
 	HAL_StatusTypeDef status;
 
-	status = sx1262_set_rx(p, 64000UL);
+	status = sx1262_set_rx(p, SX1262_RX_TX_TIMEOUT_NONE);
 	if (status != HAL_OK) {
 		app_log("sx1262: set rx failed: %d\r\n", status);
 		return;
 	}
+
+	app_log("sx1262: rx armed, cyc=%lu\r\n", (unsigned long)DWT->CYCCNT);
 }
 
 #endif /* TEST_SX1262 */

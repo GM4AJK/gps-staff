@@ -368,7 +368,7 @@ bool sx1262_service_tx(sx1262_t *p)
 			p->tx_done(p);
 		}
 	} else {
-		SX1262_LOG(p, "sx1262: tx timeout (irq=0x%04X)\r\n", irq);
+		SX1262_LOG(p, "sx1262: tx timeout (irq=0x%04X), cyc=%lu\r\n", irq, (unsigned long)DWT->CYCCNT);
 
 		if (p->tx_timeout != NULL) {
 			p->tx_timeout(p);
@@ -404,18 +404,16 @@ bool sx1262_service_rx(sx1262_t *p)
 				snr_centi_db = -snr_centi_db;
 			}
 
-			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB\r\n",
-				payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100);
+			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB, cyc=%lu\r\n",
+				payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100, (unsigned long)DWT->CYCCNT);
 		} else {
-			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\"\r\n", payload);
+			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", cyc=%lu\r\n", payload, (unsigned long)DWT->CYCCNT);
 		}
 
 		if (p->rx_done != NULL) {
 			p->rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
 		}
 	} else {
-		SX1262_LOG(p, "sx1262: rx timeout (irq=0x%04X)\r\n", irq);
-
 		if (p->rx_timeout != NULL) {
 			p->rx_timeout(p);
 		}

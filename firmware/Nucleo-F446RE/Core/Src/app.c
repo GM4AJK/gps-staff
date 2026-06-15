@@ -39,7 +39,6 @@ void app_1ms(void)
 	COUNTER_TIMER(  cnt_100ms,  100, flag_set_100MS  );
 	COUNTER_TIMER(  cnt_200ms,  100, flag_set_200MS  );
 	COUNTER_TIMER(  cnt_500ms,  100, flag_set_500MS  );
-	COUNTER_TIMER( cnt_1000ms, 1000, flag_set_1000MS );
 }
 
 void app_log(const char *fmt, ...)
@@ -63,6 +62,11 @@ static void sx1262_logger(const char *buf, int len)
 
 void app_init(void)
 {
+	/* Enable DWT cycle counter for timing diagnostics */
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
@@ -95,14 +99,23 @@ void app_init(void)
 
 void app_loop(void)
 {
-	while(true) {
+	bool flipper = false;
+
 #ifdef TEST_SX1262
-		if(flag_get_1000MS()) {
-			test_sx1262_rx_start(&sx1262);
+	test_sx1262_rx_start(&sx1262);
+#endif /* TEST_SX1262 */
+
+	while(true) {
+		if(flag_get_100MS()) {
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
+			flipper = !flipper;
 		}
 
+#ifdef TEST_SX1262
 		if(flag_get_SX1262_DIO1()) {
-			sx1262_service_rx(&sx1262);
+			if(sx1262_service_rx(&sx1262)) {
+				test_sx1262_rx_start(&sx1262);
+			}
 		}
 #endif /* TEST_SX1262 */
 	}
