@@ -58,6 +58,8 @@ void lsm6dsrx_init(lsm6dsrx_t *p, I2C_HandleTypeDef *in_port, uint16_t in_addres
 {
 	p->port = in_port;
 	p->address = in_address;
+	p->accel_ready = NULL;
+	p->gyro_ready = NULL;
 }
 
 HAL_StatusTypeDef lsm6dsrx_bringup(lsm6dsrx_t *p)
@@ -117,4 +119,43 @@ HAL_StatusTypeDef lsm6dsrx_read_accel(lsm6dsrx_t *p, int16_t *out_x, int16_t *ou
 HAL_StatusTypeDef lsm6dsrx_read_gyro(lsm6dsrx_t *p, int16_t *out_x, int16_t *out_y, int16_t *out_z)
 {
 	return lsm6dsrx_read_axes(p, LSM6DSRX_REG_OUTX_L_G, out_x, out_y, out_z);
+}
+
+void lsm6dsrx_set_accel_ready_callback(lsm6dsrx_t *p, void (*callback)(lsm6dsrx_t *p, int16_t x, int16_t y, int16_t z))
+{
+	p->accel_ready = callback;
+}
+
+void lsm6dsrx_set_gyro_ready_callback(lsm6dsrx_t *p, void (*callback)(lsm6dsrx_t *p, int16_t x, int16_t y, int16_t z))
+{
+	p->gyro_ready = callback;
+}
+
+HAL_StatusTypeDef lsm6dsrx_loop(lsm6dsrx_t *p)
+{
+	bool xl_ready, g_ready;
+	int16_t x, y, z;
+
+	HAL_StatusTypeDef status = lsm6dsrx_data_ready(p, &xl_ready, &g_ready);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	if (xl_ready && p->accel_ready != NULL) {
+		status = lsm6dsrx_read_accel(p, &x, &y, &z);
+		if (status != HAL_OK) {
+			return status;
+		}
+		p->accel_ready(p, x, y, z);
+	}
+
+	if (g_ready && p->gyro_ready != NULL) {
+		status = lsm6dsrx_read_gyro(p, &x, &y, &z);
+		if (status != HAL_OK) {
+			return status;
+		}
+		p->gyro_ready(p, x, y, z);
+	}
+
+	return HAL_OK;
 }

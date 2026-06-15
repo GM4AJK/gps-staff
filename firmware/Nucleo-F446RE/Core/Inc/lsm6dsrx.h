@@ -24,9 +24,11 @@
 #define LSM6DSRX_I2C_ADDR_SA0_LOW  0x6A
 #define LSM6DSRX_I2C_ADDR_SA0_HIGH 0x6B
 
-typedef struct {
+typedef struct lsm6dsrx_s {
 	I2C_HandleTypeDef *port;
 	uint16_t address;
+	void (*accel_ready)(struct lsm6dsrx_s *p, int16_t x, int16_t y, int16_t z);
+	void (*gyro_ready)(struct lsm6dsrx_s *p, int16_t x, int16_t y, int16_t z);
 } lsm6dsrx_t;
 
 /**
@@ -82,5 +84,41 @@ HAL_StatusTypeDef lsm6dsrx_read_accel(lsm6dsrx_t *p, int16_t *out_x, int16_t *ou
  * @return HAL_OK on successful I2C read
  */
 HAL_StatusTypeDef lsm6dsrx_read_gyro(lsm6dsrx_t *p, int16_t *out_x, int16_t *out_y, int16_t *out_z);
+
+/**
+ * lsm6dsrx_set_accel_ready_callback
+ * @param p - Pointer to an initialized lsm6dsrx_t struct
+ * @param callback - Function to call when new accelerometer data is
+ *                    available, or NULL to disable
+ *
+ * Registers a callback invoked by lsm6dsrx_loop() with the raw
+ * accelerometer reading whenever STATUS_REG.XLDA is set. Stored in
+ * p->accel_ready; NULL by default.
+ */
+void lsm6dsrx_set_accel_ready_callback(lsm6dsrx_t *p, void (*callback)(lsm6dsrx_t *p, int16_t x, int16_t y, int16_t z));
+
+/**
+ * lsm6dsrx_set_gyro_ready_callback
+ * @param p - Pointer to an initialized lsm6dsrx_t struct
+ * @param callback - Function to call when new gyroscope data is
+ *                    available, or NULL to disable
+ *
+ * Registers a callback invoked by lsm6dsrx_loop() with the raw
+ * gyroscope reading whenever STATUS_REG.GDA is set. Stored in
+ * p->gyro_ready; NULL by default.
+ */
+void lsm6dsrx_set_gyro_ready_callback(lsm6dsrx_t *p, void (*callback)(lsm6dsrx_t *p, int16_t x, int16_t y, int16_t z));
+
+/**
+ * lsm6dsrx_loop
+ * @param p - Pointer to an initialized lsm6dsrx_t struct
+ * @return HAL_OK on successful I2C access
+ *
+ * Service handler - reads STATUS_REG and, for each of XLDA/GDA that is
+ * set, reads the corresponding axes and invokes the registered
+ * accel_ready/gyro_ready callback (if any). Intended to be called from
+ * the idle loop, gated by a flags.h flag matching the configured ODR.
+ */
+HAL_StatusTypeDef lsm6dsrx_loop(lsm6dsrx_t *p);
 
 #endif /* INC_LSM6DSRX_H_ */

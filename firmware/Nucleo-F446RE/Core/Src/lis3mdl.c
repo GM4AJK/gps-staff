@@ -47,6 +47,7 @@ void lis3mdl_init(lis3mdl_t *p, I2C_HandleTypeDef *in_port, uint16_t in_address)
 {
 	p->port = in_port;
 	p->address = in_address;
+	p->mag_ready = NULL;
 }
 
 HAL_StatusTypeDef lis3mdl_bringup(lis3mdl_t *p)
@@ -110,6 +111,32 @@ HAL_StatusTypeDef lis3mdl_read_mag(lis3mdl_t *p, int16_t *out_x, int16_t *out_y,
 	*out_x = (int16_t)((data[1] << 8) | data[0]);
 	*out_y = (int16_t)((data[3] << 8) | data[2]);
 	*out_z = (int16_t)((data[5] << 8) | data[4]);
+
+	return HAL_OK;
+}
+
+void lis3mdl_set_mag_ready_callback(lis3mdl_t *p, void (*callback)(lis3mdl_t *p, int16_t x, int16_t y, int16_t z))
+{
+	p->mag_ready = callback;
+}
+
+HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p)
+{
+	bool ready;
+	int16_t x, y, z;
+
+	HAL_StatusTypeDef status = lis3mdl_data_ready(p, &ready);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	if (ready && p->mag_ready != NULL) {
+		status = lis3mdl_read_mag(p, &x, &y, &z);
+		if (status != HAL_OK) {
+			return status;
+		}
+		p->mag_ready(p, x, y, z);
+	}
 
 	return HAL_OK;
 }
