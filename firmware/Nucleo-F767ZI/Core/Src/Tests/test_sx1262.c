@@ -82,7 +82,7 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	status = sx1262_set_packet_params_lora(p, 8, SX1262_LORA_HEADER_EXPLICIT, 8, SX1262_LORA_CRC_ON, SX1262_LORA_IQ_STANDARD);
+	status = sx1262_set_packet_params_lora(p, 8, SX1262_LORA_HEADER_EXPLICIT, SX1262_MAX_PAYLOAD_LEN, SX1262_LORA_CRC_ON, SX1262_LORA_IQ_STANDARD);
 	if (status != HAL_OK) {
 		app_log("sx1262: set packet params failed: %d\r\n", status);
 		return;
@@ -109,7 +109,7 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	status = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, SX1262_IRQ_TX_DONE | SX1262_IRQ_RX_DONE | SX1262_IRQ_TIMEOUT, 0, 0);
+	status = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, SX1262_IRQ_TX_DONE | SX1262_IRQ_RX_DONE | SX1262_IRQ_HEADER_ERR | SX1262_IRQ_CRC_ERR | SX1262_IRQ_TIMEOUT, 0, 0);
 	if (status != HAL_OK) {
 		app_log("sx1262: set dio irq params failed: %d\r\n", status);
 		return;
@@ -118,7 +118,93 @@ void test_sx1262_config(sx1262_t *p)
 	sx1262_set_rx_done_callback(p, test_sx1262_rx_done_handler);
 	sx1262_set_tx_done_callback(p, test_sx1262_tx_done_toggle_led);
 
-	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, 0dBm\r\n");
+	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, %u-byte payload, 0dBm\r\n", (unsigned)SX1262_MAX_PAYLOAD_LEN);
+}
+
+void test_sx1262_config_gfsk(sx1262_t *p)
+{
+	HAL_StatusTypeDef status;
+
+	status = sx1262_reset(p);
+	if (status != HAL_OK) {
+		app_log("sx1262: reset failed: %d\r\n", status);
+		return;
+	}
+
+	/* Waveshare Core1262-LF: 32MHz reference is a TCXO powered via DIO3 */
+	status = sx1262_set_dio3_as_tcxo_ctrl(p, SX1262_TCXO_VOLTAGE_1_8, 320);
+	if (status != HAL_OK) {
+		app_log("sx1262: set dio3 as tcxo ctrl failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_clear_device_errors(p);
+	if (status != HAL_OK) {
+		app_log("sx1262: clear device errors failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_packet_type(p, SX1262_PACKET_TYPE_GFSK);
+	if (status != HAL_OK) {
+		app_log("sx1262: set packet type failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_rf_frequency(p, 434000000UL);
+	if (status != HAL_OK) {
+		app_log("sx1262: set rf frequency failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_calibrate_image(p, SX1262_CAL_IMG_430_440_FREQ1, SX1262_CAL_IMG_430_440_FREQ2);
+	if (status != HAL_OK) {
+		app_log("sx1262: calibrate image failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_modulation_params_gfsk(p, 50000, SX1262_GFSK_PULSE_BT_0_5, SX1262_GFSK_BW_117300, 25000);
+	if (status != HAL_OK) {
+		app_log("sx1262: set modulation params failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_packet_params_gfsk(p, 16, SX1262_GFSK_PREAMBLE_DET_16BIT, 16, SX1262_GFSK_ADDR_COMP_OFF, SX1262_GFSK_PACKET_FIXED, SX1262_MAX_PAYLOAD_LEN, SX1262_GFSK_CRC_2_BYTE, SX1262_GFSK_WHITENING_ON);
+	if (status != HAL_OK) {
+		app_log("sx1262: set packet params failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_buffer_base_address(p, 0, 0);
+	if (status != HAL_OK) {
+		app_log("sx1262: set buffer base address failed: %d\r\n", status);
+		return;
+	}
+
+	/* +14dBm PA ceiling (datasheet Table 13-21), with SetTxParams power
+	 * reduced to 0dBm (1mW) -- bench testing not yet legal under the
+	 * amateur licence, keep this within the IR2030/1/11 1mW e.r.p. cap */
+	status = sx1262_set_pa_config(p, 0x02, 0x02, SX1262_PA_CONFIG_SX1262);
+	if (status != HAL_OK) {
+		app_log("sx1262: set pa config failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_tx_params(p, 0, SX1262_RAMP_200U);
+	if (status != HAL_OK) {
+		app_log("sx1262: set tx params failed: %d\r\n", status);
+		return;
+	}
+
+	status = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, SX1262_IRQ_TX_DONE | SX1262_IRQ_RX_DONE | SX1262_IRQ_HEADER_ERR | SX1262_IRQ_CRC_ERR | SX1262_IRQ_TIMEOUT, 0, 0);
+	if (status != HAL_OK) {
+		app_log("sx1262: set dio irq params failed: %d\r\n", status);
+		return;
+	}
+
+	sx1262_set_rx_done_callback(p, test_sx1262_rx_done_handler);
+	sx1262_set_tx_done_callback(p, test_sx1262_tx_done_toggle_led);
+
+	app_log("sx1262: configured GFSK @ 434.000MHz, 50kbps/25kHz dev/BW117.3kHz, %u-byte fixed CRC16, 0dBm\r\n", (unsigned)SX1262_MAX_PAYLOAD_LEN);
 }
 
 void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db)
@@ -126,6 +212,8 @@ void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len
 	char line[24];
 	int snr_centi_db = (int)snr_quarter_db * 25;
 	int snr_neg = (snr_centi_db < 0);
+
+	(void)len;
 
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
@@ -139,7 +227,7 @@ void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len
 
 	ssd1309_clear(oled);
 
-	snprintf(line, sizeof(line), "RX: %.*s", (int)len, payload);
+	snprintf(line, sizeof(line), "RX: %.8s", payload);
 	ssd1309_draw_string(oled, &font5x7, 0, 0, line, SSD1309_COLOR_ON);
 
 	snprintf(line, sizeof(line), "RSSI: %ddBm", rssi);
@@ -151,11 +239,11 @@ void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len
 	ssd1309_flush(oled);
 }
 
-static uint8_t tx_payload[8] = "PING0000";
+static uint8_t tx_payload[SX1262_MAX_PAYLOAD_LEN] = "PING0000";
 
 void test_sx1262_tx_done_toggle_led(sx1262_t *p)
 {
-	app_log("sx1262: tx done, payload=\"%.8s\", cyc=%lu\r\n", tx_payload, (unsigned long)DWT->CYCCNT);
+	app_log("sx1262: tx done, payload=\"%.8s\", len=%u, cyc=%lu\r\n", tx_payload, (unsigned)sizeof(tx_payload), (unsigned long)DWT->CYCCNT);
 
 	HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 }

@@ -113,9 +113,8 @@ void app_loop(void)
 
 #ifdef TEST_SX1262
 		if(flag_get_SX1262_DIO1()) {
-			if(sx1262_service_rx(&sx1262)) {
-				test_sx1262_rx_start(&sx1262);
-			}
+			sx1262_service_rx(&sx1262);
+			test_sx1262_rx_start(&sx1262);
 		}
 #endif /* TEST_SX1262 */
 	}
@@ -131,6 +130,10 @@ static void app_tests(void)
 #endif /* TEST_SSD1309 */
 
 #ifdef TEST_SX1262
+#ifdef TEST_SX1262_GFSK
+	test_sx1262_config_gfsk(&sx1262);
+#else
 	test_sx1262_config(&sx1262);
+#endif /* TEST_SX1262_GFSK */
 #endif /* TEST_SX1262 */
 }

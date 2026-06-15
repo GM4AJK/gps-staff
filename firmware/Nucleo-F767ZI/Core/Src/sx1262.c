@@ -61,6 +61,7 @@ void sx1262_init(
 	p->reset_pin = reset_pin;
 	p->busy_port = busy_port;
 	p->busy_pin = busy_pin;
+	p->packet_type = SX1262_PACKET_TYPE_LORA;
 	p->rx_done = NULL;
 	p->tx_done = NULL;
 	p->rx_timeout = NULL;
@@ -146,8 +147,14 @@ HAL_StatusTypeDef sx1262_get_status(sx1262_t *p, uint8_t *out_status)
 HAL_StatusTypeDef sx1262_set_packet_type(sx1262_t *p, uint8_t packet_type)
 {
 	uint8_t tx[2] = { SX1262_OP_SET_PACKET_TYPE, packet_type };
+	HAL_StatusTypeDef status;
 
-	return sx1262_write(p, tx, sizeof(tx));
+	status = sx1262_write(p, tx, sizeof(tx));
+	if (status == HAL_OK) {
+		p->packet_type = packet_type;
+	}
+
+	return status;
 }
 
 HAL_StatusTypeDef sx1262_set_rf_frequency(sx1262_t *p, uint32_t freq_hz)
@@ -195,6 +202,39 @@ HAL_StatusTypeDef sx1262_set_packet_params_lora(sx1262_t *p, uint16_t preamble_l
 		payload_len,
 		crc_type,
 		invert_iq
+	};
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_set_modulation_params_gfsk(sx1262_t *p, uint32_t bitrate_bps, uint8_t pulse_shape, uint8_t bandwidth, uint32_t fdev_hz)
+{
+	uint32_t br = (uint32_t)(((uint64_t)32 * SX1262_XTAL_HZ) / bitrate_bps);
+	uint32_t fdev = (uint32_t)(((uint64_t)fdev_hz << 25) / SX1262_XTAL_HZ);
+	uint8_t tx[9] = {
+		SX1262_OP_SET_MODULATION_PARAMS,
+		(uint8_t)(br >> 16), (uint8_t)(br >> 8), (uint8_t)(br),
+		pulse_shape,
+		bandwidth,
+		(uint8_t)(fdev >> 16), (uint8_t)(fdev >> 8), (uint8_t)(fdev)
+	};
+
+	return sx1262_write(p, tx, sizeof(tx));
+}
+
+HAL_StatusTypeDef sx1262_set_packet_params_gfsk(sx1262_t *p, uint16_t preamble_len_bits, uint8_t preamble_detector_len, uint8_t sync_word_len_bits, uint8_t addr_comp, uint8_t packet_type, uint8_t payload_len, uint8_t crc_type, uint8_t whitening)
+{
+	uint8_t tx[10] = {
+		SX1262_OP_SET_PACKET_PARAMS,
+		(uint8_t)(preamble_len_bits >> 8),
+		(uint8_t)(preamble_len_bits),
+		preamble_detector_len,
+		sync_word_len_bits,
+		addr_comp,
+		packet_type,
+		payload_len,
+		crc_type,
+		whitening
 	};
 
 	return sx1262_write(p, tx, sizeof(tx));
@@ -343,6 +383,32 @@ HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, in
 	return HAL_OK;
 }
 
+HAL_StatusTypeDef sx1262_get_packet_status_gfsk(sx1262_t *p, uint8_t *out_rx_status, int8_t *out_rssi_sync, int8_t *out_rssi_avg)
+{
+	uint8_t tx[5] = { SX1262_OP_GET_PACKET_STATUS, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP };
+	uint8_t rx[5] = { 0 };
+	HAL_StatusTypeDef status;
+
+	status = sx1262_wait_busy(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	status = HAL_SPI_TransmitReceive(p->port, tx, rx, sizeof(tx), SX1262_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	*out_rx_status = rx[2];
+	*out_rssi_sync = (int8_t)(-rx[3] / 2);
+	*out_rssi_avg = (int8_t)(-rx[4] / 2);
+
+	return HAL_OK;
+}
+
 HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask)
 {
 	uint8_t tx[3] = { SX1262_OP_CLEAR_IRQ_STATUS, (uint8_t)(clear_mask >> 8), (uint8_t)(clear_mask) };
@@ -380,11 +446,14 @@ bool sx1262_service_tx(sx1262_t *p)
 
 bool sx1262_service_rx(sx1262_t *p)
 {
-	uint8_t payload[8] = { 0 };
+	uint8_t payload[SX1262_MAX_PAYLOAD_LEN] = { 0 };
 	HAL_StatusTypeDef status;
 	uint16_t irq = 0;
 	int8_t rssi = 0;
 	int8_t snr_quarter_db = 0;
+	uint8_t gfsk_rx_status = 0;
+	int8_t gfsk_rssi_avg = 0;
+	bool have_status = false;
 
 	status = sx1262_get_irq_status(p, &irq);
 	if (status != HAL_OK) {
@@ -396,6 +465,16 @@ bool sx1262_service_rx(sx1262_t *p)
 		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));
 		if (status != HAL_OK) {
 			SX1262_LOG(p, "sx1262: rx read buffer failed: %d\r\n", status);
+		} else if (p->packet_type == SX1262_PACKET_TYPE_GFSK) {
+			have_status = (sx1262_get_packet_status_gfsk(p, &gfsk_rx_status, &gfsk_rssi_avg, &rssi) == HAL_OK);
+			snr_quarter_db = 0;
+
+			if (have_status) {
+				SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", len=%u, rssi=%ddBm, snr=0.00dB, cyc=%lu\r\n",
+					payload, (unsigned)sizeof(payload), rssi, (unsigned long)DWT->CYCCNT);
+			} else {
+				SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", len=%u, cyc=%lu\r\n", payload, (unsigned)sizeof(payload), (unsigned long)DWT->CYCCNT);
+			}
 		} else if (sx1262_get_packet_status(p, &rssi, &snr_quarter_db) == HAL_OK) {
 			int snr_centi_db = (int)snr_quarter_db * 25;
 			int snr_neg = (snr_centi_db < 0);
@@ -404,16 +483,18 @@ bool sx1262_service_rx(sx1262_t *p)
 				snr_centi_db = -snr_centi_db;
 			}
 
-			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", rssi=%ddBm, snr=%s%d.%02ddB, cyc=%lu\r\n",
-				payload, rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100, (unsigned long)DWT->CYCCNT);
+			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", len=%u, rssi=%ddBm, snr=%s%d.%02ddB, cyc=%lu\r\n",
+				payload, (unsigned)sizeof(payload), rssi, snr_neg ? "-" : "", snr_centi_db / 100, snr_centi_db % 100, (unsigned long)DWT->CYCCNT);
 		} else {
-			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", cyc=%lu\r\n", payload, (unsigned long)DWT->CYCCNT);
+			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", len=%u, cyc=%lu\r\n", payload, (unsigned)sizeof(payload), (unsigned long)DWT->CYCCNT);
 		}
 
 		if (p->rx_done != NULL) {
 			p->rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
 		}
 	} else {
+		SX1262_LOG(p, "sx1262: rx not done (irq=0x%04X), cyc=%lu\r\n", irq, (unsigned long)DWT->CYCCNT);
+
 		if (p->rx_timeout != NULL) {
 			p->rx_timeout(p);
 		}
