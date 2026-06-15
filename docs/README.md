@@ -23,6 +23,7 @@ A catalog of reference documents kept in this repo.
 | [LIS3MDL.pdf](datasheets/LIS3MDL.pdf) | STMicroelectronics LIS3MDL 3-axis magnetometer datasheet -- the magnetometer specced for azimuth/heading, paired with the LSM6DSOX/LSM6DSRX for tilt+azimuth. WHO_AM_I reads 0x3D, I2C address 0x1C or 0x1E depending on the SDO/SA1 pin |
 | [um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf](datasheets/um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf) | STMicroelectronics UM1724 -- STM32 Nucleo-64 boards (MB1136) user manual. Reference for power supply options (Section 7.5), JP5/JP6 (IDD) jumper configuration, and connector pinouts for the Nucleo-F446RE/G491RE bench boards |
 | [Ofcom-IR-2030.pdf](datasheets/Ofcom-IR-2030.pdf) | Ofcom UK Interface Requirement (IR) 2030 -- licence-exempt Short Range Devices (SRDs). Reference for the 433/434MHz power/duty-cycle limits (Table 3.1, IR2030/1/10-12) used to confirm the LoRa link operates under the GM4AJK amateur licence rather than the SRD exemption (see `sdd/README.md`) |
+| [um2397-stm32g4-nucleo32-board-mb1430-stmicroelectronics-5.pdf](datasheets/um2397-stm32g4-nucleo32-board-mb1430-stmicroelectronics-5.pdf) | STMicroelectronics UM2397 -- STM32 Nucleo-32 boards (MB1430) user manual. Reference for power supply, jumper configuration, and connector pinouts for the Nucleo-G431KB Fake-F9P boards |
 
 ## BNO085 (`datasheets/bno085/`)
 
