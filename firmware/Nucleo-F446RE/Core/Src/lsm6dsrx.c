@@ -2,8 +2,11 @@
 
 #include "lsm6dsrx.h"
 #include "app.h"
+#include <math.h>
 
 #define LSM6DSRX_I2C_TIMEOUT_MS 100
+
+#define LSM6DSRX_RAD_TO_DEG (180.0f / 3.14159265358979323846f)
 
 /* CTRL1_XL / CTRL2_G: ODR=104Hz (high-perf, 0100), FS=00 (+/-2g / +/-250dps) */
 #define LSM6DSRX_CTRL1_XL_104HZ_2G    0x40
@@ -129,6 +132,12 @@ void lsm6dsrx_set_accel_ready_callback(lsm6dsrx_t *p, void (*callback)(lsm6dsrx_
 void lsm6dsrx_set_gyro_ready_callback(lsm6dsrx_t *p, void (*callback)(lsm6dsrx_t *p, int16_t x, int16_t y, int16_t z))
 {
 	p->gyro_ready = callback;
+}
+
+void lsm6dsrx_compute_tilt(int16_t ax, int16_t ay, int16_t az, float *out_roll_deg, float *out_pitch_deg)
+{
+	*out_roll_deg = atan2f((float)ay, (float)az) * LSM6DSRX_RAD_TO_DEG;
+	*out_pitch_deg = atan2f(-(float)ax, sqrtf((float)ay * (float)ay + (float)az * (float)az)) * LSM6DSRX_RAD_TO_DEG;
 }
 
 HAL_StatusTypeDef lsm6dsrx_loop(lsm6dsrx_t *p)

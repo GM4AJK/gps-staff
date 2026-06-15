@@ -100,4 +100,32 @@ void lis3mdl_set_mag_ready_callback(lis3mdl_t *p, void (*callback)(lis3mdl_t *p,
  */
 HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p);
 
+/**
+ * lis3mdl_compute_heading
+ * @param mx - Raw magnetometer X output (as from lis3mdl_read_mag)
+ * @param my - Raw magnetometer Y output
+ * @param mz - Raw magnetometer Z output
+ * @param roll_deg - Roll angle in degrees, as computed by
+ *                    lsm6dsrx_compute_tilt() for the paired IMU: rotation
+ *                    about the shared X axis, positive when the +Y axis
+ *                    moves towards +Z. The LIS3MDL and LSM6DSOX/LSM6DSRX
+ *                    on the Adafruit breakout share the same X/Y/Z axis
+ *                    frame, so the IMU's roll/pitch apply directly here.
+ * @param pitch_deg - Pitch angle in degrees, as computed by
+ *                     lsm6dsrx_compute_tilt() for the paired IMU:
+ *                     rotation about the shared Y axis, positive when the
+ *                     +X axis moves towards +Z.
+ * @param out_heading_deg - Tilt-compensated heading in degrees, in the
+ *                           range [0, 360), measured clockwise from
+ *                           magnetic north when sighting along the +X
+ *                           axis with the sensor level. Not corrected
+ *                           for hard/soft-iron error or magnetic
+ *                           declination - both are future work.
+ *
+ * Pure math helper, no I2C traffic. Uses roll_deg/pitch_deg to rotate the
+ * raw magnetometer vector back to level before computing heading, so the
+ * result is valid even when the staff is tilted.
+ */
+void lis3mdl_compute_heading(int16_t mx, int16_t my, int16_t mz, float roll_deg, float pitch_deg, float *out_heading_deg);
+
 #endif /* INC_LIS3MDL_H_ */
