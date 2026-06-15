@@ -20,3 +20,10 @@
 
 - Component datasheets and other reference documents (e.g. dev board schematics) are stored in `docs/datasheets/`.
 - `docs/README.md` is a catalog of these documents — update its table whenever a document is added, moved, or removed.
+
+## Bench debugging / serial console
+
+- The Nucleo boards log debug output (`app_log()`) over UART, normally viewed by the user via PuTTY on Windows.
+- In a WSL session, there is no direct access to Windows COM ports (no USB/IP passthrough configured) — bench log lines must be pasted into the conversation by the user.
+- In a native Windows PowerShell session, the COM port can be opened directly (e.g. .NET `System.IO.Ports.SerialPort` or pyserial) to capture a timed snapshot of debug output — but only one process can hold the port open, so ask the user to close their PuTTY session first.
+- The user does not build firmware via the CLI — builds/flashes are done in STM32CubeIDE. Don't run `make`/build commands; rely on the user to flash and report results (or, from PowerShell, read them directly from the serial port as above).
