@@ -8,7 +8,7 @@
 #define TEST_SX1262
 
 /* Define (with TEST_SX1262) to bring up GFSK instead of LoRa */
-//#define TEST_SX1262_GFSK
+#define TEST_SX1262_GFSK
 
 #ifdef TEST_SX1262
 
