@@ -462,6 +462,12 @@ bool sx1262_service_rx(sx1262_t *p)
 	}
 
 	if (irq & SX1262_IRQ_RX_DONE) {
+		if (irq & SX1262_IRQ_CRC_ERR) {
+			SX1262_LOG(p, "sx1262: rx done, crc error, cyc=%lu\r\n", (unsigned long)DWT->CYCCNT);
+			sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
+			return (irq & SX1262_IRQ_RX_DONE) != 0;
+		}
+
 		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));
 		if (status != HAL_OK) {
 			SX1262_LOG(p, "sx1262: rx read buffer failed: %d\r\n", status);
