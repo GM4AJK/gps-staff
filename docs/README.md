@@ -21,6 +21,7 @@ A catalog of reference documents kept in this repo.
 | [LSM6DSRX-Datasheet.pdf](datasheets/LSM6DSRX-Datasheet.pdf) | STMicroelectronics LSM6DSRX accelerometer + gyroscope datasheet -- pin-compatible (LGA-14L) alternative to the LSM6DSOX with the same Machine Learning Core/FSM, considered after the LSM6DSOXTR went out of stock. WHO_AM_I reads 0x6B instead of the LSM6DSOX's 0x6C |
 | [adafruit_LSM6DSOX_BOB.png](datasheets/adafruit_LSM6DSOX_BOB.png) | Adafruit LSM6DSOX breakout (#4438) schematic -- shows the I2C/SPI signals and address strapping for the breakout board |
 | [um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf](datasheets/um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf) | STMicroelectronics UM1724 -- STM32 Nucleo-64 boards (MB1136) user manual. Reference for power supply options (Section 7.5), JP5/JP6 (IDD) jumper configuration, and connector pinouts for the Nucleo-F446RE/G491RE bench boards |
+| [Ofcom-IR-2030.pdf](datasheets/Ofcom-IR-2030.pdf) | Ofcom UK Interface Requirement (IR) 2030 -- licence-exempt Short Range Devices (SRDs). Reference for the 433/434MHz power/duty-cycle limits (Table 3.1, IR2030/1/10-12) used to confirm the LoRa link operates under the GM4AJK amateur licence rather than the SRD exemption (see `sdd/README.md`) |
 
 ## BNO085 (`datasheets/bno085/`)
 
