@@ -131,6 +131,36 @@
 #define SX1262_LORA_LDRO_OFF 0x00
 #define SX1262_LORA_LDRO_ON  0x01
 
+/* GFSK ModParam4 - PulseShape (datasheet Table 13-44) */
+#define SX1262_GFSK_PULSE_NONE  0x00
+#define SX1262_GFSK_PULSE_BT_0_3 0x08
+#define SX1262_GFSK_PULSE_BT_0_5 0x09
+#define SX1262_GFSK_PULSE_BT_0_7 0x0A
+#define SX1262_GFSK_PULSE_BT_1_0 0x0B
+
+/* GFSK ModParam5 - Bandwidth (datasheet Table 13-45, RX_BW in DSB) */
+#define SX1262_GFSK_BW_4800   0x1F
+#define SX1262_GFSK_BW_5800   0x17
+#define SX1262_GFSK_BW_7300   0x0F
+#define SX1262_GFSK_BW_9700   0x1E
+#define SX1262_GFSK_BW_11700  0x16
+#define SX1262_GFSK_BW_14600  0x0E
+#define SX1262_GFSK_BW_19500  0x1D
+#define SX1262_GFSK_BW_23400  0x15
+#define SX1262_GFSK_BW_29300  0x0D
+#define SX1262_GFSK_BW_39000  0x1C
+#define SX1262_GFSK_BW_46900  0x14
+#define SX1262_GFSK_BW_58600  0x0C
+#define SX1262_GFSK_BW_78200  0x1B
+#define SX1262_GFSK_BW_93800  0x13
+#define SX1262_GFSK_BW_117300 0x0B
+#define SX1262_GFSK_BW_156200 0x1A
+#define SX1262_GFSK_BW_187200 0x12
+#define SX1262_GFSK_BW_234300 0x0A
+#define SX1262_GFSK_BW_312000 0x19
+#define SX1262_GFSK_BW_373600 0x11
+#define SX1262_GFSK_BW_467000 0x09
+
 /* SetPacketParams (datasheet 13.4.6) */
 #define SX1262_OP_SET_PACKET_PARAMS 0x8C
 
@@ -145,6 +175,33 @@
 /* LoRa PacketParam6 - InvertIQ (datasheet Table 13-70) */
 #define SX1262_LORA_IQ_STANDARD 0x00
 #define SX1262_LORA_IQ_INVERTED 0x01
+
+/* GFSK PacketParam3 - PreambleDetectorLength (datasheet Table 13-53) */
+#define SX1262_GFSK_PREAMBLE_DET_OFF   0x00
+#define SX1262_GFSK_PREAMBLE_DET_8BIT  0x04
+#define SX1262_GFSK_PREAMBLE_DET_16BIT 0x05
+#define SX1262_GFSK_PREAMBLE_DET_24BIT 0x06
+#define SX1262_GFSK_PREAMBLE_DET_32BIT 0x07
+
+/* GFSK PacketParam5 - AddrComp (datasheet Table 13-56) */
+#define SX1262_GFSK_ADDR_COMP_OFF            0x00
+#define SX1262_GFSK_ADDR_COMP_NODE           0x01
+#define SX1262_GFSK_ADDR_COMP_NODE_BROADCAST 0x02
+
+/* GFSK PacketParam6 - PacketType (datasheet Table 13-59) */
+#define SX1262_GFSK_PACKET_FIXED    0x00
+#define SX1262_GFSK_PACKET_VARIABLE 0x01
+
+/* GFSK PacketParam8 - CRCType (datasheet Table 13-61) */
+#define SX1262_GFSK_CRC_1_BYTE     0x00
+#define SX1262_GFSK_CRC_OFF        0x01
+#define SX1262_GFSK_CRC_2_BYTE     0x02
+#define SX1262_GFSK_CRC_1_BYTE_INV 0x04
+#define SX1262_GFSK_CRC_2_BYTE_INV 0x06
+
+/* GFSK PacketParam9 - Whitening (datasheet Table 13-64) */
+#define SX1262_GFSK_WHITENING_OFF 0x00
+#define SX1262_GFSK_WHITENING_ON  0x01
 
 /* SetPaConfig (datasheet 13.1.14) */
 #define SX1262_OP_SET_PA_CONFIG 0x95
@@ -168,7 +225,7 @@
 /* WriteBuffer / ReadBuffer (datasheet 13.2.3 / 13.2.4) */
 #define SX1262_OP_WRITE_BUFFER 0x0E
 #define SX1262_OP_READ_BUFFER  0x1E
-#define SX1262_MAX_PAYLOAD_LEN 32
+#define SX1262_MAX_PAYLOAD_LEN 255
 
 /* SetTx / SetRx (datasheet 13.1.4 / 13.1.5) */
 #define SX1262_OP_SET_TX 0x83
@@ -214,6 +271,7 @@ typedef struct sx1262_s {
 	GPIO_PIN_DEF(cs_port, cs_pin);
 	GPIO_PIN_DEF(reset_port, reset_pin);
 	GPIO_PIN_DEF(busy_port, busy_pin);
+	uint8_t packet_type;
 	void (*rx_done)(struct sx1262_s *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db);
 	void (*tx_done)(struct sx1262_s *p);
 	void (*rx_timeout)(struct sx1262_s *p);
@@ -444,6 +502,48 @@ HAL_StatusTypeDef sx1262_set_modulation_params_lora(sx1262_t *p, uint8_t sf, uin
 HAL_StatusTypeDef sx1262_set_packet_params_lora(sx1262_t *p, uint16_t preamble_len, uint8_t header_type, uint8_t payload_len, uint8_t crc_type, uint8_t invert_iq);
 
 /**
+ * sx1262_set_modulation_params_gfsk
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param bitrate_bps - Bit rate in bits/second (600 to 300000)
+ * @param pulse_shape - Gaussian filter BT, one of SX1262_GFSK_PULSE_*
+ * @param bandwidth - Rx bandwidth, one of SX1262_GFSK_BW_*
+ * @param fdev_hz - Frequency deviation in Hz
+ *
+ * Sends the SetModulationParams (0x8B) command for GFSK packet type.
+ * bitrate_bps and fdev_hz are converted to the SX1262's 24-bit br and
+ * Fdev register values (br = 32 * SX1262_XTAL_HZ / bitrate_bps,
+ * Fdev = fdev_hz * 2^25 / SX1262_XTAL_HZ). Only valid after
+ * sx1262_set_packet_type(SX1262_PACKET_TYPE_GFSK).
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_modulation_params_gfsk(sx1262_t *p, uint32_t bitrate_bps, uint8_t pulse_shape, uint8_t bandwidth, uint32_t fdev_hz);
+
+/**
+ * sx1262_set_packet_params_gfsk
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param preamble_len_bits - Preamble length in bits (Table 13-52)
+ * @param preamble_detector_len - One of SX1262_GFSK_PREAMBLE_DET_*
+ * @param sync_word_len_bits - Sync word length in bits, 0 to 0x40 (Table 13-54)
+ * @param addr_comp - One of SX1262_GFSK_ADDR_COMP_*
+ * @param packet_type - SX1262_GFSK_PACKET_FIXED or _VARIABLE
+ * @param payload_len - Payload length in bytes (Table 13-60)
+ * @param crc_type - One of SX1262_GFSK_CRC_*
+ * @param whitening - SX1262_GFSK_WHITENING_OFF or _ON
+ *
+ * Sends the SetPacketParams (0x8C) command for GFSK packet type. Only
+ * valid after sx1262_set_packet_type(SX1262_PACKET_TYPE_GFSK).
+ *
+ * Note: this sets the sync word *length* only - the sync word *value*
+ * lives in registers 0x06C0-0x06C7 (Table 13-55), which this driver does
+ * not program. Both ends must rely on matching factory-reset register
+ * defaults.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_set_packet_params_gfsk(sx1262_t *p, uint16_t preamble_len_bits, uint8_t preamble_detector_len, uint8_t sync_word_len_bits, uint8_t addr_comp, uint8_t packet_type, uint8_t payload_len, uint8_t crc_type, uint8_t whitening);
+
+/**
  * sx1262_set_pa_config
  * @param p - Pointer to an initialized sx1262_t struct
  * @param pa_duty_cycle - paDutyCycle (Table 13-21)
@@ -595,10 +695,12 @@ bool sx1262_service_tx(sx1262_t *p);
  * Called from the idle loop once the DIO1 IRQ fires for an RX started
  * with sx1262_set_rx() - the application is expected to know an RX is in
  * flight and call this rather than sx1262_service_tx(). Reads
- * GetIrqStatus; on RxDone reads back the 8-byte payload via ReadBuffer
- * and the RSSI/SNR via GetPacketStatus, then dispatches to the registered
- * rx_done callback. On Timeout dispatches to rx_timeout. Clears the IRQ
- * status before returning.
+ * GetIrqStatus; on RxDone reads back the payload via ReadBuffer and the
+ * RSSI (and, for LoRa, SNR) via sx1262_get_packet_status() or
+ * sx1262_get_packet_status_gfsk() (depending on the packet type passed to
+ * the most recent sx1262_set_packet_type()), then dispatches to the
+ * registered rx_done callback. On Timeout dispatches to rx_timeout.
+ * Clears the IRQ status before returning.
  *
  * @return true if the IRQ was RxDone (a packet was actually received),
  *         false on Timeout or error.
@@ -620,6 +722,22 @@ bool sx1262_service_rx(sx1262_t *p);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, int8_t *out_snr_pkt_quarter_db);
+
+/**
+ * sx1262_get_packet_status_gfsk
+ * @param p - Pointer to an initialized sx1262_t struct
+ * @param out_rx_status - Receives the raw RxStatus byte
+ * @param out_rssi_sync - Receives the RSSI at sync word detection, in dBm
+ * @param out_rssi_avg - Receives the averaged RSSI of the last packet, in dBm
+ *
+ * Sends the GetPacketStatus (0x14) command for the GFSK packet status
+ * (Table 13-79). RssiSync and RssiAvg are reported as -raw/2 dBm, same
+ * convention as sx1262_get_packet_status()'s RssiPkt. GFSK has no SNR
+ * figure.
+ *
+ * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
+ */
+HAL_StatusTypeDef sx1262_get_packet_status_gfsk(sx1262_t *p, uint8_t *out_rx_status, int8_t *out_rssi_sync, int8_t *out_rssi_avg);
 
 /**
  * sx1262_get_device_errors

@@ -131,6 +131,10 @@ static void app_tests(void)
 #endif /* TEST_SSD1309 */
 
 #ifdef TEST_SX1262
+#ifdef TEST_SX1262_GFSK
+	test_sx1262_config_gfsk(&sx1262);
+#else
 	test_sx1262_config(&sx1262);
+#endif /* TEST_SX1262_GFSK */
 #endif /* TEST_SX1262 */
 }
