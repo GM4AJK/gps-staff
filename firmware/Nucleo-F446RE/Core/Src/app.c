@@ -13,12 +13,15 @@
 #include "sx1262.h"
 #include "Tests/test_sx1262.h"
 #include "lsm6dsrx.h"
+#include "lis3mdl.h"
+#include "Tests/test_lis3mdl.h"
 
 static void app_tests(void);
 
 static ssd1309_t oled;
 static sx1262_t sx1262;
 static lsm6dsrx_t imu;
+static lis3mdl_t mag;
 
 void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 {
@@ -99,6 +102,11 @@ void app_init(void)
 		app_log("lsm6dsrx_bringup failed\r\n");
 	}
 
+	lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW);
+	if (lis3mdl_bringup(&mag) != HAL_OK) {
+		app_log("lis3mdl_bringup failed\r\n");
+	}
+
 	app_log("Start up\r\n");
 
 	app_tests();
@@ -117,6 +125,12 @@ void app_loop(void)
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
 			flipper = !flipper;
 		}
+
+#ifdef TEST_LIS3MDL
+		if(flag_get_500MS()) {
+			test_lis3mdl_poll(&mag);
+		}
+#endif /* TEST_LIS3MDL */
 
 #ifdef TEST_SX1262
 		if(flag_get_SX1262_DIO1()) {
