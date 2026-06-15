@@ -89,7 +89,6 @@ void Error_Handler(void);
 #define SX1262_SPI_DIO2_GPIO_Port GPIOC
 #define SX1262_SPI_DIO1_Pin GPIO_PIN_9
 #define SX1262_SPI_DIO1_GPIO_Port GPIOC
-#define SX1262_SPI_DIO1_EXTI_IRQn EXTI9_5_IRQn
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
