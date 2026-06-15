@@ -178,9 +178,11 @@ void lis3mdl_calibration_update(lis3mdl_calibration_t *cal, int16_t mx, int16_t 
  * midpoint of cal's min/max (hard-iron offset, recentres the reading
  * ellipsoid on the origin) and scales by the average per-axis range
  * divided by that axis's range (soft-iron correction, normalises the
- * ellipsoid towards a sphere). Axes with no recorded range yet (min ==
- * max, e.g. before lis3mdl_calibration_update() has been called) are
- * left uncorrected (scale 1, offset 0) to avoid dividing by zero.
+ * ellipsoid towards a sphere). Until every axis's range exceeds
+ * LIS3MDL_CALIBRATION_MIN_RANGE (i.e. before lis3mdl_calibration_update()
+ * has seen enough rotation to distinguish real field variation from
+ * sensor noise), mx/my/mz are passed through uncorrected rather than
+ * dividing by a near-zero range and amplifying that noise.
  */
 void lis3mdl_apply_calibration(const lis3mdl_calibration_t *cal, int16_t mx, int16_t my, int16_t mz, float *out_x, float *out_y, float *out_z);
 

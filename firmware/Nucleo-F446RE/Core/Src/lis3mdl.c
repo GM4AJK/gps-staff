@@ -9,6 +9,13 @@
 #define LIS3MDL_DEG_TO_RAD (3.14159265358979323846f / 180.0f)
 #define LIS3MDL_RAD_TO_DEG (180.0f / 3.14159265358979323846f)
 
+/* Below this per-axis range (LSB, +/-4 gauss FS), an axis's min/max is
+ * indistinguishable from noise - applying the soft-iron scale would
+ * divide by near-zero and amplify that noise into a wildly unstable
+ * heading. Until every axis exceeds this, lis3mdl_apply_calibration()
+ * returns the raw reading uncorrected. */
+#define LIS3MDL_CALIBRATION_MIN_RANGE 50.0f
+
 /* CTRL_REG1: TEMP_EN=0, OM=11 (X/Y ultrahigh-performance), DO=100 (10Hz) */
 #define LIS3MDL_CTRL_REG1_UHP_10HZ 0x70
 
@@ -168,7 +175,7 @@ void lis3mdl_apply_calibration(const lis3mdl_calibration_t *cal, int16_t mx, int
 	float range_y = (float)(cal->max_y - cal->min_y) / 2.0f;
 	float range_z = (float)(cal->max_z - cal->min_z) / 2.0f;
 
-	if (range_x <= 0.0f || range_y <= 0.0f || range_z <= 0.0f) {
+	if (range_x < LIS3MDL_CALIBRATION_MIN_RANGE || range_y < LIS3MDL_CALIBRATION_MIN_RANGE || range_z < LIS3MDL_CALIBRATION_MIN_RANGE) {
 		*out_x = (float)mx;
 		*out_y = (float)my;
 		*out_z = (float)mz;
