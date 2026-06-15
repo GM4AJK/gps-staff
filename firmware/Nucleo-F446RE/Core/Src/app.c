@@ -63,6 +63,11 @@ static void sx1262_logger(const char *buf, int len)
 
 void app_init(void)
 {
+	/* Enable DWT cycle counter for timing diagnostics */
+	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->CYCCNT = 0;
+	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
