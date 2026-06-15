@@ -184,6 +184,12 @@ void test_sx1262_tx_start(sx1262_t *p)
 void test_sx1262_rx_start(sx1262_t *p)
 {
 	HAL_StatusTypeDef status;
+	uint16_t irq = 0;
+
+	status = sx1262_get_irq_status(p, &irq);
+	if (status == HAL_OK) {
+		app_log("sx1262: rx start, irq=0x%04X, cyc=%lu\r\n", irq, (unsigned long)DWT->CYCCNT);
+	}
 
 	status = sx1262_set_rx(p, 64000UL);
 	if (status != HAL_OK) {
