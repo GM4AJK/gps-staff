@@ -184,18 +184,14 @@ void test_sx1262_tx_start(sx1262_t *p)
 void test_sx1262_rx_start(sx1262_t *p)
 {
 	HAL_StatusTypeDef status;
-	uint16_t irq = 0;
 
-	status = sx1262_get_irq_status(p, &irq);
-	if (status == HAL_OK) {
-		app_log("sx1262: rx start, irq=0x%04X, cyc=%lu\r\n", irq, (unsigned long)DWT->CYCCNT);
-	}
-
-	status = sx1262_set_rx(p, 64000UL);
+	status = sx1262_set_rx(p, SX1262_RX_TX_TIMEOUT_NONE);
 	if (status != HAL_OK) {
 		app_log("sx1262: set rx failed: %d\r\n", status);
 		return;
 	}
+
+	app_log("sx1262: rx armed, cyc=%lu\r\n", (unsigned long)DWT->CYCCNT);
 }
 
 #endif /* TEST_SX1262 */

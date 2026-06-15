@@ -56,9 +56,11 @@ void test_sx1262_tx_start(sx1262_t *p);
  * test_sx1262_rx_start
  * @param p - Pointer to an initialized sx1262_t struct
  *
- * Triggers a single SetRx with a ~1s radio timeout. Returns
+ * Triggers a SetRx in Rx Single mode with no timeout - the radio stays
+ * in RX until a packet is received, however long that takes. Returns
  * immediately; completion is signalled by the DIO1 IRQ and handled by
- * sx1262_service_rx().
+ * sx1262_service_rx(), which calls this again to re-arm RX after each
+ * reception.
  */
 void test_sx1262_rx_start(sx1262_t *p);
 

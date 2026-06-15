@@ -39,7 +39,6 @@ void app_1ms(void)
 	COUNTER_TIMER(  cnt_100ms,  100, flag_set_100MS  );
 	COUNTER_TIMER(  cnt_200ms,  100, flag_set_200MS  );
 	COUNTER_TIMER(  cnt_500ms,  100, flag_set_500MS  );
-	COUNTER_TIMER( cnt_1000ms, 1000, flag_set_1000MS );
 }
 
 void app_log(const char *fmt, ...)
@@ -102,6 +101,10 @@ void app_loop(void)
 {
 	bool flipper = false;
 
+#ifdef TEST_SX1262
+	test_sx1262_rx_start(&sx1262);
+#endif /* TEST_SX1262 */
+
 	while(true) {
 		if(flag_get_100MS()) {
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
@@ -109,12 +112,10 @@ void app_loop(void)
 		}
 
 #ifdef TEST_SX1262
-		if(flag_get_1000MS()) {
-			test_sx1262_rx_start(&sx1262);
-		}
-
 		if(flag_get_SX1262_DIO1()) {
-			sx1262_service_rx(&sx1262);
+			if(sx1262_service_rx(&sx1262)) {
+				test_sx1262_rx_start(&sx1262);
+			}
 		}
 #endif /* TEST_SX1262 */
 	}
