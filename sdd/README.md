@@ -548,3 +548,24 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 15. **Status LEDs**: 3x LEDs each on a PWM-capable (TIMx_CHx) GPIO with a current-limiting resistor
 16. **Mode-selection jumper**: GPIO with pull-up/pull-down, sampled once at boot to select base vs rover
 17. **BOOT0**: 2-pin jumper header with 10K pull-down to GND, for entering the STM32 DFU bootloader
+
+---
+
+## Ofcom IR2030 SRD Limits (433/434MHz) -- Reference
+
+Per `docs/datasheets/Ofcom-IR-2030.pdf` Table 3.1 (Non-specific Short Range
+Devices), the licence-exempt SRD classes covering 433/434MHz are:
+
+| Interface | Frequency band | Max power | Duty cycle / BW constraint |
+|---|---|---|---|
+| IR2030/1/10 | 433.05 - 434.79 MHz | 10 mW e.r.p. | Duty cycle <= 10% |
+| IR2030/1/11 | 433.05 - 434.79 MHz | 1 mW e.r.p. | (no duty cycle limit stated) |
+| IR2030/1/12 | 434.04 - 434.79 MHz | 10 mW e.r.p. | Duty cycle <= 100%, but only if bandwidth <= 25 kHz |
+
+At 434.000MHz, SF7/BW125 (125kHz), +14dBm (~25mW conducted), this project
+does not fit any of these classes: it exceeds the 10mW/1mW e.r.p. caps of
+IR2030/1/10 and /1/11, and BW125 is 5x over the 25kHz limit required for
+the 100%-duty-cycle allowance of IR2030/1/12. This confirms operation
+under the amateur radio licence (GM4AJK) on the 70cm band is the
+applicable regulatory basis, not the IR2030 licence-exempt SRD regime. A
+fallback/unlicensed mode would require BW <= 25kHz and <= 10mW e.r.p.
