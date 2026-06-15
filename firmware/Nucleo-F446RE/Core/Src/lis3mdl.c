@@ -9,6 +9,13 @@
 #define LIS3MDL_DEG_TO_RAD (3.14159265358979323846f / 180.0f)
 #define LIS3MDL_RAD_TO_DEG (180.0f / 3.14159265358979323846f)
 
+/* Below this per-axis range (LSB, +/-4 gauss FS), an axis's min/max is
+ * indistinguishable from noise - applying the soft-iron scale would
+ * divide by near-zero and amplify that noise into a wildly unstable
+ * heading. Until every axis exceeds this, lis3mdl_apply_calibration()
+ * returns the raw reading uncorrected. */
+#define LIS3MDL_CALIBRATION_MIN_RANGE 50.0f
+
 /* CTRL_REG1: TEMP_EN=0, OM=11 (X/Y ultrahigh-performance), DO=100 (10Hz) */
 #define LIS3MDL_CTRL_REG1_UHP_10HZ 0x70
 
@@ -124,15 +131,15 @@ void lis3mdl_set_mag_ready_callback(lis3mdl_t *p, void (*callback)(lis3mdl_t *p,
 	p->mag_ready = callback;
 }
 
-void lis3mdl_compute_heading(int16_t mx, int16_t my, int16_t mz, float roll_deg, float pitch_deg, float *out_heading_deg)
+void lis3mdl_compute_heading(float mx, float my, float mz, float roll_deg, float pitch_deg, float *out_heading_deg)
 {
 	float roll_rad = roll_deg * LIS3MDL_DEG_TO_RAD;
 	float pitch_rad = pitch_deg * LIS3MDL_DEG_TO_RAD;
 
-	float xh = (float)mx * cosf(pitch_rad) + (float)mz * sinf(pitch_rad);
-	float yh = (float)mx * sinf(roll_rad) * sinf(pitch_rad)
-		+ (float)my * cosf(roll_rad)
-		- (float)mz * sinf(roll_rad) * cosf(pitch_rad);
+	float xh = mx * cosf(pitch_rad) + mz * sinf(pitch_rad);
+	float yh = mx * sinf(roll_rad) * sinf(pitch_rad)
+		+ my * cosf(roll_rad)
+		- mz * sinf(roll_rad) * cosf(pitch_rad);
 
 	float heading_deg = atan2f(yh, xh) * LIS3MDL_RAD_TO_DEG;
 	if (heading_deg < 0.0f) {
@@ -140,6 +147,46 @@ void lis3mdl_compute_heading(int16_t mx, int16_t my, int16_t mz, float roll_deg,
 	}
 
 	*out_heading_deg = heading_deg;
+}
+
+void lis3mdl_calibration_init(lis3mdl_calibration_t *cal)
+{
+	cal->min_x = cal->min_y = cal->min_z = INT16_MAX;
+	cal->max_x = cal->max_y = cal->max_z = INT16_MIN;
+}
+
+void lis3mdl_calibration_update(lis3mdl_calibration_t *cal, int16_t mx, int16_t my, int16_t mz)
+{
+	if (mx < cal->min_x) cal->min_x = mx;
+	if (mx > cal->max_x) cal->max_x = mx;
+	if (my < cal->min_y) cal->min_y = my;
+	if (my > cal->max_y) cal->max_y = my;
+	if (mz < cal->min_z) cal->min_z = mz;
+	if (mz > cal->max_z) cal->max_z = mz;
+}
+
+void lis3mdl_apply_calibration(const lis3mdl_calibration_t *cal, int16_t mx, int16_t my, int16_t mz, float *out_x, float *out_y, float *out_z)
+{
+	float offset_x = (float)(cal->max_x + cal->min_x) / 2.0f;
+	float offset_y = (float)(cal->max_y + cal->min_y) / 2.0f;
+	float offset_z = (float)(cal->max_z + cal->min_z) / 2.0f;
+
+	float range_x = (float)(cal->max_x - cal->min_x) / 2.0f;
+	float range_y = (float)(cal->max_y - cal->min_y) / 2.0f;
+	float range_z = (float)(cal->max_z - cal->min_z) / 2.0f;
+
+	if (range_x < LIS3MDL_CALIBRATION_MIN_RANGE || range_y < LIS3MDL_CALIBRATION_MIN_RANGE || range_z < LIS3MDL_CALIBRATION_MIN_RANGE) {
+		*out_x = (float)mx;
+		*out_y = (float)my;
+		*out_z = (float)mz;
+		return;
+	}
+
+	float avg_range = (range_x + range_y + range_z) / 3.0f;
+
+	*out_x = ((float)mx - offset_x) * (avg_range / range_x);
+	*out_y = ((float)my - offset_y) * (avg_range / range_y);
+	*out_z = ((float)mz - offset_z) * (avg_range / range_z);
 }
 
 HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p)

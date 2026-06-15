@@ -5,6 +5,8 @@
 #ifdef TEST_IMU_FUSION
 
 static ssd1309_t *oled = NULL;
+static lis3mdl_calibration_t mag_cal;
+static bool mag_cal_initialized = false;
 
 void test_imu_fusion_set_oled(ssd1309_t *p)
 {
@@ -31,10 +33,16 @@ static void split_centideg(float deg, const char **out_sign, int *out_int, int *
 void test_imu_fusion_poll(lsm6dsrx_t *imu, lis3mdl_t *mag)
 {
 	int16_t ax, ay, az, mx, my, mz;
-	float roll_deg, pitch_deg, heading_deg;
-	const char *roll_sign, *pitch_sign, *heading_sign;
-	int roll_int, roll_frac, pitch_int, pitch_frac, heading_int, heading_frac;
+	float cal_x, cal_y, cal_z;
+	float roll_deg, pitch_deg, heading_deg, heading_cal_deg;
+	const char *roll_sign, *pitch_sign, *heading_sign, *heading_cal_sign;
+	int roll_int, roll_frac, pitch_int, pitch_frac, heading_int, heading_frac, heading_cal_int, heading_cal_frac;
 	char line[24];
+
+	if (!mag_cal_initialized) {
+		lis3mdl_calibration_init(&mag_cal);
+		mag_cal_initialized = true;
+	}
 
 	if (lsm6dsrx_read_accel(imu, &ax, &ay, &az) != HAL_OK) {
 		return;
@@ -46,15 +54,21 @@ void test_imu_fusion_poll(lsm6dsrx_t *imu, lis3mdl_t *mag)
 	}
 	lis3mdl_compute_heading(mx, my, mz, roll_deg, pitch_deg, &heading_deg);
 
+	lis3mdl_calibration_update(&mag_cal, mx, my, mz);
+	lis3mdl_apply_calibration(&mag_cal, mx, my, mz, &cal_x, &cal_y, &cal_z);
+	lis3mdl_compute_heading(cal_x, cal_y, cal_z, roll_deg, pitch_deg, &heading_cal_deg);
+
 	split_centideg(roll_deg, &roll_sign, &roll_int, &roll_frac);
 	split_centideg(pitch_deg, &pitch_sign, &pitch_int, &pitch_frac);
 	split_centideg(heading_deg, &heading_sign, &heading_int, &heading_frac);
+	split_centideg(heading_cal_deg, &heading_cal_sign, &heading_cal_int, &heading_cal_frac);
 
 	app_log(
-		"imu_fusion: roll=%s%d.%02d pitch=%s%d.%02d heading=%s%d.%02d\r\n",
+		"imu_fusion: roll=%s%d.%02d pitch=%s%d.%02d heading=%s%d.%02d heading_cal=%s%d.%02d\r\n",
 		roll_sign, roll_int, roll_frac,
 		pitch_sign, pitch_int, pitch_frac,
-		heading_sign, heading_int, heading_frac
+		heading_sign, heading_int, heading_frac,
+		heading_cal_sign, heading_cal_int, heading_cal_frac
 	);
 
 	if (oled == NULL) {
@@ -71,6 +85,9 @@ void test_imu_fusion_poll(lsm6dsrx_t *imu, lis3mdl_t *mag)
 
 	snprintf(line, sizeof(line), "Hdg:   %s%d.%02d", heading_sign, heading_int, heading_frac);
 	ssd1309_draw_string(oled, &font5x7, 0, 20, line, SSD1309_COLOR_ON);
+
+	snprintf(line, sizeof(line), "HdgCal:%s%d.%02d", heading_cal_sign, heading_cal_int, heading_cal_frac);
+	ssd1309_draw_string(oled, &font5x7, 0, 30, line, SSD1309_COLOR_ON);
 
 	ssd1309_flush(oled);
 }
