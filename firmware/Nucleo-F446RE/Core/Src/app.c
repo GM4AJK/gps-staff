@@ -113,9 +113,8 @@ void app_loop(void)
 
 #ifdef TEST_SX1262
 		if(flag_get_SX1262_DIO1()) {
-			if(sx1262_service_rx(&sx1262)) {
-				test_sx1262_rx_start(&sx1262);
-			}
+			sx1262_service_rx(&sx1262);
+			test_sx1262_rx_start(&sx1262);
 		}
 #endif /* TEST_SX1262 */
 	}

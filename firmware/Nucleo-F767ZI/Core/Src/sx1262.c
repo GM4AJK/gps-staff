@@ -493,6 +493,8 @@ bool sx1262_service_rx(sx1262_t *p)
 			p->rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
 		}
 	} else {
+		SX1262_LOG(p, "sx1262: rx not done (irq=0x%04X), cyc=%lu\r\n", irq, (unsigned long)DWT->CYCCNT);
+
 		if (p->rx_timeout != NULL) {
 			p->rx_timeout(p);
 		}
