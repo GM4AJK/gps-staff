@@ -12,11 +12,14 @@
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
 #include "Tests/test_sx1262.h"
+#include "lsm6dsrx.h"
+#include "Tests/test_lsm6dsrx.h"
 
 static void app_tests(void);
 
 static ssd1309_t oled;
 static sx1262_t sx1262;
+static lsm6dsrx_t imu;
 
 void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 {
@@ -92,6 +95,11 @@ void app_init(void)
 	sx1262_set_logger_callback(&sx1262, sx1262_logger);
 #endif /* SX1262_WITH_LOGGING */
 
+	lsm6dsrx_init(&imu, &hi2c1, LSM6DSRX_I2C_ADDR_SA0_LOW);
+	if (lsm6dsrx_bringup(&imu) != HAL_OK) {
+		app_log("lsm6dsrx_bringup failed\r\n");
+	}
+
 	app_log("Start up\r\n");
 
 	app_tests();
@@ -117,6 +125,12 @@ void app_loop(void)
 			test_sx1262_rx_start(&sx1262);
 		}
 #endif /* TEST_SX1262 */
+
+#ifdef TEST_LSM6DSRX
+		if(flag_get_500MS()) {
+			test_lsm6dsrx_poll(&imu);
+		}
+#endif /* TEST_LSM6DSRX */
 	}
 }
 
