@@ -100,7 +100,14 @@ void app_init(void)
 
 void app_loop(void)
 {
+	bool flipper = false;
+
 	while(true) {
+		if(flag_get_100MS()) {
+			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
+			flipper = !flipper;
+		}
+
 #ifdef TEST_SX1262
 		if(flag_get_1000MS()) {
 			test_sx1262_rx_start(&sx1262);
