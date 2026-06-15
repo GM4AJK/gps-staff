@@ -121,4 +121,26 @@ void lsm6dsrx_set_gyro_ready_callback(lsm6dsrx_t *p, void (*callback)(lsm6dsrx_t
  */
 HAL_StatusTypeDef lsm6dsrx_loop(lsm6dsrx_t *p);
 
+/**
+ * lsm6dsrx_compute_tilt
+ * @param ax - Raw accelerometer X output (as from lsm6dsrx_read_accel)
+ * @param ay - Raw accelerometer Y output
+ * @param az - Raw accelerometer Z output
+ * @param out_roll_deg - Roll angle in degrees: rotation about the
+ *                        sensor's X axis, positive when the +Y axis
+ *                        moves towards +Z (i.e. the right side dips down
+ *                        if +X points forward and +Z points up)
+ * @param out_pitch_deg - Pitch angle in degrees: rotation about the
+ *                         sensor's Y axis, positive when the +X axis
+ *                         moves towards +Z (i.e. the nose lifts up if +X
+ *                         points forward and +Z points up)
+ *
+ * Pure math helper, no I2C traffic. Treats the raw accelerometer vector
+ * as the gravity vector (i.e. assumes negligible linear acceleration)
+ * and computes the roll/pitch angles needed to rotate it back to
+ * vertical. Any consistent full-scale setting works, as the ratios
+ * between ax/ay/az are all that matter.
+ */
+void lsm6dsrx_compute_tilt(int16_t ax, int16_t ay, int16_t az, float *out_roll_deg, float *out_pitch_deg);
+
 #endif /* INC_LSM6DSRX_H_ */

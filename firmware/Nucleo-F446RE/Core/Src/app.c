@@ -14,6 +14,7 @@
 #include "Tests/test_sx1262.h"
 #include "lsm6dsrx.h"
 #include "lis3mdl.h"
+#include "Tests/test_imu_fusion.h"
 
 static void app_tests(void);
 
@@ -106,6 +107,10 @@ void app_init(void)
 		app_log("lis3mdl_bringup failed\r\n");
 	}
 
+#ifdef TEST_IMU_FUSION
+	test_imu_fusion_set_oled(&oled);
+#endif /* TEST_IMU_FUSION */
+
 	app_log("Start up\r\n");
 
 	app_tests();
@@ -124,6 +129,12 @@ void app_loop(void)
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
 			flipper = !flipper;
 		}
+
+#ifdef TEST_IMU_FUSION
+		if(flag_get_500MS()) {
+			test_imu_fusion_poll(&imu, &mag);
+		}
+#endif /* TEST_IMU_FUSION */
 
 #ifdef TEST_SX1262
 		if(flag_get_SX1262_DIO1()) {

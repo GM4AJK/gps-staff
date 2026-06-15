@@ -2,8 +2,12 @@
 
 #include "lis3mdl.h"
 #include "app.h"
+#include <math.h>
 
 #define LIS3MDL_I2C_TIMEOUT_MS 100
+
+#define LIS3MDL_DEG_TO_RAD (3.14159265358979323846f / 180.0f)
+#define LIS3MDL_RAD_TO_DEG (180.0f / 3.14159265358979323846f)
 
 /* CTRL_REG1: TEMP_EN=0, OM=11 (X/Y ultrahigh-performance), DO=100 (10Hz) */
 #define LIS3MDL_CTRL_REG1_UHP_10HZ 0x70
@@ -118,6 +122,24 @@ HAL_StatusTypeDef lis3mdl_read_mag(lis3mdl_t *p, int16_t *out_x, int16_t *out_y,
 void lis3mdl_set_mag_ready_callback(lis3mdl_t *p, void (*callback)(lis3mdl_t *p, int16_t x, int16_t y, int16_t z))
 {
 	p->mag_ready = callback;
+}
+
+void lis3mdl_compute_heading(int16_t mx, int16_t my, int16_t mz, float roll_deg, float pitch_deg, float *out_heading_deg)
+{
+	float roll_rad = roll_deg * LIS3MDL_DEG_TO_RAD;
+	float pitch_rad = pitch_deg * LIS3MDL_DEG_TO_RAD;
+
+	float xh = (float)mx * cosf(pitch_rad) + (float)mz * sinf(pitch_rad);
+	float yh = (float)mx * sinf(roll_rad) * sinf(pitch_rad)
+		+ (float)my * cosf(roll_rad)
+		- (float)mz * sinf(roll_rad) * cosf(pitch_rad);
+
+	float heading_deg = atan2f(yh, xh) * LIS3MDL_RAD_TO_DEG;
+	if (heading_deg < 0.0f) {
+		heading_deg += 360.0f;
+	}
+
+	*out_heading_deg = heading_deg;
 }
 
 HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p)
