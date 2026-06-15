@@ -94,6 +94,9 @@ void app_init(void)
 void app_loop(void)
 {
 	bool flipper = false;
+#ifdef TEST_SX1262
+	uint8_t tx_countdown = 1;
+#endif /* TEST_SX1262 */
 
 	while(true) {
 		if(flag_get_100MS()) {
@@ -103,7 +106,10 @@ void app_loop(void)
 
 #ifdef TEST_SX1262
 		if(flag_get_1000MS()) {
-			test_sx1262_tx_start(&sx1262);
+			if(--tx_countdown == 0) {
+				test_sx1262_tx_start(&sx1262);
+				tx_countdown = 10;
+			}
 		}
 
 		if(flag_get_SX1262_DIO1()) {

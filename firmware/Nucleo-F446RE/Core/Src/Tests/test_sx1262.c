@@ -94,15 +94,16 @@ void test_sx1262_config(sx1262_t *p)
 		return;
 	}
 
-	/* +14dBm optimal PA settings (datasheet Table 13-21) -- well below
-	 * the +22dBm max, easier on the PA into a good antenna */
+	/* +14dBm PA ceiling (datasheet Table 13-21), with SetTxParams power
+	 * reduced to +10dBm (~10mW) -- bench testing not yet legal under the
+	 * amateur licence, keep this below the IR2030/1/10 10mW e.r.p. cap */
 	status = sx1262_set_pa_config(p, 0x02, 0x02, SX1262_PA_CONFIG_SX1262);
 	if (status != HAL_OK) {
 		app_log("sx1262: set pa config failed: %d\r\n", status);
 		return;
 	}
 
-	status = sx1262_set_tx_params(p, 22, SX1262_RAMP_200U);
+	status = sx1262_set_tx_params(p, 10, SX1262_RAMP_200U);
 	if (status != HAL_OK) {
 		app_log("sx1262: set tx params failed: %d\r\n", status);
 		return;
@@ -117,7 +118,7 @@ void test_sx1262_config(sx1262_t *p)
 	sx1262_set_rx_done_callback(p, test_sx1262_rx_done_handler);
 	sx1262_set_tx_done_callback(p, test_sx1262_tx_done_toggle_led);
 
-	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +14dBm\r\n");
+	app_log("sx1262: configured LoRa @ 434.000MHz, SF7/BW125/CR4_5, preamble=8 explicit CRC, +10dBm\r\n");
 }
 
 void test_sx1262_rx_done_handler(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db)
