@@ -61,8 +61,11 @@ static void sx1262_logger(const char *buf, int len)
 
 void app_init(void)
 {
-	/* Enable DWT cycle counter for timing diagnostics */
+	/* Enable DWT cycle counter for timing diagnostics.
+	 * Cortex-M7's DWT block is behind a lock register - writes to CTRL/CYCCNT
+	 * are silently ignored until it's unlocked with this magic value. */
 	CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+	DWT->LAR = 0xC5ACCE55;
 	DWT->CYCCNT = 0;
 	DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 
