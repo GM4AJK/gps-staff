@@ -8,6 +8,7 @@
 
 #include "main.h"
 #include "flags.h"
+#include "rtcm3.h"
 #include "ssd1309.h"
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
@@ -38,7 +39,7 @@ void app_1ms(void)
 	COUNTER_TIMER(   cnt_10ms,   10, flag_set_10MS   );
 	COUNTER_TIMER(  cnt_100ms,  100, flag_set_100MS  );
 	COUNTER_TIMER( cnt_1000ms, 1000, flag_set_1000MS );
-	COUNTER_TIMER( cnt_f9p_1000ms, 1000, flag_set_F9P_1000MS );
+
 }
 
 void app_log(const char *fmt, ...)
@@ -95,28 +96,17 @@ void app_init(void)
 	sx1262_set_logger_callback(&sx1262, sx1262_logger);
 #endif /* SX1262_WITH_LOGGING */
 
+	rtcm3_init(&huart2, &huart3);
+
 	app_log("Start up\r\n");
 
 	app_tests();
 }
 
-#define RTCM_PREAMBLE 0xD3
-
-static void f9p_service(void)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	static uint32_t total_bytes = 0;
-	static uint32_t preambles = 0;
-	uint8_t rx_byte;
-
-	if(HAL_UART_Receive(&huart2, &rx_byte, 1, 10) == HAL_OK) {
-		total_bytes++;
-		if(rx_byte == RTCM_PREAMBLE) {
-			preambles++;
-		}
-	}
-
-	if(flag_get_F9P_1000MS()) {
-		app_log("f9p: total=%lu preambles=%lu\r\n", (unsigned long)total_bytes, (unsigned long)preambles);
+	if (huart->Instance == USART2) {
+		rtcm3_uart_in_irq();
 	}
 }
 
@@ -128,7 +118,7 @@ void app_loop(void)
 #endif /* TEST_SX1262 */
 
 	while(true) {
-		f9p_service();
+		rtcm3_loop();
 
 		if(flag_get_100MS()) {
 			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
