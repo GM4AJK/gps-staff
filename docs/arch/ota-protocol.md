@@ -116,7 +116,7 @@ stop
 @enduml
 ```
 
-`on_tx_done()` is the `sx1262_t.tx_done` callback, registered by
+`on_tx_done()` is the `sx1262_t.on_tx_done` callback, registered by
 `ota_tx_init()`.  It fires after each SX1262 TxDone IRQ:
 
 ```plantuml
@@ -169,7 +169,7 @@ typedef struct {
 
 ### Reassembly logic
 
-`on_rx_done()` is the `sx1262_t.rx_done` callback, registered by
+`on_rx_done()` is the `sx1262_t.on_rx_done` callback, registered by
 `ota_rx_init()`.
 
 ```plantuml
