@@ -67,7 +67,9 @@ static void sx1262_logger(const char *buf, int len)
 
 static void on_rtcm3_frame(const uint8_t *frame, uint16_t len)
 {
-	uint16_t msg_type = ((uint16_t)frame[0] << 4) | (frame[1] >> 4);
+	/* RTCM3 frame: [0xD3][len_hi][len_lo][msg_hi][msg_lo_and_data...][crc×3]
+	 * Message type is the first 12 bits of the payload, i.e. frame[3..4]. */
+	uint16_t msg_type = ((uint16_t)frame[3] << 4) | (frame[4] >> 4);
 	app_log("ota_rx: frame msg=%u len=%u\r\n", (unsigned)msg_type, (unsigned)len);
 }
 
