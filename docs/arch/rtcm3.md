@@ -227,3 +227,14 @@ while up to three more arrive back-to-back.  With a typical 1 Hz F9P epoch
 of five frames totalling ~1064 bytes, two back-to-back frames at 115200 baud
 take ~185 ms — well within the 1000 ms epoch period even with the
 `ota_tx` queue absorbing the burst.
+
+**Future PCB risk**: 4 is sufficient while the main loop is lightweight
+(radio SPI only).  Once the PCB adds a display and SD card, long blocking
+operations in the loop could exhaust the pool.  SD card writes should use
+DMA to stay non-blocking.  Display updates are the bigger concern: an SSD1309
+flush over I2C at 400 kHz takes ~33 ms for a full 128×64 frame; a larger
+display or slower bus could push this higher.  If any single blocking segment
+in the loop can exceed ~73 ms (the time for 4 × average-frame to arrive back
+to back at 115200 baud), frames will be silently dropped.  Bump
+`RTCM3_BUF_COUNT` to 8 before adding the display driver — it costs only
+16 KB on the F765's 512 KB RAM and eliminates the risk entirely.
