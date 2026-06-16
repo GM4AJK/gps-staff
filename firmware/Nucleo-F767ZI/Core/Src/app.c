@@ -16,7 +16,7 @@
 
 static void app_tests(void);
 
-static rtcm3_t rtcm3;
+rtcm3_t rtcm3;
 static ssd1309_t oled;
 static sx1262_t sx1262;
 
