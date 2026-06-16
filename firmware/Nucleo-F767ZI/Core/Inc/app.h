@@ -2,6 +2,10 @@
 #ifndef INC_APP_H_
 #define INC_APP_H_
 
+#include "rtcm3.h"
+
+extern rtcm3_t rtcm3;
+
 void app_init(void);
 void app_loop(void);
 void app_1ms(void);
