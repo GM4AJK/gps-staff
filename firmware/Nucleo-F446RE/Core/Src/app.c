@@ -26,6 +26,8 @@ static lis3mdl_t  mag;
 
 static uint8_t  rtcm3_pending_buf[OTA_RX_FRAME_BUF_SIZE];
 static uint16_t rtcm3_pending_len;
+static uint8_t  rtcm3_tx_buf[OTA_RX_FRAME_BUF_SIZE];
+static volatile bool rtcm3_tx_busy;
 
 void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 {
@@ -76,11 +78,18 @@ static void on_rtcm3_frame(const uint8_t *frame, uint16_t len)
 	uint16_t msg_type = ((uint16_t)frame[3] << 4) | (frame[4] >> 4);
 	app_log("ota_rx: frame msg=%u len=%u\r\n", (unsigned)msg_type, (unsigned)len);
 	/* Don't transmit here — this is called from inside sx1262_service_rx.
-	 * Copy to pending buffer; app_loop transmits after the radio is re-armed. */
+	 * Copy to pending buffer; app_loop copies to tx_buf and starts IT after
+	 * the radio is re-armed. rtcm3_tx_buf is owned by the UART until
+	 * HAL_UART_TxCpltCallback clears rtcm3_tx_busy. */
 	if(len <= sizeof(rtcm3_pending_buf)) {
 		memcpy(rtcm3_pending_buf, frame, len);
 		rtcm3_pending_len = len;
 	}
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart == &huart3) rtcm3_tx_busy = false;
 }
 
 void app_init(void)
@@ -156,8 +165,10 @@ void app_loop(void)
 			sx1262_set_rx(&sx1262, SX1262_RX_TIMEOUT_CONTINUOUS);
 		}
 
-		if(rtcm3_pending_len > 0) {
-			HAL_UART_Transmit(&huart3, rtcm3_pending_buf, rtcm3_pending_len, 100);
+		if(rtcm3_pending_len > 0 && !rtcm3_tx_busy) {
+			memcpy(rtcm3_tx_buf, rtcm3_pending_buf, rtcm3_pending_len);
+			rtcm3_tx_busy = true;
+			HAL_UART_Transmit_IT(&huart3, rtcm3_tx_buf, rtcm3_pending_len);
 			rtcm3_pending_len = 0;
 		}
 	}
