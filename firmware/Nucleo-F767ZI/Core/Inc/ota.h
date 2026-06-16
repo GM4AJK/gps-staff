@@ -27,8 +27,10 @@
  * so rtcm3 can release its buffer immediately after the call returns. The two
  * modules share no memory.
  *
- * Only one frame is processed at a time. If ota_push_frame() is called while a
- * frame is still being transmitted, it returns false and the frame is dropped.
+ * Up to OTA_QUEUE_DEPTH frames may be queued while a TX is in progress. If
+ * ota_push_frame() is called when the queue is full, it returns false and the
+ * frame is dropped. With a depth of 4, all five frames in a typical 1-second
+ * RTCM3 burst fit: the first starts immediately, the remaining four queue.
  *
  * ---------------------------------------------------------------------------
  * INTEGRATION STEPS
@@ -63,22 +65,32 @@
 #include <stdbool.h>
 #include "sx1262.h"
 
-#define OTA_PACKET_SIZE   255
-#define OTA_HEADER_SIZE   5
-#define OTA_DATA_SIZE     (OTA_PACKET_SIZE - OTA_HEADER_SIZE)  /* 250 */
+#define OTA_PACKET_SIZE    255
+#define OTA_HEADER_SIZE    5
+#define OTA_DATA_SIZE      (OTA_PACKET_SIZE - OTA_HEADER_SIZE)  /* 250 */
 #define OTA_FRAME_BUF_SIZE 1032   /* max RTCM3 frame is 1029 bytes, rounded up */
+#define OTA_QUEUE_DEPTH    4      /* slots behind the active frame */
 
 #define OTA_TYPE_RTCM3    0x01
 
 typedef struct {
-	sx1262_t  *sx1262;
-	uint8_t    frame_buf[OTA_FRAME_BUF_SIZE];
-	uint16_t   frame_len;
-	uint8_t    frame_seq;
-	uint8_t    chunk_idx;
-	uint8_t    chunk_count;
-	bool       busy;
-	uint8_t    tx_buf[OTA_PACKET_SIZE];
+	uint8_t  buf[OTA_FRAME_BUF_SIZE];
+	uint16_t len;
+} ota_queue_entry_t;
+
+typedef struct {
+	sx1262_t          *sx1262;
+	uint8_t            frame_buf[OTA_FRAME_BUF_SIZE];
+	uint16_t           frame_len;
+	uint8_t            frame_seq;
+	uint8_t            chunk_idx;
+	uint8_t            chunk_count;
+	bool               busy;
+	uint8_t            tx_buf[OTA_PACKET_SIZE];
+	ota_queue_entry_t  queue[OTA_QUEUE_DEPTH];
+	uint8_t            queue_head;
+	uint8_t            queue_tail;
+	uint8_t            queue_count;
 } ota_t;
 
 void ota_init(ota_t *p, sx1262_t *sx1262);

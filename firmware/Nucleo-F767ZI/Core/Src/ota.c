@@ -30,6 +30,16 @@ static void ota_send_next_chunk(ota_t *p)
 	sx1262_set_tx(p->sx1262, 0);
 }
 
+static void ota_start_frame(ota_t *p, const uint8_t *frame, uint16_t len)
+{
+	memcpy(p->frame_buf, frame, len);
+	p->frame_len   = len;
+	p->chunk_idx   = 0;
+	p->chunk_count = (uint8_t)((len + OTA_DATA_SIZE - 1) / OTA_DATA_SIZE);
+	p->busy        = true;
+	ota_send_next_chunk(p);
+}
+
 static void on_tx_done(sx1262_t *sx)
 {
 	(void)sx;
@@ -39,40 +49,55 @@ static void on_tx_done(sx1262_t *sx)
 
 	if(p->chunk_idx < p->chunk_count) {
 		ota_send_next_chunk(p);
-	} else {
-		p->busy = false;
-		p->frame_seq++;
+		return;
+	}
+
+	p->frame_seq++;
+	p->busy = false;
+
+	if(p->queue_count > 0) {
+		ota_queue_entry_t *e = &p->queue[p->queue_head];
+		p->queue_head = (p->queue_head + 1) % OTA_QUEUE_DEPTH;
+		p->queue_count--;
+		ota_start_frame(p, e->buf, e->len);
 	}
 }
 
 void ota_init(ota_t *p, sx1262_t *sx1262)
 {
-	ota_instance  = p;
-	p->sx1262     = sx1262;
-	p->frame_len  = 0;
-	p->frame_seq  = 0;
-	p->chunk_idx  = 0;
+	ota_instance   = p;
+	p->sx1262      = sx1262;
+	p->frame_len   = 0;
+	p->frame_seq   = 0;
+	p->chunk_idx   = 0;
 	p->chunk_count = 0;
-	p->busy       = false;
+	p->busy        = false;
+	p->queue_head  = 0;
+	p->queue_tail  = 0;
+	p->queue_count = 0;
 
 	memset(p->frame_buf, 0, sizeof(p->frame_buf));
 	memset(p->tx_buf,    0, sizeof(p->tx_buf));
+	memset(p->queue,     0, sizeof(p->queue));
 
 	sx1262_set_tx_done_callback(sx1262, on_tx_done);
 }
 
 bool ota_push_frame(ota_t *p, const uint8_t *frame, uint16_t len)
 {
-	if(p->busy) {
+	if(!p->busy) {
+		ota_start_frame(p, frame, len);
+		return true;
+	}
+
+	if(p->queue_count >= OTA_QUEUE_DEPTH) {
 		return false;
 	}
 
-	memcpy(p->frame_buf, frame, len);
-	p->frame_len   = len;
-	p->chunk_idx   = 0;
-	p->chunk_count = (uint8_t)((len + OTA_DATA_SIZE - 1) / OTA_DATA_SIZE);
-	p->busy        = true;
-
-	ota_send_next_chunk(p);
+	ota_queue_entry_t *e = &p->queue[p->queue_tail];
+	p->queue_tail = (p->queue_tail + 1) % OTA_QUEUE_DEPTH;
+	p->queue_count++;
+	memcpy(e->buf, frame, len);
+	e->len = len;
 	return true;
 }
