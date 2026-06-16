@@ -3,7 +3,8 @@
  *
  * Receives a raw RTCM3 byte stream from a UART (e.g. a ZED-F9P or a
  * Fake-F9P board), frames complete messages into a buffer pool, validates
- * the CRC24Q checksum, and signals the idle loop that a frame is ready.
+ * the CRC24Q checksum, and fires a caller-supplied callback for each
+ * valid frame.
  *
  * ---------------------------------------------------------------------------
  * BUFFER POOL
@@ -31,15 +32,16 @@
  *        rtcm3_t rtcm3;
  *
  *    It must be non-static so that stm32f7xx_it.c can reference it (see
- *    step 3). If you need to reference it from other translation units,
- *    add an extern declaration in your app.h:
+ *    step 3). Declare it extern in app.h so other translation units can
+ *    reference it:
  *
  *        extern rtcm3_t rtcm3;
  *
  * 2. INITIALISE -- call once from app_init(), after all MX_*_Init() calls
- *    have run and the target UART is ready:
+ *    have run and the target UART is ready. Supply a callback that will be
+ *    invoked for each CRC-valid frame:
  *
- *        rtcm3_init(&rtcm3, &huart2, &huart3);  // f9p UART, debug UART
+ *        rtcm3_init(&rtcm3, &huart2, on_rtcm3_frame);
  *
  *    rtcm3_init() arms HAL_UART_Receive_IT() for the first byte. The UART's
  *    NVIC interrupt must already be enabled (do this via CubeMX so that
@@ -65,16 +67,17 @@
  *
  *        rtcm3_loop(&rtcm3);
  *
- *    rtcm3_loop() checks whether a complete frame is waiting, validates its
- *    CRC24Q, logs the result over the debug UART, then releases the buffer.
+ *    When a complete CRC-valid frame is available, rtcm3_loop() calls the
+ *    on_frame callback with a pointer to the raw frame bytes and its length,
+ *    then releases the buffer slot. Frames that fail CRC are silently dropped.
  *
  * ---------------------------------------------------------------------------
  * STARTUP NOTE
  * ---------------------------------------------------------------------------
- * The very first frame after power-on will log "CRC FAIL". This is a known
- * one-byte lag: on the first IRQ firing irq_rx_byte still holds its initial
- * zero value, so the state machine processes a corrupted first byte before
- * the real stream aligns. Every subsequent frame is unaffected.
+ * The very first frame after power-on will fail CRC and be dropped. This is
+ * a known one-byte lag: on the first IRQ firing irq_rx_byte still holds its
+ * initial zero value, so the state machine processes a corrupted first byte
+ * before the real stream aligns. Every subsequent frame is unaffected.
  */
 
 #ifndef INC_RTCM3_H_
@@ -95,7 +98,7 @@ typedef enum {
 
 typedef struct {
 	UART_HandleTypeDef        *uart_f9p;
-	UART_HandleTypeDef        *uart_dbg;
+	void                     (*on_frame)(const uint8_t *frame, uint16_t len);
 	uint8_t                    bufs[RTCM3_BUF_COUNT][RTCM3_BUF_SIZE];
 	uint16_t                   buf_len[RTCM3_BUF_COUNT];
 	volatile int               in_buf_idx;
@@ -107,7 +110,8 @@ typedef struct {
 	volatile uint16_t          irq_buf_pos;
 } rtcm3_t;
 
-void rtcm3_init(rtcm3_t *p, UART_HandleTypeDef *f9p_uart, UART_HandleTypeDef *debug_uart);
+void rtcm3_init(rtcm3_t *p, UART_HandleTypeDef *f9p_uart,
+                void (*on_frame)(const uint8_t *frame, uint16_t len));
 void rtcm3_uart_in_irq(rtcm3_t *p);
 void rtcm3_loop(rtcm3_t *p);
 

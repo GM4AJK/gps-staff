@@ -9,6 +9,7 @@
 #include "main.h"
 #include "flags.h"
 #include "rtcm3.h"
+#include "ota.h"
 #include "ssd1309.h"
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
@@ -17,6 +18,7 @@
 static void app_tests(void);
 
 rtcm3_t rtcm3;
+static ota_t ota;
 static ssd1309_t oled;
 static sx1262_t sx1262;
 
@@ -40,7 +42,6 @@ void app_1ms(void)
 	COUNTER_TIMER(   cnt_10ms,   10, flag_set_10MS   );
 	COUNTER_TIMER(  cnt_100ms,  100, flag_set_100MS  );
 	COUNTER_TIMER( cnt_1000ms, 1000, flag_set_1000MS );
-
 }
 
 void app_log(const char *fmt, ...)
@@ -61,6 +62,11 @@ static void sx1262_logger(const char *buf, int len)
 	HAL_UART_Transmit(&huart3, (uint8_t *)buf, len, 100);
 }
 #endif /* SX1262_WITH_LOGGING */
+
+static void on_rtcm3_frame(const uint8_t *frame, uint16_t len)
+{
+	ota_push_frame(&ota, frame, len);
+}
 
 void app_init(void)
 {
@@ -97,7 +103,8 @@ void app_init(void)
 	sx1262_set_logger_callback(&sx1262, sx1262_logger);
 #endif /* SX1262_WITH_LOGGING */
 
-	rtcm3_init(&rtcm3, &huart2, &huart3);
+	rtcm3_init(&rtcm3, &huart2, on_rtcm3_frame);
+	ota_init(&ota, &sx1262);
 
 	app_log("Start up\r\n");
 
@@ -114,9 +121,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void app_loop(void)
 {
 	bool flipper = false;
-#ifdef TEST_SX1262
-	uint8_t tx_countdown = 1;
-#endif /* TEST_SX1262 */
 
 	while(true) {
 		rtcm3_loop(&rtcm3);
@@ -126,18 +130,9 @@ void app_loop(void)
 			flipper = !flipper;
 		}
 
-#ifdef TEST_SX1262
-		if(flag_get_1000MS()) {
-			if(--tx_countdown == 0) {
-				test_sx1262_tx_start(&sx1262);
-				tx_countdown = 10;
-			}
-		}
-
 		if(flag_get_SX1262_DIO1()) {
 			sx1262_service_tx(&sx1262);
 		}
-#endif /* TEST_SX1262 */
 	}
 }
 
