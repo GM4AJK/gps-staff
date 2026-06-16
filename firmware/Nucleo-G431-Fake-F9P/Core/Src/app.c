@@ -65,7 +65,7 @@ static void base_loop(void)
 				? rtcm_sample_cycle_offsets[cycle + 1]
 				: rtcm_sample_len;
 
-			HAL_UART_Transmit(&huart1, (uint8_t *)&rtcm_sample_data[start], end - start, 100);
+			HAL_UART_Transmit(&huart1, (uint8_t *)&rtcm_sample_data[start], end - start, 200);
 			app_log("base: tx cycle=%lu bytes=%lu\r\n", (unsigned long)cycle, (unsigned long)(end - start));
 			HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
 
