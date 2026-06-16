@@ -91,6 +91,10 @@ void rtcm3_uart_in_irq(rtcm3_t *p)
 
 void rtcm3_loop(rtcm3_t *p)
 {
+	if(!p->ready_mask) {
+		return;
+	}
+
 	int idx = rtcm3_get_out_idx(p);
 	if (idx < 0) return;
 
