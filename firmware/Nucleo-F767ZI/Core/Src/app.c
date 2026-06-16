@@ -9,7 +9,7 @@
 #include "main.h"
 #include "flags.h"
 #include "rtcm3.h"
-#include "ota.h"
+#include "ota_tx.h"
 #include "ssd1309.h"
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
@@ -17,7 +17,7 @@
 static void app_tests(void);
 
 rtcm3_t rtcm3;
-static ota_t ota;
+static ota_tx_t ota_tx;
 static ssd1309_t oled;
 static sx1262_t sx1262;
 
@@ -64,7 +64,7 @@ static void sx1262_logger(const char *buf, int len)
 
 static void on_rtcm3_frame(const uint8_t *frame, uint16_t len)
 {
-	ota_push_frame(&ota, frame, len);
+	ota_tx_push_frame(&ota_tx, frame, len);
 }
 
 void app_init(void)
@@ -98,13 +98,13 @@ void app_init(void)
 	sx1262_set_logger_callback(&sx1262, sx1262_logger);
 #endif /* SX1262_WITH_LOGGING */
 
-	if(sx1262_config_gfsk(&sx1262, 434000000UL, 50000, 25000, OTA_PACKET_SIZE, 0) != HAL_OK) {
+	if(sx1262_config_gfsk(&sx1262, 434000000UL, 50000, 25000, OTA_TX_PACKET_SIZE, 0) != HAL_OK) {
 		app_log("sx1262: config gfsk failed\r\n");
 		return;
 	}
 
 	rtcm3_init(&rtcm3, &huart2, on_rtcm3_frame);
-	ota_init(&ota, &sx1262);
+	ota_tx_init(&ota_tx, &sx1262);
 
 	app_log("Start up\r\n");
 
