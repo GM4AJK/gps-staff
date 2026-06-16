@@ -81,7 +81,7 @@ package "F446RE — Rover" {
 
   app_r --> ota_rx   : init
   app_r --> sx1262_r : init / config_gfsk\nservice_rx / set_rx
-  sx1262_r --> ota_rx : rx_done callback
+  sx1262_r --> ota_rx : on_rx_done callback
   ota_rx --> app_r   : on_frame callback\n(copy to pending buf)
 }
 
