@@ -1,7 +1,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 #include "main.h"
 #include "rtcm3.h"
@@ -21,18 +20,19 @@ static uint32_t crc24q(const uint8_t *buf, int len)
 	return crc & 0xFFFFFF;
 }
 
-void rtcm3_init(rtcm3_t *p, UART_HandleTypeDef *f9p_uart, UART_HandleTypeDef *debug_uart)
+void rtcm3_init(rtcm3_t *p, UART_HandleTypeDef *f9p_uart,
+                void (*on_frame)(const uint8_t *frame, uint16_t len))
 {
-	p->uart_f9p = f9p_uart;
-	p->uart_dbg = debug_uart;
+	p->uart_f9p  = f9p_uart;
+	p->on_frame  = on_frame;
 
 	memset(p->bufs, 0, sizeof(p->bufs));
 	memset(p->buf_len, 0, sizeof(p->buf_len));
-	p->in_buf_idx = 0;
-	p->out_buf_idx = 0;
-	p->ready_mask = 0;
-	p->irq_state = RTCM3_ST_SEARCH;
-	p->irq_buf_pos = 0;
+	p->in_buf_idx        = 0;
+	p->out_buf_idx       = 0;
+	p->ready_mask        = 0;
+	p->irq_state         = RTCM3_ST_SEARCH;
+	p->irq_buf_pos       = 0;
 	p->irq_bytes_remaining = 0;
 
 	HAL_UART_Receive_IT(p->uart_f9p, &p->irq_rx_byte, 1);
@@ -89,21 +89,20 @@ void rtcm3_loop(rtcm3_t *p)
 		return;
 	}
 
-	int idx = p->out_buf_idx;
-
-	uint8_t *frame = p->bufs[idx];
+	int      idx         = p->out_buf_idx;
+	uint8_t *frame       = p->bufs[idx];
 	uint16_t payload_len = ((uint16_t)(frame[1] & 0x03) << 8) | frame[2];
+	uint16_t frame_len   = p->buf_len[idx];
 
 	uint32_t calc_crc = crc24q(frame, 3 + payload_len);
 	uint32_t recv_crc = ((uint32_t)frame[3 + payload_len]     << 16)
 	                  | ((uint32_t)frame[3 + payload_len + 1] <<  8)
 	                  |  (uint32_t)frame[3 + payload_len + 2];
 
-	char log[64];
-	int len = snprintf(log, sizeof(log), "RTCM3 message received, CRC %s\r\n",
-	                   (calc_crc == recv_crc) ? "OK" : "FAIL");
-	HAL_UART_Transmit(p->uart_dbg, (uint8_t *)log, len, 100);
+	if(calc_crc == recv_crc && p->on_frame) {
+		p->on_frame(frame, frame_len);
+	}
 
-	p->ready_mask &= ~(1u << idx);
-	p->out_buf_idx = (p->out_buf_idx + 1) % RTCM3_BUF_COUNT;
+	p->ready_mask  &= ~(1u << idx);
+	p->out_buf_idx  = (p->out_buf_idx + 1) % RTCM3_BUF_COUNT;
 }

@@ -535,3 +535,28 @@ HAL_StatusTypeDef sx1262_clear_device_errors(sx1262_t *p)
 
 	return sx1262_write(p, tx, sizeof(tx));
 }
+
+HAL_StatusTypeDef sx1262_config_gfsk(sx1262_t *p,
+	uint32_t freq_hz,
+	uint32_t bitrate_bps,
+	uint32_t fdev_hz,
+	uint8_t  payload_len,
+	int8_t   power_dbm)
+{
+	HAL_StatusTypeDef r;
+
+	if ((r = sx1262_reset(p))                                                                                                                                                    != HAL_OK) return r;
+	if ((r = sx1262_set_dio3_as_tcxo_ctrl(p, SX1262_TCXO_VOLTAGE_1_8, 320))                                                                                                     != HAL_OK) return r;
+	if ((r = sx1262_clear_device_errors(p))                                                                                                                                      != HAL_OK) return r;
+	if ((r = sx1262_set_packet_type(p, SX1262_PACKET_TYPE_GFSK))                                                                                                                 != HAL_OK) return r;
+	if ((r = sx1262_set_rf_frequency(p, freq_hz))                                                                                                                                != HAL_OK) return r;
+	if ((r = sx1262_calibrate_image(p, SX1262_CAL_IMG_430_440_FREQ1, SX1262_CAL_IMG_430_440_FREQ2))                                                                              != HAL_OK) return r;
+	if ((r = sx1262_set_modulation_params_gfsk(p, bitrate_bps, SX1262_GFSK_PULSE_BT_0_5, SX1262_GFSK_BW_117300, fdev_hz))                                                       != HAL_OK) return r;
+	if ((r = sx1262_set_packet_params_gfsk(p, 16, SX1262_GFSK_PREAMBLE_DET_16BIT, 16, SX1262_GFSK_ADDR_COMP_OFF, SX1262_GFSK_PACKET_FIXED, payload_len, SX1262_GFSK_CRC_2_BYTE, SX1262_GFSK_WHITENING_ON)) != HAL_OK) return r;
+	if ((r = sx1262_set_buffer_base_address(p, 0, 0))                                                                                                                            != HAL_OK) return r;
+	if ((r = sx1262_set_pa_config(p, 0x02, 0x02, SX1262_PA_CONFIG_SX1262))                                                                                                      != HAL_OK) return r;
+	if ((r = sx1262_set_tx_params(p, power_dbm, SX1262_RAMP_200U))                                                                                                              != HAL_OK) return r;
+	if ((r = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, SX1262_IRQ_TX_DONE | SX1262_IRQ_RX_DONE | SX1262_IRQ_HEADER_ERR | SX1262_IRQ_CRC_ERR | SX1262_IRQ_TIMEOUT, 0, 0))   != HAL_OK) return r;
+
+	return HAL_OK;
+}
