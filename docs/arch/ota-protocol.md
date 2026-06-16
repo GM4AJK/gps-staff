@@ -227,29 +227,48 @@ stop
 @enduml
 ```
 
-### Key design: deferred UART TX
+### Key design: deferred, non-blocking UART TX
 
-The `on_frame` callback in `app.c` does **not** call `HAL_UART_Transmit()`
-directly.  `on_rx_done()` is called from inside `sx1262_service_rx()`, which
-is called **before** `sx1262_set_rx()` re-arms the radio.  A blocking UART TX
-at this point would prevent the rover from re-entering RX, causing the next
-OTA packet to arrive before the radio is armed and be missed.
+The `on_frame` callback in `app.c` does **not** transmit immediately.
+`on_rx_done()` is called from inside `sx1262_service_rx()`, which runs
+**before** `sx1262_set_rx()` re-arms the radio.  Any blocking at that point
+delays re-arming and leaves the radio unready for the next OTA packet.
 
-Instead, `on_rtcm3_frame` in `app.c` copies the assembled frame into a static
-`rtcm3_pending_buf[1032]` / `rtcm3_pending_len` pair.  `app_loop()` transmits
-it **after** `sx1262_set_rx()`:
+Instead, `on_rtcm3_frame` copies the assembled frame into `rtcm3_pending_buf`
+and sets `rtcm3_pending_len`.  After `sx1262_set_rx()` re-arms the radio,
+`app_loop()` copies the pending frame into a dedicated `rtcm3_tx_buf` and
+starts an interrupt-driven transfer with `HAL_UART_Transmit_IT()`.
+`HAL_UART_TxCpltCallback` clears `rtcm3_tx_busy` when the transfer completes.
 
 ```c
+// on_rtcm3_frame — called from inside sx1262_service_rx
+static void on_rtcm3_frame(const uint8_t *frame, uint16_t len) {
+    memcpy(rtcm3_pending_buf, frame, len);
+    rtcm3_pending_len = len;
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    if(huart == &huart3) rtcm3_tx_busy = false;
+}
+
 // In app_loop() — order matters
 if(flag_get_SX1262_DIO1()) {
-    sx1262_service_rx(&sx1262);          // may set rtcm3_pending_len
-    sx1262_set_rx(&sx1262, SX1262_RX_TIMEOUT_CONTINUOUS);  // radio re-armed
+    sx1262_service_rx(&sx1262);                              // may set rtcm3_pending_len
+    sx1262_set_rx(&sx1262, SX1262_RX_TIMEOUT_CONTINUOUS);   // radio re-armed first
 }
-if(rtcm3_pending_len > 0) {
-    HAL_UART_Transmit(&huart3, rtcm3_pending_buf, rtcm3_pending_len, 100);
+if(rtcm3_pending_len > 0 && !rtcm3_tx_busy) {
+    memcpy(rtcm3_tx_buf, rtcm3_pending_buf, rtcm3_pending_len);
+    rtcm3_tx_busy = true;
+    HAL_UART_Transmit_IT(&huart3, rtcm3_tx_buf, rtcm3_pending_len);
     rtcm3_pending_len = 0;
 }
 ```
+
+`rtcm3_tx_buf` is owned by the UART until `TxCpltCallback` fires.
+`rtcm3_pending_buf` is written freely by `on_rtcm3_frame` without needing
+to know the UART state — the two buffers are fully independent.  A new frame
+that arrives while a TX is in flight updates `rtcm3_pending_buf`; the loop
+picks it up on the next iteration once `rtcm3_tx_busy` clears.
 
 ---
 
