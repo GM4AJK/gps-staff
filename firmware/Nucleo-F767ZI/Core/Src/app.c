@@ -13,7 +13,6 @@
 #include "ssd1309.h"
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
-#include "Tests/test_sx1262.h"
 
 static void app_tests(void);
 
@@ -88,10 +87,6 @@ void app_init(void)
 		return;
 	}
 
-#ifdef TEST_SX1262
-	test_sx1262_set_oled(&oled);
-#endif /* TEST_SX1262 */
-
 	sx1262_init(
 		&sx1262, &hspi2,
 		SX1262_SPI_CS_GPIO_Port, SX1262_SPI_CS_Pin,
@@ -102,6 +97,11 @@ void app_init(void)
 #ifdef SX1262_WITH_LOGGING
 	sx1262_set_logger_callback(&sx1262, sx1262_logger);
 #endif /* SX1262_WITH_LOGGING */
+
+	if(sx1262_config_gfsk(&sx1262, 434000000UL, 50000, 25000, OTA_PACKET_SIZE, 0) != HAL_OK) {
+		app_log("sx1262: config gfsk failed\r\n");
+		return;
+	}
 
 	rtcm3_init(&rtcm3, &huart2, on_rtcm3_frame);
 	ota_init(&ota, &sx1262);
@@ -144,12 +144,4 @@ static void app_tests(void)
 		app_log("ssd1309_flush failed: %d\r\n", r);
 	}
 #endif /* TEST_SSD1309 */
-
-#ifdef TEST_SX1262
-#ifdef TEST_SX1262_GFSK
-	test_sx1262_config_gfsk(&sx1262);
-#else
-	test_sx1262_config(&sx1262);
-#endif /* TEST_SX1262_GFSK */
-#endif /* TEST_SX1262 */
 }
