@@ -23,8 +23,7 @@ static uint32_t crc24q(const uint8_t *buf, int len)
 
 static int rtcm3_get_out_idx(rtcm3_t *p)
 {
-	if (p->ready_mask & (1u << p->out_buf_idx)) return p->out_buf_idx;
-	return -1;
+	return p->out_buf_idx;
 }
 
 void rtcm3_init(rtcm3_t *p, UART_HandleTypeDef *f9p_uart, UART_HandleTypeDef *debug_uart)
@@ -96,7 +95,6 @@ void rtcm3_loop(rtcm3_t *p)
 	}
 
 	int idx = rtcm3_get_out_idx(p);
-	if (idx < 0) return;
 
 	uint8_t *frame = p->bufs[idx];
 	uint16_t payload_len = ((uint16_t)(frame[1] & 0x03) << 8) | frame[2];
