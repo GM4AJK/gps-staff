@@ -16,6 +16,7 @@
 
 static void app_tests(void);
 
+static rtcm3_t rtcm3;
 static ssd1309_t oled;
 static sx1262_t sx1262;
 
@@ -96,7 +97,7 @@ void app_init(void)
 	sx1262_set_logger_callback(&sx1262, sx1262_logger);
 #endif /* SX1262_WITH_LOGGING */
 
-	rtcm3_init(&huart2, &huart3);
+	rtcm3_init(&rtcm3, &huart2, &huart3);
 
 	app_log("Start up\r\n");
 
@@ -106,7 +107,7 @@ void app_init(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (huart->Instance == USART2) {
-		rtcm3_uart_in_irq();
+		rtcm3_uart_in_irq(&rtcm3);
 	}
 }
 
@@ -118,7 +119,7 @@ void app_loop(void)
 #endif /* TEST_SX1262 */
 
 	while(true) {
-		rtcm3_loop();
+		rtcm3_loop(&rtcm3);
 
 		if(flag_get_100MS()) {
 			HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, flipper);
