@@ -29,8 +29,8 @@
  *
  * Up to OTA_QUEUE_DEPTH frames may be queued while a TX is in progress. If
  * ota_push_frame() is called when the queue is full, it returns false and the
- * frame is dropped. With a depth of 8, a full F9P epoch (typically 9+ message
- * types) fits: the first starts immediately, the remaining eight queue.
+ * frame is dropped. With a depth of 16, a full F9P epoch fits with comfortable
+ * headroom: the first starts immediately, the remaining fifteen queue.
  *
  * ---------------------------------------------------------------------------
  * INTEGRATION STEPS
@@ -69,7 +69,7 @@
 #define OTA_HEADER_SIZE    5
 #define OTA_DATA_SIZE      (OTA_PACKET_SIZE - OTA_HEADER_SIZE)  /* 250 */
 #define OTA_FRAME_BUF_SIZE 1032   /* max RTCM3 frame is 1029 bytes, rounded up */
-#define OTA_QUEUE_DEPTH    8      /* slots behind the active frame; covers a full F9P epoch (9+ messages) */
+#define OTA_QUEUE_DEPTH    16     /* slots behind the active frame; covers a full F9P epoch with headroom */
 
 #define OTA_TYPE_RTCM3    0x01
 
