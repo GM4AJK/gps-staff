@@ -2,6 +2,17 @@
 
 A catalog of reference documents kept in this repo.
 
+## Architecture (`arch/`)
+
+System and firmware architecture documentation, with PlantUML diagrams.
+
+| Document | Contents |
+|---|---|
+| [arch/README.md](arch/README.md) | System overview — hardware roles, data flow, firmware module map |
+| [arch/sx1262.md](arch/sx1262.md) | SX1262 driver — bring-up sequence, interrupt model, full API |
+| [arch/ota-protocol.md](arch/ota-protocol.md) | OTA protocol — packet format, ota_tx / ota_rx, timing analysis |
+| [arch/rtcm3.md](arch/rtcm3.md) | RTCM3 framing — frame format, state machine, buffer pool, CRC24Q |
+
 ## Datasheets (`datasheets/`)
 
 | Document | Description |
