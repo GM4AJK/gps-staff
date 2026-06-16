@@ -235,8 +235,9 @@
 
 /* SetDioIrqParams / GetIrqStatus / ClearIrqStatus (datasheet 13.3.1 / 13.3.1 / 13.3.3 / Table 13-29) */
 #define SX1262_OP_SET_DIO_IRQ_PARAMS 0x08
-#define SX1262_OP_GET_IRQ_STATUS     0x12
-#define SX1262_OP_CLEAR_IRQ_STATUS   0x02
+#define SX1262_OP_GET_RX_BUFFER_STATUS 0x13
+#define SX1262_OP_GET_IRQ_STATUS       0x12
+#define SX1262_OP_CLEAR_IRQ_STATUS     0x02
 
 #define SX1262_IRQ_TX_DONE      (1U << 0)
 #define SX1262_IRQ_RX_DONE      (1U << 1)
@@ -721,6 +722,7 @@ bool sx1262_service_rx(sx1262_t *p);
  *
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
+HAL_StatusTypeDef sx1262_get_rx_buffer_status(sx1262_t *p, uint8_t *out_payload_len, uint8_t *out_start);
 HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, int8_t *out_snr_pkt_quarter_db);
 
 /**

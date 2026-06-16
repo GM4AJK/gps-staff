@@ -235,8 +235,9 @@
 
 /* SetDioIrqParams / GetIrqStatus / ClearIrqStatus (datasheet 13.3.1 / 13.3.1 / 13.3.3 / Table 13-29) */
 #define SX1262_OP_SET_DIO_IRQ_PARAMS 0x08
-#define SX1262_OP_GET_IRQ_STATUS     0x12
-#define SX1262_OP_CLEAR_IRQ_STATUS   0x02
+#define SX1262_OP_GET_RX_BUFFER_STATUS 0x13
+#define SX1262_OP_GET_IRQ_STATUS       0x12
+#define SX1262_OP_CLEAR_IRQ_STATUS     0x02
 
 #define SX1262_IRQ_TX_DONE      (1U << 0)
 #define SX1262_IRQ_RX_DONE      (1U << 1)
@@ -721,6 +722,7 @@ bool sx1262_service_rx(sx1262_t *p);
  *
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
+HAL_StatusTypeDef sx1262_get_rx_buffer_status(sx1262_t *p, uint8_t *out_payload_len, uint8_t *out_start);
 HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, int8_t *out_snr_pkt_quarter_db);
 
 /**
@@ -759,5 +761,36 @@ HAL_StatusTypeDef sx1262_get_device_errors(sx1262_t *p, uint16_t *out_errors);
  * @return HAL_OK on success, or the HAL_StatusTypeDef of the failed step.
  */
 HAL_StatusTypeDef sx1262_clear_device_errors(sx1262_t *p);
+
+/**
+ * sx1262_config_gfsk
+ * @param p           - Pointer to an initialized sx1262_t struct
+ * @param freq_hz     - Centre frequency in Hz (e.g. 434000000UL)
+ * @param bitrate_bps - Bit rate in bits/second (e.g. 50000)
+ * @param fdev_hz     - Frequency deviation in Hz (e.g. 25000)
+ * @param payload_len - Fixed payload length in bytes (e.g. OTA_PACKET_SIZE)
+ * @param power_dbm   - TX output power in dBm (e.g. 0 for 1 mW bench testing)
+ *
+ * Full bring-up sequence for GFSK operation on the Waveshare Core1262-LF
+ * module: reset, DIO3-as-TCXO (1.8 V, 320-tick startup delay), clear errors,
+ * GFSK packet type, RF frequency, image calibration (430-440 MHz band),
+ * modulation params (BT=0.5, RX BW=117.3 kHz), packet params (16-bit
+ * preamble, 16-bit preamble detector, 16-bit sync word, no address compare,
+ * fixed-length, CRC-16, whitening on), buffer base address (TX=0, RX=0),
+ * PA config (+14 dBm ceiling, paDutyCycle=0x02/hpMax=0x02), TX params, and
+ * DIO IRQ params (TX_DONE | RX_DONE | HEADER_ERR | CRC_ERR | TIMEOUT on DIO1).
+ *
+ * Does NOT register any TX/RX done callbacks -- those are the caller's
+ * responsibility.
+ *
+ * Returns HAL_OK on success, or the HAL_StatusTypeDef of the first step that
+ * fails.
+ */
+HAL_StatusTypeDef sx1262_config_gfsk(sx1262_t *p,
+	uint32_t freq_hz,
+	uint32_t bitrate_bps,
+	uint32_t fdev_hz,
+	uint8_t  payload_len,
+	int8_t   power_dbm);
 
 #endif /* INC_SX1262_H_ */
