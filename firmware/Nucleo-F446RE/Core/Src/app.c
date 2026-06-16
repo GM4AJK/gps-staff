@@ -137,7 +137,7 @@ void app_init(void)
 	test_imu_fusion_set_oled(&oled);
 #endif /* TEST_IMU_FUSION */
 
-	app_log("Start up\r\n");
+	app_log("F446RE Rover Start up\r\n");
 
 	app_tests();
 }
