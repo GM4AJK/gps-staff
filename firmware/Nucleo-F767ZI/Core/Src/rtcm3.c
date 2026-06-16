@@ -75,7 +75,9 @@ void rtcm3_init(UART_HandleTypeDef *f9p_uart, UART_HandleTypeDef *debug_uart)
 void rtcm3_uart_in_irq(void)
 {
     uint8_t byte = irq_rx_byte;
-    HAL_UART_Receive_IT(uart_f9p, &irq_rx_byte, 1);
+    //HAL_UART_Receive_IT(uart_f9p, &irq_rx_byte, 1);
+    HAL_UART_Receive(uart_f9p, &irq_rx_byte, 1, 1);
+
 
     switch (irq_state) {
     case ST_SEARCH:
