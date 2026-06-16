@@ -13,6 +13,14 @@
  * and 3-byte CRC. Incoming frames are dropped silently when all slots are
  * full (i.e. rtcm3_loop() is not consuming fast enough).
  *
+ * ready_mask is volatile but not atomic. This is safe because the IRQ only
+ * ever sets bits (via in_buf_idx) and the idle loop only ever clears bits
+ * (via out_buf_idx), and those two indices always point at different slots
+ * while work is pending -- so the two sides never race on the same bit.
+ * Compare with flags.c which needs atomics because IRQ and loop both
+ * operate on the same bit. volatile alone is sufficient here to prevent
+ * the compiler caching ready_mask in a register across loop iterations.
+ *
  * ---------------------------------------------------------------------------
  * INTEGRATION STEPS
  * ---------------------------------------------------------------------------
