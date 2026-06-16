@@ -123,81 +123,9 @@ void test_sx1262_config(sx1262_t *p)
 
 void test_sx1262_config_gfsk(sx1262_t *p)
 {
-	HAL_StatusTypeDef status;
-
-	status = sx1262_reset(p);
+	HAL_StatusTypeDef status = sx1262_config_gfsk(p, 434000000UL, 50000, 25000, SX1262_MAX_PAYLOAD_LEN, 0);
 	if (status != HAL_OK) {
-		app_log("sx1262: reset failed: %d\r\n", status);
-		return;
-	}
-
-	/* Waveshare Core1262-LF: 32MHz reference is a TCXO powered via DIO3 */
-	status = sx1262_set_dio3_as_tcxo_ctrl(p, SX1262_TCXO_VOLTAGE_1_8, 320);
-	if (status != HAL_OK) {
-		app_log("sx1262: set dio3 as tcxo ctrl failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_clear_device_errors(p);
-	if (status != HAL_OK) {
-		app_log("sx1262: clear device errors failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_set_packet_type(p, SX1262_PACKET_TYPE_GFSK);
-	if (status != HAL_OK) {
-		app_log("sx1262: set packet type failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_set_rf_frequency(p, 434000000UL);
-	if (status != HAL_OK) {
-		app_log("sx1262: set rf frequency failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_calibrate_image(p, SX1262_CAL_IMG_430_440_FREQ1, SX1262_CAL_IMG_430_440_FREQ2);
-	if (status != HAL_OK) {
-		app_log("sx1262: calibrate image failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_set_modulation_params_gfsk(p, 50000, SX1262_GFSK_PULSE_BT_0_5, SX1262_GFSK_BW_117300, 25000);
-	if (status != HAL_OK) {
-		app_log("sx1262: set modulation params failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_set_packet_params_gfsk(p, 16, SX1262_GFSK_PREAMBLE_DET_16BIT, 16, SX1262_GFSK_ADDR_COMP_OFF, SX1262_GFSK_PACKET_FIXED, SX1262_MAX_PAYLOAD_LEN, SX1262_GFSK_CRC_2_BYTE, SX1262_GFSK_WHITENING_ON);
-	if (status != HAL_OK) {
-		app_log("sx1262: set packet params failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_set_buffer_base_address(p, 0, 0);
-	if (status != HAL_OK) {
-		app_log("sx1262: set buffer base address failed: %d\r\n", status);
-		return;
-	}
-
-	/* +14dBm PA ceiling (datasheet Table 13-21), with SetTxParams power
-	 * reduced to 0dBm (1mW) -- bench testing not yet legal under the
-	 * amateur licence, keep this within the IR2030/1/11 1mW e.r.p. cap */
-	status = sx1262_set_pa_config(p, 0x02, 0x02, SX1262_PA_CONFIG_SX1262);
-	if (status != HAL_OK) {
-		app_log("sx1262: set pa config failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_set_tx_params(p, 0, SX1262_RAMP_200U);
-	if (status != HAL_OK) {
-		app_log("sx1262: set tx params failed: %d\r\n", status);
-		return;
-	}
-
-	status = sx1262_set_dio_irq_params(p, SX1262_IRQ_ALL, SX1262_IRQ_TX_DONE | SX1262_IRQ_RX_DONE | SX1262_IRQ_HEADER_ERR | SX1262_IRQ_CRC_ERR | SX1262_IRQ_TIMEOUT, 0, 0);
-	if (status != HAL_OK) {
-		app_log("sx1262: set dio irq params failed: %d\r\n", status);
+		app_log("sx1262: config gfsk failed: %d\r\n", status);
 		return;
 	}
 
