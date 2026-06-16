@@ -358,6 +358,32 @@ HAL_StatusTypeDef sx1262_get_irq_status(sx1262_t *p, uint16_t *out_irq)
 	return HAL_OK;
 }
 
+HAL_StatusTypeDef sx1262_get_rx_buffer_status(sx1262_t *p, uint8_t *out_payload_len, uint8_t *out_start)
+{
+	/* GetRxBufferStatus (0x13): RC, NOP, PayloadLengthRx, RxStartBufferPointer */
+	uint8_t tx[4] = { SX1262_OP_GET_RX_BUFFER_STATUS, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP };
+	uint8_t rx[4] = { 0 };
+	HAL_StatusTypeDef status;
+
+	status = sx1262_wait_busy(p);
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_RESET);
+	status = HAL_SPI_TransmitReceive(p->port, tx, rx, sizeof(tx), SX1262_SPI_TIMEOUT_MS);
+	HAL_GPIO_WritePin(p->cs_port, p->cs_pin, GPIO_PIN_SET);
+
+	if (status != HAL_OK) {
+		return status;
+	}
+
+	if (out_payload_len) *out_payload_len = rx[2];
+	if (out_start)       *out_start       = rx[3];
+
+	return HAL_OK;
+}
+
 HAL_StatusTypeDef sx1262_get_packet_status(sx1262_t *p, int8_t *out_rssi_pkt, int8_t *out_snr_pkt_quarter_db)
 {
 	uint8_t tx[5] = { SX1262_OP_GET_PACKET_STATUS, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP, SX1262_OP_NOP };
@@ -454,6 +480,7 @@ bool sx1262_service_rx(sx1262_t *p)
 	uint8_t gfsk_rx_status = 0;
 	int8_t gfsk_rssi_avg = 0;
 	bool have_status = false;
+	uint8_t rx_buf_start = 0;
 
 	status = sx1262_get_irq_status(p, &irq);
 	if (status != HAL_OK) {
@@ -468,7 +495,8 @@ bool sx1262_service_rx(sx1262_t *p)
 			return (irq & SX1262_IRQ_RX_DONE) != 0;
 		}
 
-		status = sx1262_read_buffer(p, 0, payload, sizeof(payload));
+		sx1262_get_rx_buffer_status(p, NULL, &rx_buf_start);
+		status = sx1262_read_buffer(p, rx_buf_start, payload, sizeof(payload));
 		if (status != HAL_OK) {
 			SX1262_LOG(p, "sx1262: rx read buffer failed: %d\r\n", status);
 		} else if (p->packet_type == SX1262_PACKET_TYPE_GFSK) {

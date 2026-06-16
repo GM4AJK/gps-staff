@@ -95,10 +95,9 @@ void app_init(void)
 		SX1262_SPI_BUSY_GPIO_Port, SX1262_SPI_BUSY_Pin
 	);
 
-/* sx1262 logger silenced while diagnosing ota_rx */
-/* #ifdef SX1262_WITH_LOGGING */
-/* 	sx1262_set_logger_callback(&sx1262, sx1262_logger); */
-/* #endif */ /* SX1262_WITH_LOGGING */
+#ifdef SX1262_WITH_LOGGING
+	sx1262_set_logger_callback(&sx1262, sx1262_logger);
+#endif /* SX1262_WITH_LOGGING */
 
 	if(sx1262_config_gfsk(&sx1262, 434000000UL, 50000, 25000, OTA_RX_PACKET_SIZE, 0) != HAL_OK) {
 		app_log("sx1262: config gfsk failed\r\n");

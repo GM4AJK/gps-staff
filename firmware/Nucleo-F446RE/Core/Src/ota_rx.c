@@ -14,12 +14,12 @@ static void on_rx_done(sx1262_t *sx,
                        int8_t rssi, int8_t snr_quarter_db)
 {
 	(void)sx;
+	(void)rssi;
 	(void)snr_quarter_db;
 
 	ota_rx_t *p = ota_rx_instance;
 
 	if(len < OTA_RX_PACKET_SIZE) {
-		app_log("ota_rx: short pkt len=%u\r\n", (unsigned)len);
 		return;
 	}
 
@@ -29,15 +29,11 @@ static void on_rx_done(sx1262_t *sx,
 	uint8_t chunk_count = payload[3];
 	uint8_t data_len    = payload[4];
 
-	app_log("ota_rx: pkt rssi=%d type=0x%02X seq=%u idx=%u cnt=%u dlen=%u\r\n",
-		(int)rssi, type, seq, chunk_idx, chunk_count, data_len);
-
 	if(type != OTA_RX_TYPE_RTCM3) {
 		return;
 	}
 
 	if(data_len == 0 || data_len > OTA_RX_DATA_SIZE) {
-		app_log("ota_rx: bad dlen=%u\r\n", data_len);
 		return;
 	}
 
