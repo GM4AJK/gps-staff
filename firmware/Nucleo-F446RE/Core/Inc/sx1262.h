@@ -8,7 +8,7 @@
 #include <stdbool.h>
 
 /* Comment out to disable library logging via sx1262_set_logger_callback() */
-#define SX1262_WITH_LOGGING
+/* #define SX1262_WITH_LOGGING */
 
 /**
  * sx1262.h - SX1262 LoRa transceiver driver

@@ -45,6 +45,7 @@ extern "C" {
 extern I2C_HandleTypeDef hi2c1;
 extern SPI_HandleTypeDef hspi2;
 extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
 
 /* USER CODE END EC */
 
@@ -73,6 +74,8 @@ void Error_Handler(void);
 #define USART_RX_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
+#define USART3_RX_F9P_TX_Pin GPIO_PIN_5
+#define USART3_RX_F9P_TX_GPIO_Port GPIOC
 #define SX1262_SPI_SCLK_Pin GPIO_PIN_10
 #define SX1262_SPI_SCLK_GPIO_Port GPIOB
 #define SX1262_SPI_CS_Pin GPIO_PIN_12
@@ -94,6 +97,8 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define USART3_TX_F9P_RX_Pin GPIO_PIN_10
+#define USART3_TX_F9P_RX_GPIO_Port GPIOC
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 
