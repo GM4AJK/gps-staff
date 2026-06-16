@@ -106,15 +106,11 @@ void app_init(void)
 
 	ota_rx_init(&ota_rx, &sx1262, on_rtcm3_frame);
 
-	lsm6dsrx_init(&imu, &hi2c1, LSM6DSRX_I2C_ADDR_SA0_LOW);
-	if (lsm6dsrx_bringup(&imu) != HAL_OK) {
-		app_log("lsm6dsrx_bringup failed\r\n");
-	}
+	/* lsm6dsrx_init(&imu, &hi2c1, LSM6DSRX_I2C_ADDR_SA0_LOW); */
+	/* if (lsm6dsrx_bringup(&imu) != HAL_OK) { app_log("lsm6dsrx_bringup failed\r\n"); } */
 
-	lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW);
-	if (lis3mdl_bringup(&mag) != HAL_OK) {
-		app_log("lis3mdl_bringup failed\r\n");
-	}
+	/* lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW); */
+	/* if (lis3mdl_bringup(&mag) != HAL_OK) { app_log("lis3mdl_bringup failed\r\n"); } */
 
 #ifdef TEST_IMU_FUSION
 	test_imu_fusion_set_oled(&oled);
