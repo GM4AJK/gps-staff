@@ -106,7 +106,7 @@ static void rover_loop(void)
 		}
 
 		if(flag_get_1000MS()) {
-			app_log("rover: %s total=%lu mismatches=%lu resyncs=%lu\r\n",
+			app_log("Fake-F9P-rover: %s total=%lu mismatches=%lu resyncs=%lu\r\n",
 				synced ? "SYNCED" : "SEARCH",
 				(unsigned long)total_bytes, (unsigned long)mismatches, (unsigned long)resyncs);
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, synced ? GPIO_PIN_SET : GPIO_PIN_RESET);
