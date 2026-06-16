@@ -106,7 +106,7 @@ void app_init(void)
 	rtcm3_init(&rtcm3, &huart2, on_rtcm3_frame);
 	ota_tx_init(&ota_tx, &sx1262);
 
-	app_log("Start up\r\n");
+	app_log("F767ZI Base Start up\r\n");
 
 	app_tests();
 }
