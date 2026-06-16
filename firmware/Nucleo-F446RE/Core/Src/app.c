@@ -71,6 +71,7 @@ static void on_rtcm3_frame(const uint8_t *frame, uint16_t len)
 	 * Message type is the first 12 bits of the payload, i.e. frame[3..4]. */
 	uint16_t msg_type = ((uint16_t)frame[3] << 4) | (frame[4] >> 4);
 	app_log("ota_rx: frame msg=%u len=%u\r\n", (unsigned)msg_type, (unsigned)len);
+	HAL_UART_Transmit(&huart3, frame, len, 100);
 }
 
 void app_init(void)
