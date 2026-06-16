@@ -15,7 +15,7 @@ static void sx1262_log(sx1262_t *p, const char *fmt, ...)
 	va_list args;
 	int len;
 
-	if (p->logger == NULL) {
+	if (p->on_log == NULL) {
 		return;
 	}
 
@@ -23,7 +23,7 @@ static void sx1262_log(sx1262_t *p, const char *fmt, ...)
 	len = vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
 
-	p->logger(buf, len);
+	p->on_log(buf, len);
 }
 
 #define SX1262_LOG(p, ...) sx1262_log((p), __VA_ARGS__)
@@ -62,39 +62,39 @@ void sx1262_init(
 	p->busy_port = busy_port;
 	p->busy_pin = busy_pin;
 	p->packet_type = SX1262_PACKET_TYPE_LORA;
-	p->rx_done = NULL;
-	p->tx_done = NULL;
-	p->rx_timeout = NULL;
-	p->tx_timeout = NULL;
+	p->on_rx_done = NULL;
+	p->on_tx_done = NULL;
+	p->on_rx_timeout = NULL;
+	p->on_tx_timeout = NULL;
 #ifdef SX1262_WITH_LOGGING
-	p->logger = NULL;
+	p->on_log = NULL;
 #endif
 }
 
 void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db))
 {
-	p->rx_done = callback;
+	p->on_rx_done = callback;
 }
 
 void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
 {
-	p->tx_done = callback;
+	p->on_tx_done = callback;
 }
 
 void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
 {
-	p->rx_timeout = callback;
+	p->on_rx_timeout = callback;
 }
 
 void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p))
 {
-	p->tx_timeout = callback;
+	p->on_tx_timeout = callback;
 }
 
 #ifdef SX1262_WITH_LOGGING
 void sx1262_set_logger_callback(sx1262_t *p, void (*logger)(const char *buf, int len))
 {
-	p->logger = logger;
+	p->on_log = logger;
 }
 #endif
 
@@ -456,14 +456,14 @@ bool sx1262_service_tx(sx1262_t *p)
 	sx1262_clear_irq_status(p, SX1262_IRQ_ALL);
 
 	if (irq & SX1262_IRQ_TX_DONE) {
-		if (p->tx_done != NULL) {
-			p->tx_done(p);
+		if (p->on_tx_done != NULL) {
+			p->on_tx_done(p);
 		}
 	} else {
 		SX1262_LOG(p, "sx1262: tx timeout (irq=0x%04X), cyc=%lu\r\n", irq, (unsigned long)DWT->CYCCNT);
 
-		if (p->tx_timeout != NULL) {
-			p->tx_timeout(p);
+		if (p->on_tx_timeout != NULL) {
+			p->on_tx_timeout(p);
 		}
 	}
 
@@ -523,14 +523,14 @@ bool sx1262_service_rx(sx1262_t *p)
 			SX1262_LOG(p, "sx1262: rx done, payload=\"%.8s\", len=%u, cyc=%lu\r\n", payload, (unsigned)sizeof(payload), (unsigned long)DWT->CYCCNT);
 		}
 
-		if (p->rx_done != NULL) {
-			p->rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
+		if (p->on_rx_done != NULL) {
+			p->on_rx_done(p, payload, sizeof(payload), rssi, snr_quarter_db);
 		}
 	} else {
 		SX1262_LOG(p, "sx1262: rx not done (irq=0x%04X), cyc=%lu\r\n", irq, (unsigned long)DWT->CYCCNT);
 
-		if (p->rx_timeout != NULL) {
-			p->rx_timeout(p);
+		if (p->on_rx_timeout != NULL) {
+			p->on_rx_timeout(p);
 		}
 	}
 

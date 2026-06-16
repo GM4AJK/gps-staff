@@ -6,7 +6,7 @@
  * complete frame.
  *
  * ---------------------------------------------------------------------------
- * OTA PACKET FORMAT  (must match ota.h on the base side)
+ * OTA PACKET FORMAT  (must match ota_tx.h on the base side)
  * ---------------------------------------------------------------------------
  *
  *   Byte 0   type       0x01 = RTCM3 chunk (other values ignored)
@@ -36,8 +36,8 @@
  *
  *        ota_rx_init(&ota_rx, &sx1262, on_rtcm3_frame);
  *
- *    ota_rx_init() registers its own rx_done callback via
- *    sx1262_set_rx_done_callback(). Do not register a separate rx_done
+ *    ota_rx_init() registers its own on_rx_done callback via
+ *    sx1262_set_rx_done_callback(). Do not register a separate on_rx_done
  *    callback after this.
  *
  * 3. ARM RX -- call once before app_loop() starts, and again after each
@@ -47,7 +47,7 @@
  *
  * 4. SERVICE IN LOOP -- when flag_get_SX1262_DIO1() fires:
  *
- *        sx1262_service_rx(&sx1262);      // fires ota_rx's rx_done
+ *        sx1262_service_rx(&sx1262);      // fires ota_rx's on_rx_done
  *        sx1262_set_rx(&sx1262, 0);       // re-arm for next packet
  */
 
