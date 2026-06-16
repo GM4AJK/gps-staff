@@ -273,12 +273,12 @@ typedef struct sx1262_s {
 	GPIO_PIN_DEF(reset_port, reset_pin);
 	GPIO_PIN_DEF(busy_port, busy_pin);
 	uint8_t packet_type;
-	void (*rx_done)(struct sx1262_s *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db);
-	void (*tx_done)(struct sx1262_s *p);
-	void (*rx_timeout)(struct sx1262_s *p);
-	void (*tx_timeout)(struct sx1262_s *p);
+	void (*on_rx_done)(struct sx1262_s *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db);
+	void (*on_tx_done)(struct sx1262_s *p);
+	void (*on_rx_timeout)(struct sx1262_s *p);
+	void (*on_tx_timeout)(struct sx1262_s *p);
 #ifdef SX1262_WITH_LOGGING
-	void (*logger)(const char *buf, int len);
+	void (*on_log)(const char *buf, int len);
 #endif
 } sx1262_t;
 
@@ -312,7 +312,7 @@ void sx1262_init(
  * pointer to the received payload, its length in bytes, the averaged
  * RSSI in dBm, and the raw SnrPkt register value in steps of 0.25dB (see
  * sx1262_get_packet_status()). The payload pointer is only valid for the
- * duration of the callback. Stored in p->rx_done; NULL by default after
+ * duration of the callback. Stored in p->on_rx_done; NULL by default after
  * sx1262_init().
  */
 void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p, const uint8_t *payload, size_t len, int8_t rssi, int8_t snr_quarter_db));
@@ -325,7 +325,7 @@ void sx1262_set_rx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p, cons
  *
  * Registers a callback to be invoked when TxDone is detected. The
  * callback receives the sx1262_t instance pointer. Stored in
- * p->tx_done; NULL by default after sx1262_init().
+ * p->on_tx_done; NULL by default after sx1262_init().
  */
 void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
 
@@ -337,7 +337,7 @@ void sx1262_set_tx_done_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
  *
  * Registers a callback to be invoked when an Rx operation completes with
  * Timeout rather than RxDone. The callback receives the sx1262_t instance
- * pointer. Stored in p->rx_timeout; NULL by default after sx1262_init().
+ * pointer. Stored in p->on_rx_timeout; NULL by default after sx1262_init().
  */
 void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
 
@@ -349,7 +349,7 @@ void sx1262_set_rx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
  *
  * Registers a callback to be invoked when a Tx operation completes with
  * Timeout rather than TxDone. The callback receives the sx1262_t instance
- * pointer. Stored in p->tx_timeout; NULL by default after sx1262_init().
+ * pointer. Stored in p->on_tx_timeout; NULL by default after sx1262_init().
  */
 void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
 
@@ -363,7 +363,7 @@ void sx1262_set_tx_timeout_callback(sx1262_t *p, void (*callback)(sx1262_t *p));
  * Registers a callback used by the library to report errors, timeouts
  * and RxDone/TxDone details. Called with a buffer and its length (not
  * NUL-terminated guaranteed, but always printable); the callback is
- * expected to forward it verbatim, e.g. over UART. Stored in p->logger;
+ * expected to forward it verbatim, e.g. over UART. Stored in p->on_log;
  * NULL by default after sx1262_init(). Only declared if
  * SX1262_WITH_LOGGING is defined.
  */
@@ -682,7 +682,7 @@ HAL_StatusTypeDef sx1262_clear_irq_status(sx1262_t *p, uint16_t clear_mask);
  * Called from the idle loop once the DIO1 IRQ fires for a TX started with
  * sx1262_set_tx() - the application is expected to know a TX is in flight
  * and call this rather than sx1262_service_rx(). Reads GetIrqStatus,
- * clears it, and dispatches to the registered tx_done or tx_timeout
+ * clears it, and dispatches to the registered on_tx_done or on_tx_timeout
  * callback depending on whether the IRQ was TxDone or Timeout.
  *
  * @return true if the IRQ was TxDone, false on Timeout or error.
@@ -700,7 +700,7 @@ bool sx1262_service_tx(sx1262_t *p);
  * RSSI (and, for LoRa, SNR) via sx1262_get_packet_status() or
  * sx1262_get_packet_status_gfsk() (depending on the packet type passed to
  * the most recent sx1262_set_packet_type()), then dispatches to the
- * registered rx_done callback. On Timeout dispatches to rx_timeout.
+ * registered on_rx_done callback. On Timeout dispatches to on_rx_timeout.
  * Clears the IRQ status before returning.
  *
  * @return true if the IRQ was RxDone (a packet was actually received),
