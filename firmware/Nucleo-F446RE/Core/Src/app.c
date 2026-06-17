@@ -153,7 +153,15 @@ void app_loop(void)
 {
 #ifdef TEST_MOTIONCAL
 	while(true) {
-		test_motioncal_poll(&mag);
+		if(test_motioncal_poll(&mag) != HAL_OK) {
+			/* STM32 HAL I2C state machine stuck — reset peripheral and
+			 * re-bringup the LIS3MDL to resume streaming. */
+			HAL_I2C_DeInit(&hi2c1);
+			HAL_Delay(10);
+			HAL_I2C_Init(&hi2c1);
+			HAL_Delay(10);
+			test_motioncal_init(&mag);
+		}
 		HAL_Delay(10);
 	}
 #else

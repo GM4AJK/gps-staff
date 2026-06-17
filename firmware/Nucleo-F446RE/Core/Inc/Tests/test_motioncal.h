@@ -31,7 +31,7 @@ void test_motioncal_init(lis3mdl_t *mag);
  * many orientations as possible until the fit-error numbers plateau,
  * then read off V[] (hard-iron) and invW[][] (soft-iron matrix).
  */
-void test_motioncal_poll(lis3mdl_t *mag);
+HAL_StatusTypeDef test_motioncal_poll(lis3mdl_t *mag);
 
 #endif /* TEST_MOTIONCAL */
 
