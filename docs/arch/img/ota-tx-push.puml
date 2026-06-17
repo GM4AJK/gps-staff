@@ -1,0 +1,36 @@
+@startuml ota-tx-push
+start
+
+if (p->busy?) then (no)
+  :ota_tx_start_frame(p, frame, len);
+  note right
+    memcpy into frame_buf
+    chunk_count = ceil(len / 250)
+    chunk_idx = 0
+    busy = true
+    → ota_tx_send_next_chunk()
+  end note
+else (yes)
+  if (queue_count >= OTA_TX_QUEUE_DEPTH?) then (yes)
+    :return false\n(frame dropped);
+    stop
+  else (no)
+    :copy to queue[queue_tail];
+    :queue_tail++, queue_count++;
+    :return true\n(queued);
+    stop
+  endif
+endif
+
+:ota_tx_send_next_chunk(p);
+note right
+  Build 255-byte tx_buf:
+    [type][seq][chunk_idx][chunk_count][data_len][data…][pad]
+  sx1262_write_buffer()
+  sx1262_set_tx(timeout=0)
+end note
+
+:return true;
+stop
+
+@enduml

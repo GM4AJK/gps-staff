@@ -1,0 +1,19 @@
+@startuml ota-tx-done
+start
+
+:chunk_idx++;
+
+if (chunk_idx < chunk_count?) then (yes)
+  :ota_tx_send_next_chunk()\n→ next chunk transmitted;
+  stop
+else (no — frame complete)
+  :frame_seq++;
+  :busy = false;
+  if (queue_count > 0?) then (yes)
+    :dequeue oldest entry;
+    :ota_tx_start_frame() → begins transmitting next frame immediately;
+  endif
+endif
+stop
+
+@enduml

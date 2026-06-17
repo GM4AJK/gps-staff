@@ -1,0 +1,25 @@
+@startuml system-deployment
+skinparam {
+  BackgroundColor #FAFAFA
+  ArrowColor #555555
+  NodeBorderColor #777777
+  NodeBackgroundColor #EEEEEE
+}
+
+node "Nucleo-G431KB\n(Fake F9P — Base)" as g431b
+note bottom of g431b : Cycles RTCM3 sample data\nat 1 Hz over UART
+
+node "Nucleo-F767ZI\n(Base Station)" as f767
+note bottom of f767 : STM32F767ZI @ 216 MHz\nrtcm3 + ota_tx + SX1262
+
+node "Nucleo-F446RE\n(Rover)" as f446
+note bottom of f446 : STM32F446RE @ 180 MHz\nota_rx + SX1262
+
+node "Nucleo-G431KB\n(Fake F9P — Rover)" as g431r
+note bottom of g431r : Verifies received RTCM3\nbyte-for-byte
+
+g431b --> f767 : "RTCM3 frames\nUART 115200 8N1"
+f767 --> f446 : "OTA chunks\nGFSK 434 MHz 50 kbps\n255-byte fixed packets"
+f446 --> g431r : "Reassembled RTCM3\nUART 115200 8N1"
+
+@enduml

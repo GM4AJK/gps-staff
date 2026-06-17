@@ -1,0 +1,25 @@
+@startuml dio1-interrupt-model
+participant "SX1262 chip" as chip
+participant "EXTI ISR" as isr
+participant "app_loop()" as loop
+participant "sx1262_service_rx/tx()" as svc
+participant "callback\n(ota_tx / ota_rx)" as cb
+
+chip -> isr : DIO1 asserts (TxDone / RxDone / Timeout)
+isr -> isr : flag_set_SX1262_DIO1()
+note right: atomic bit set, no SPI
+
+loop -> loop : flag_get_SX1262_DIO1() — true
+loop -> svc : sx1262_service_rx()\nor sx1262_service_tx()
+svc -> chip : GetIrqStatus (SPI)
+svc -> chip : ClearIrqStatus (SPI)
+alt RxDone
+  svc -> chip : GetRxBufferStatus (SPI)\nReadBuffer (SPI)\nGetPacketStatus (SPI)
+  svc -> cb : on_rx_done(payload, len, rssi, snr)
+else TxDone
+  svc -> cb : on_tx_done()
+else Timeout
+  svc -> cb : on_rx_timeout() or on_tx_timeout()
+end
+
+@enduml

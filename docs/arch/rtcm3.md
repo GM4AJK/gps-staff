@@ -52,24 +52,7 @@ Common types used in this project (GPS+GLONASS constellation):
 The RTCM3 framing state machine runs entirely inside `rtcm3_uart_in_irq()`,
 which is called from the UART IRQ handler once per received byte.
 
-```plantuml
-@startuml rtcm3-state-machine
-[*] --> SEARCH
-
-SEARCH --> SEARCH : byte ≠ 0xD3\nstore nothing
-
-SEARCH --> LEN1 : byte == 0xD3\nwrite 0xD3 to buf[0]\nbuf_pos = 1
-
-LEN1 --> LEN2 : any byte\nbuf[1] = byte\nbuf_pos = 2\nextract length[9:4]
-
-LEN2 --> DATA : any byte\nbuf[2] = byte\nbuf_pos = 3\nextract length[3:0]\nbytes_remaining = N + 3\n(payload + CRC)
-
-DATA --> DATA : byte (bytes_remaining > 1)\nbuf[buf_pos++] = byte\nbytes_remaining--
-
-DATA --> SEARCH : last byte (bytes_remaining == 1)\nbuf[buf_pos] = byte\nset ready_mask bit\n→ rtcm3_loop() validates CRC
-
-@enduml
-```
+![RTCM3 state machine](img/rtcm3-state-machine.png)
 
 States are defined in `rtcm3_irq_state_t`:
 
@@ -124,30 +107,7 @@ Frames arriving when all four slots are full are silently dropped.
 
 ## IRQ / Loop Split
 
-```plantuml
-@startuml rtcm3-irq-loop
-participant "USART2_IRQHandler" as irq
-participant "rtcm3_uart_in_irq()" as irqfn
-participant "app_loop()" as loop
-participant "rtcm3_loop()" as loopfn
-participant "ota_tx_push_frame()" as push
-
-irq -> irqfn : called from USART2_IRQHandler\nbefore HAL_UART_IRQHandler()
-irqfn -> irqfn : read irq_rx_byte\nrearm HAL_UART_Receive(1 byte, 1 ms)\nadvance state machine\n→ may set ready_mask bit
-
-loop -> loopfn : called every iteration
-
-loopfn -> loopfn : check ready_mask\nif bit set:
-loopfn -> loopfn : CRC24Q validation
-alt CRC valid
-  loopfn -> push : on_frame(bufs[out_buf_idx], buf_len[out_buf_idx])
-else CRC fail
-  loopfn -> loopfn : silent drop
-end
-loopfn -> loopfn : clear ready_mask bit\nout_buf_idx++
-
-@enduml
-```
+![IRQ / loop split](img/rtcm3-irq-loop.png)
 
 `rtcm3_uart_in_irq()` is called from `USART2_IRQHandler` **before**
 `HAL_UART_IRQHandler()` so the received byte is captured while RXNE is still

@@ -1,0 +1,16 @@
+@startuml rtcm3-state-machine
+[*] --> SEARCH
+
+SEARCH --> SEARCH : byte ≠ 0xD3\nstore nothing
+
+SEARCH --> LEN1 : byte == 0xD3\nwrite 0xD3 to buf[0]\nbuf_pos = 1
+
+LEN1 --> LEN2 : any byte\nbuf[1] = byte\nbuf_pos = 2\nextract length[9:4]
+
+LEN2 --> DATA : any byte\nbuf[2] = byte\nbuf_pos = 3\nextract length[3:0]\nbytes_remaining = N + 3\n(payload + CRC)
+
+DATA --> DATA : byte (bytes_remaining > 1)\nbuf[buf_pos++] = byte\nbytes_remaining--
+
+DATA --> SEARCH : last byte (bytes_remaining == 1)\nbuf[buf_pos] = byte\nset ready_mask bit\n→ rtcm3_loop() validates CRC
+
+@enduml

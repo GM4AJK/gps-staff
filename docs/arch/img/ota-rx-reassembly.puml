@@ -1,0 +1,52 @@
+@startuml ota-rx-reassembly
+start
+
+:receive 255-byte payload from sx1262_service_rx();
+
+if (len < OTA_RX_PACKET_SIZE?) then (yes)
+  :discard\n(truncated packet);
+  stop
+endif
+
+:parse header: type, seq, chunk_idx, chunk_count, data_len;
+
+if (type != 0x01?) then (yes)
+  :discard\n(unknown type);
+  stop
+endif
+
+if (data_len == 0 or > 250?) then (yes)
+  :discard\n(invalid data_len);
+  stop
+endif
+
+if (chunk_idx == 0?) then (yes)
+  :start new frame:\n  in_progress = true\n  expected_seq = seq\n  chunk_count = chunk_count\n  expected_chunk_idx = 0\n  frame_pos = 0;
+else (no)
+  if (not in_progress\nor seq != expected_seq\nor chunk_idx != expected_chunk_idx?) then (yes)
+    :in_progress = false\n(discard, resync next frame);
+    stop
+  endif
+endif
+
+if (frame_pos + data_len > OTA_RX_FRAME_BUF_SIZE?) then (yes)
+  :in_progress = false\n(overflow, discard);
+  stop
+endif
+
+:memcpy data into frame_buf[frame_pos];
+:frame_pos += data_len;
+:expected_chunk_idx++;
+
+if (chunk_idx + 1 == chunk_count?) then (yes)
+  :on_frame(frame_buf, frame_pos);
+  note right
+    complete RTCM3 frame
+    delivered to caller
+  end note
+  :in_progress = false;
+endif
+
+stop
+
+@enduml

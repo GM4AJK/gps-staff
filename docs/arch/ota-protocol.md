@@ -77,69 +77,12 @@ typedef struct {
 `ota_tx_push_frame(p, frame, len)` — the entry point called from
 `on_rtcm3_frame()` in `app.c`.
 
-```plantuml
-@startuml ota-tx-push
-start
-
-if (p->busy?) then (no)
-  :ota_tx_start_frame(p, frame, len);
-  note right
-    memcpy into frame_buf
-    chunk_count = ceil(len / 250)
-    chunk_idx = 0
-    busy = true
-    → ota_tx_send_next_chunk()
-  end note
-else (yes)
-  if (queue_count >= OTA_TX_QUEUE_DEPTH?) then (yes)
-    :return false\n(frame dropped);
-    stop
-  else (no)
-    :copy to queue[queue_tail];
-    :queue_tail++, queue_count++;
-    :return true\n(queued);
-    stop
-  endif
-endif
-
-:ota_tx_send_next_chunk(p);
-note right
-  Build 255-byte tx_buf:
-    [type][seq][chunk_idx][chunk_count][data_len][data…][pad]
-  sx1262_write_buffer()
-  sx1262_set_tx(timeout=0)
-end note
-
-:return true;
-stop
-
-@enduml
-```
+![ota_tx push_frame flow](img/ota-tx-push.png)
 
 `on_tx_done()` is the `sx1262_t.on_tx_done` callback, registered by
 `ota_tx_init()`.  It fires after each SX1262 TxDone IRQ:
 
-```plantuml
-@startuml ota-tx-done
-start
-
-:chunk_idx++;
-
-if (chunk_idx < chunk_count?) then (yes)
-  :ota_tx_send_next_chunk()\n→ next chunk transmitted;
-  stop
-else (no — frame complete)
-  :frame_seq++;
-  :busy = false;
-  if (queue_count > 0?) then (yes)
-    :dequeue oldest entry;
-    :ota_tx_start_frame() → begins transmitting next frame immediately;
-  endif
-endif
-stop
-
-@enduml
-```
+![ota_tx on_tx_done flow](img/ota-tx-done.png)
 
 ### Queue depth and capacity
 
@@ -172,60 +115,7 @@ typedef struct {
 `on_rx_done()` is the `sx1262_t.on_rx_done` callback, registered by
 `ota_rx_init()`.
 
-```plantuml
-@startuml ota-rx-reassembly
-start
-
-:receive 255-byte payload from sx1262_service_rx();
-
-if (len < OTA_RX_PACKET_SIZE?) then (yes)
-  :discard\n(truncated packet);
-  stop
-endif
-
-:parse header: type, seq, chunk_idx, chunk_count, data_len;
-
-if (type != 0x01?) then (yes)
-  :discard\n(unknown type);
-  stop
-endif
-
-if (data_len == 0 or > 250?) then (yes)
-  :discard\n(invalid data_len);
-  stop
-endif
-
-if (chunk_idx == 0?) then (yes)
-  :start new frame:\n  in_progress = true\n  expected_seq = seq\n  chunk_count = chunk_count\n  expected_chunk_idx = 0\n  frame_pos = 0;
-else (no)
-  if (not in_progress\nor seq != expected_seq\nor chunk_idx != expected_chunk_idx?) then (yes)
-    :in_progress = false\n(discard, resync next frame);
-    stop
-  endif
-endif
-
-if (frame_pos + data_len > OTA_RX_FRAME_BUF_SIZE?) then (yes)
-  :in_progress = false\n(overflow, discard);
-  stop
-endif
-
-:memcpy data into frame_buf[frame_pos];
-:frame_pos += data_len;
-:expected_chunk_idx++;
-
-if (chunk_idx + 1 == chunk_count?) then (yes)
-  :on_frame(frame_buf, frame_pos);
-  note right
-    complete RTCM3 frame
-    delivered to caller
-  end note
-  :in_progress = false;
-endif
-
-stop
-
-@enduml
-```
+![ota_rx reassembly flow](img/ota-rx-reassembly.png)
 
 ### Key design: deferred, non-blocking UART TX
 
@@ -274,44 +164,7 @@ picks it up on the next iteration once `rtcm3_tx_busy` clears.
 
 ## End-to-End Sequence
 
-```plantuml
-@startuml ota-e2e
-participant "G431 Fake-F9P\n(Base)" as g431b
-participant "F767ZI rtcm3" as r3b
-participant "F767ZI ota_tx" as otx
-participant "SX1262\n(Base)" as txr
-participant "SX1262\n(Rover)" as rxr
-participant "F446RE ota_rx" as orx
-participant "F446RE app_loop" as app_r
-participant "G431 Fake-F9P\n(Rover)" as g431r
-
-g431b -> r3b : UART byte stream\n(1005+1074+1084+1094+1124 frames\nevery 1000 ms)
-
-group RTCM3 frame arrival at base
-  r3b -> r3b : state machine (SEARCH→LEN→DATA)\nCRC24Q validation
-  r3b -> otx : on_frame(frame, len)
-end
-
-group OTA TX (chunked; shown for a 2-chunk frame)
-  otx -> txr : WriteBuffer(chunk 0)\nSetTx
-  txr -> rxr : 255-byte GFSK packet\n(~41 ms on air)
-  txr -> otx : TxDone IRQ → on_tx_done()\nchunk_idx++
-  otx -> txr : WriteBuffer(chunk 1)\nSetTx
-  txr -> rxr : 255-byte GFSK packet\n(~41 ms on air)
-  txr -> otx : TxDone IRQ → on_tx_done()\nframe complete, frame_seq++
-end
-
-group OTA RX and reassembly (rover)
-  rxr -> orx : RxDone IRQ → on_rx_done()\nchunk 0: start new frame
-  app_r -> rxr : sx1262_set_rx() re-arm
-  rxr -> orx : RxDone IRQ → on_rx_done()\nchunk 1: append, frame complete
-  orx -> app_r : on_frame(frame_buf, frame_pos)
-  app_r -> rxr : sx1262_set_rx() re-arm
-  app_r -> g431r : HAL_UART_Transmit()\nreassembled RTCM3 frame
-end
-
-@enduml
-```
+![End-to-end sequence](img/ota-e2e.png)
 
 ---
 
