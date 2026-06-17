@@ -12,19 +12,13 @@
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
 #include "ota_rx.h"
-#include "lsm6dsrx.h"
-#include "lis3mdl.h"
 #include "config.h"
-#include "Tests/test_imu_fusion.h"
-#include "Tests/test_motioncal.h"
 
 static void app_tests(void);
 
 static ssd1309_t  oled;
 static sx1262_t   sx1262;
 static ota_rx_t   ota_rx;
-static lsm6dsrx_t imu;
-static lis3mdl_t  mag;
 static config_t   config;
 
 static uint8_t  rtcm3_pending_buf[OTA_RX_FRAME_BUF_SIZE];
@@ -134,21 +128,6 @@ void app_init(void)
 
 	ota_rx_init(&ota_rx, &sx1262, on_rtcm3_frame);
 
-	/* lsm6dsrx_init(&imu, &hi2c1, LSM6DSRX_I2C_ADDR_SA0_LOW); */
-	/* if (lsm6dsrx_bringup(&imu) != HAL_OK) { app_log("lsm6dsrx_bringup failed\r\n"); } */
-
-#ifdef TEST_MOTIONCAL
-	lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW);
-	test_motioncal_init(&mag);
-#else
-	/* lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW); */
-	/* if (lis3mdl_bringup(&mag) != HAL_OK) { app_log("lis3mdl_bringup failed\r\n"); } */
-#endif
-
-#ifdef TEST_IMU_FUSION
-	test_imu_fusion_set_oled(&oled);
-#endif /* TEST_IMU_FUSION */
-
 	app_log("F446RE Rover Start up\r\n");
 
 	app_tests();
@@ -164,16 +143,7 @@ void app_loop(void)
 		if(flag_get_100MS()) {
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
 			flipper = !flipper;
-#ifdef TEST_MOTIONCAL
-			test_motioncal_poll(&mag);
-#endif
 		}
-
-#ifdef TEST_IMU_FUSION
-		if(flag_get_500MS()) {
-			test_imu_fusion_poll(&imu, &mag);
-		}
-#endif /* TEST_IMU_FUSION */
 
 		if(flag_get_SX1262_DIO1()) {
 			sx1262_service_rx(&sx1262);
