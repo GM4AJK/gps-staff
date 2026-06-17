@@ -6,7 +6,7 @@
 #include "ssd1309.h"
 
 /* Comment out to exclude the IMU+mag fusion bench test from the build */
-#define TEST_IMU_FUSION
+/* #define TEST_IMU_FUSION */
 
 #ifdef TEST_IMU_FUSION
 
