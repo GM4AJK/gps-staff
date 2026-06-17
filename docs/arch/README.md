@@ -31,67 +31,13 @@ STM32F765 on the finished PCB.
 
 ## System Data Flow
 
-```plantuml
-@startuml system-deployment
-!include <archimate/Archimate>
-
-skinparam {
-  BackgroundColor #FAFAFA
-  ArrowColor #555555
-  NodeBorderColor #777777
-}
-
-Technology_Device(g431b, "Nucleo-G431KB\n(Fake F9P — Base)", "Cycles RTCM3 sample data\nat 1 Hz over UART")
-Technology_Device(f767, "Nucleo-F767ZI\n(Base Station)", "STM32F767ZI @ 216 MHz\nrtcm3 + ota_tx + SX1262")
-Technology_Device(f446, "Nucleo-F446RE\n(Rover)", "STM32F446RE @ 180 MHz\nota_rx + SX1262")
-Technology_Device(g431r, "Nucleo-G431KB\n(Fake F9P — Rover)", "Verifies received RTCM3\nbyte-for-byte")
-
-Rel_Flow_Right(g431b, f767, "RTCM3 frames\nUART 115200 8N1")
-Rel_Flow_Right(f767, f446, "OTA chunks\nGFSK 434 MHz 50 kbps\n255-byte fixed packets")
-Rel_Flow_Right(f446, g431r, "Reassembled RTCM3\nUART 115200 8N1")
-
-@enduml
-```
+![System deployment](img/system-deployment.png)
 
 ---
 
 ## Firmware Module Map
 
-```plantuml
-@startuml firmware-modules
-!theme plain
-
-package "F767ZI — Base" {
-  component [rtcm3] as rtcm3_b
-  component [ota_tx] as ota_tx
-  component [sx1262] as sx1262_b
-  component [app (base)] as app_b
-
-  app_b --> rtcm3_b : init / loop
-  app_b --> ota_tx  : init / push_frame
-  app_b --> sx1262_b : init / config_gfsk\nservice_tx
-  rtcm3_b --> ota_tx : on_frame callback
-  ota_tx --> sx1262_b : write_buffer\nset_tx
-}
-
-package "F446RE — Rover" {
-  component [ota_rx] as ota_rx
-  component [sx1262] as sx1262_r
-  component [app (rover)] as app_r
-
-  app_r --> ota_rx   : init
-  app_r --> sx1262_r : init / config_gfsk\nservice_rx / set_rx
-  sx1262_r --> ota_rx : on_rx_done callback
-  ota_rx --> app_r   : on_frame callback\n(copy to pending buf)
-}
-
-cloud "434 MHz\nGFSK link" as air
-
-sx1262_b --> air
-air --> sx1262_r
-
-@enduml
-```
+![Firmware modules](img/firmware-modules.png)
 
 ---
 

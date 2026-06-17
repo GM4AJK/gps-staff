@@ -1,0 +1,36 @@
+@startuml ota-e2e
+participant "G431 Fake-F9P\n(Base)" as g431b
+participant "F767ZI rtcm3" as r3b
+participant "F767ZI ota_tx" as otx
+participant "SX1262\n(Base)" as txr
+participant "SX1262\n(Rover)" as rxr
+participant "F446RE ota_rx" as orx
+participant "F446RE app_loop" as app_r
+participant "G431 Fake-F9P\n(Rover)" as g431r
+
+g431b -> r3b : UART byte stream\n(1005+1074+1084+1094+1124 frames\nevery 1000 ms)
+
+group RTCM3 frame arrival at base
+  r3b -> r3b : state machine (SEARCH→LEN→DATA)\nCRC24Q validation
+  r3b -> otx : on_frame(frame, len)
+end
+
+group OTA TX (chunked; shown for a 2-chunk frame)
+  otx -> txr : WriteBuffer(chunk 0)\nSetTx
+  txr -> rxr : 255-byte GFSK packet\n(~41 ms on air)
+  txr -> otx : TxDone IRQ → on_tx_done()\nchunk_idx++
+  otx -> txr : WriteBuffer(chunk 1)\nSetTx
+  txr -> rxr : 255-byte GFSK packet\n(~41 ms on air)
+  txr -> otx : TxDone IRQ → on_tx_done()\nframe complete, frame_seq++
+end
+
+group OTA RX and reassembly (rover)
+  rxr -> orx : RxDone IRQ → on_rx_done()\nchunk 0: start new frame
+  app_r -> rxr : sx1262_set_rx() re-arm
+  rxr -> orx : RxDone IRQ → on_rx_done()\nchunk 1: append, frame complete
+  orx -> app_r : on_frame(frame_buf, frame_pos)
+  app_r -> rxr : sx1262_set_rx() re-arm
+  app_r -> g431r : HAL_UART_Transmit_IT()\nreassembled RTCM3 frame
+end
+
+@enduml

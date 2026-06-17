@@ -1,0 +1,27 @@
+@startuml gfsk-bringup
+participant "app.c" as app
+participant "sx1262.c" as drv
+participant "SX1262 chip" as chip
+
+app -> drv : sx1262_config_gfsk(\n  freq=434000000,\n  bitrate=50000,\n  fdev=25000,\n  payload=255,\n  power=0)
+
+drv -> chip : NRESET pulse low → high
+drv -> chip : wait BUSY low
+drv -> chip : SetDIO3AsTCXOCtrl(1.8 V, 320 ticks ≈ 5 ms)
+note right: TCXO powered; 32 MHz reference starts
+drv -> chip : ClearDeviceErrors
+drv -> chip : SetPacketType(GFSK = 0x00)
+drv -> chip : SetRfFrequency(434.000 MHz)
+note right: RFfreq = 434e6 × 2²⁵ / 32e6
+drv -> chip : CalibrateImage(0x6B, 0x6F)
+note right: 430–440 MHz band (factory default is 902–928 MHz only)
+drv -> chip : SetModulationParams\n(br=50 kbps, BT=0.5, BW=117.3 kHz, Fdev=25 kHz)
+drv -> chip : SetPacketParams\n(preamble=16 bit, det=16 bit, sync=16 bit,\n addr=off, fixed, len=255, CRC-16, whitening=on)
+drv -> chip : SetBufferBaseAddress(TX=0, RX=0)
+drv -> chip : SetPaConfig(duty=0x02, hpMax=0x02, SX1262)
+note right: Ceiling +14 dBm; bench uses power_dbm=0
+drv -> chip : SetTxParams(0 dBm, ramp=200 µs)
+drv -> chip : SetDioIrqParams(\n  mask=TX_DONE|RX_DONE|HDR_ERR|CRC_ERR|TIMEOUT,\n  DIO1=same, DIO2=0, DIO3=0)
+drv --> app : HAL_OK
+
+@enduml

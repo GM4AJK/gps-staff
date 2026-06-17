@@ -1,0 +1,22 @@
+@startuml rtcm3-irq-loop
+participant "USART2_IRQHandler" as irq
+participant "rtcm3_uart_in_irq()" as irqfn
+participant "app_loop()" as loop
+participant "rtcm3_loop()" as loopfn
+participant "ota_tx_push_frame()" as push
+
+irq -> irqfn : called from USART2_IRQHandler\nbefore HAL_UART_IRQHandler()
+irqfn -> irqfn : read irq_rx_byte\nrearm HAL_UART_Receive(1 byte, 1 ms)\nadvance state machine\n→ may set ready_mask bit
+
+loop -> loopfn : called every iteration
+
+loopfn -> loopfn : check ready_mask\nif bit set:
+loopfn -> loopfn : CRC24Q validation
+alt CRC valid
+  loopfn -> push : on_frame(bufs[out_buf_idx], buf_len[out_buf_idx])
+else CRC fail
+  loopfn -> loopfn : silent drop
+end
+loopfn -> loopfn : clear ready_mask bit\nout_buf_idx++
+
+@enduml
