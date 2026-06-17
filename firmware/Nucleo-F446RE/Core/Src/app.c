@@ -149,14 +149,52 @@ void app_init(void)
 	app_tests();
 }
 
+/* I2C1 bus recovery: bit-bang 9 SCL pulses (PB6) to flush a stuck slave
+ * byte, generate a STOP, then RCC-reset and re-init the I2C peripheral. */
+static void i2c1_bus_recover(void)
+{
+	GPIO_InitTypeDef g = {0};
+
+	g.Pin   = GPIO_PIN_6 | GPIO_PIN_7;   /* PB6=SCL, PB7=SDA */
+	g.Mode  = GPIO_MODE_OUTPUT_OD;
+	g.Pull  = GPIO_NOPULL;
+	g.Speed = GPIO_SPEED_FREQ_LOW;
+	HAL_GPIO_Init(GPIOB, &g);
+
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);  /* release SDA */
+	for(int i = 0; i < 9; i++) {
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+		HAL_Delay(1);
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+		HAL_Delay(1);
+	}
+
+	/* STOP: SCL low → SDA low → SCL high → SDA high */
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET);
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_RESET);
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
+	HAL_Delay(1);
+	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);
+	HAL_Delay(1);
+
+	/* Full peripheral reset — MspInit inside HAL_I2C_Init restores PB6/PB7 as AF */
+	HAL_I2C_DeInit(&hi2c1);
+	__HAL_RCC_I2C1_FORCE_RESET();
+	HAL_Delay(5);
+	__HAL_RCC_I2C1_RELEASE_RESET();
+	HAL_I2C_Init(&hi2c1);
+}
 
 void app_loop(void)
 {
 #ifdef TEST_MOTIONCAL
 	while(true) {
 		if(test_motioncal_poll(&mag) != HAL_OK) {
-			HAL_Delay(100);   /* flush UART before reset */
-			NVIC_SystemReset();
+			app_log("motioncal: i2c error, recovering\r\n");
+			i2c1_bus_recover();
+			test_motioncal_init(&mag);
 		}
 		HAL_Delay(10);
 	}
