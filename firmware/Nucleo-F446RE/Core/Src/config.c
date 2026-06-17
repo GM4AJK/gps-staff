@@ -2,21 +2,9 @@
 #include "config.h"
 #include <string.h>
 #include <stddef.h>
-#include <stdarg.h>
-#include <stdio.h>
 
 _Static_assert(sizeof(config_data_t) == 64, "config_data_t must be exactly 64 bytes");
 
-static void log_msg(config_t *p, const char *fmt, ...)
-{
-	if(!p->on_log) return;
-	char buf[80];
-	va_list args;
-	va_start(args, fmt);
-	int len = vsnprintf(buf, sizeof(buf), fmt, args);
-	va_end(args);
-	p->on_log(buf, len);
-}
 
 /* AT24C256 internal address of the config page */
 #define EEPROM_PAGE_ADDR     0x0000
@@ -66,7 +54,7 @@ static HAL_StatusTypeDef eeprom_write(config_t *p)
 	return HAL_TIMEOUT;
 }
 
-void config_set_log_callback(config_t *p, void (*callback)(const char *buf, int len))
+void config_set_log_callback(config_t *p, void (*callback)(const char *fmt, ...))
 {
 	p->on_log = callback;
 }
@@ -86,17 +74,17 @@ HAL_StatusTypeDef config_load(config_t *p)
 		p->port, p->i2c_addr, EEPROM_PAGE_ADDR, I2C_MEMADD_SIZE_16BIT,
 		(uint8_t *)&tmp, sizeof(tmp), 100);
 	if(r != HAL_OK) {
-		log_msg(p, "config: EEPROM read failed (%d), using defaults\r\n", r);
+		if(p->on_log) p->on_log("config: EEPROM read failed (%d), using defaults\r\n", r);
 		load_defaults(&p->data);
 		return HAL_ERROR;
 	}
 	if(tmp.magic != CONFIG_MAGIC || tmp.crc != data_crc(&tmp)) {
-		log_msg(p, "config: invalid magic/CRC, using defaults\r\n");
+		if(p->on_log) p->on_log("config: invalid magic/CRC, using defaults\r\n");
 		load_defaults(&p->data);
 		return HAL_ERROR;
 	}
 	p->data = tmp;
-	log_msg(p, "config: loaded v%u\r\n", p->data.version);
+	if(p->on_log) p->on_log("config: loaded v%u\r\n", p->data.version);
 	return HAL_OK;
 }
 
