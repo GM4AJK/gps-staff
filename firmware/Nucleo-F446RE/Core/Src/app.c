@@ -14,6 +14,7 @@
 #include "ota_rx.h"
 #include "lsm6dsrx.h"
 #include "lis3mdl.h"
+#include "config.h"
 #include "Tests/test_imu_fusion.h"
 
 static void app_tests(void);
@@ -23,6 +24,7 @@ static sx1262_t   sx1262;
 static ota_rx_t   ota_rx;
 static lsm6dsrx_t imu;
 static lis3mdl_t  mag;
+static config_t   config;
 
 static uint8_t  rtcm3_pending_buf[OTA_RX_FRAME_BUF_SIZE];
 static uint16_t rtcm3_pending_len;
@@ -101,6 +103,9 @@ void app_init(void)
 
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
+
+	config_init(&config, &hi2c1, CONFIG_I2C_ADDR);
+	config_load(&config);
 
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
 
