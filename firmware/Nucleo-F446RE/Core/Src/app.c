@@ -16,6 +16,7 @@
 #include "lis3mdl.h"
 #include "config.h"
 #include "Tests/test_imu_fusion.h"
+#include "Tests/test_motioncal.h"
 
 static void app_tests(void);
 
@@ -136,8 +137,13 @@ void app_init(void)
 	/* lsm6dsrx_init(&imu, &hi2c1, LSM6DSRX_I2C_ADDR_SA0_LOW); */
 	/* if (lsm6dsrx_bringup(&imu) != HAL_OK) { app_log("lsm6dsrx_bringup failed\r\n"); } */
 
+#ifdef TEST_MOTIONCAL
+	lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW);
+	test_motioncal_init(&mag);
+#else
 	/* lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW); */
 	/* if (lis3mdl_bringup(&mag) != HAL_OK) { app_log("lis3mdl_bringup failed\r\n"); } */
+#endif
 
 #ifdef TEST_IMU_FUSION
 	test_imu_fusion_set_oled(&oled);
@@ -158,6 +164,9 @@ void app_loop(void)
 		if(flag_get_100MS()) {
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
 			flipper = !flipper;
+#ifdef TEST_MOTIONCAL
+			test_motioncal_poll(&mag);
+#endif
 		}
 
 #ifdef TEST_IMU_FUSION
