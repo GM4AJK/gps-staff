@@ -105,6 +105,13 @@ void app_init(void)
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
+#ifdef TEST_MOTIONCAL
+	lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW);
+	test_motioncal_init(&mag);
+	app_log("F446RE Rover Start up\r\n");
+	return;
+#endif
+
 	config_init(&config, &hi2c1, CONFIG_I2C_ADDR);
 	config_set_log_callback(&config, app_log);
 	config_load(&config);
@@ -137,18 +144,6 @@ void app_init(void)
 	/* lsm6dsrx_init(&imu, &hi2c1, LSM6DSRX_I2C_ADDR_SA0_LOW); */
 	/* if (lsm6dsrx_bringup(&imu) != HAL_OK) { app_log("lsm6dsrx_bringup failed\r\n"); } */
 
-#ifdef TEST_MOTIONCAL
-	lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW);
-	test_motioncal_init(&mag);
-#else
-	/* lis3mdl_init(&mag, &hi2c1, LIS3MDL_I2C_ADDR_SA1_LOW); */
-	/* if (lis3mdl_bringup(&mag) != HAL_OK) { app_log("lis3mdl_bringup failed\r\n"); } */
-#endif
-
-#ifdef TEST_IMU_FUSION
-	test_imu_fusion_set_oled(&oled);
-#endif /* TEST_IMU_FUSION */
-
 	app_log("F446RE Rover Start up\r\n");
 
 	app_tests();
@@ -156,6 +151,12 @@ void app_init(void)
 
 void app_loop(void)
 {
+#ifdef TEST_MOTIONCAL
+	while(true) {
+		test_motioncal_poll(&mag);
+		HAL_Delay(10);
+	}
+#else
 	bool flipper = false;
 
 	sx1262_set_rx(&sx1262, SX1262_RX_TIMEOUT_CONTINUOUS);
@@ -164,16 +165,7 @@ void app_loop(void)
 		if(flag_get_100MS()) {
 			HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, flipper);
 			flipper = !flipper;
-#ifdef TEST_MOTIONCAL
-			test_motioncal_poll(&mag);
-#endif
 		}
-
-#ifdef TEST_IMU_FUSION
-		if(flag_get_500MS()) {
-			test_imu_fusion_poll(&imu, &mag);
-		}
-#endif /* TEST_IMU_FUSION */
 
 		if(flag_get_SX1262_DIO1()) {
 			sx1262_service_rx(&sx1262);
@@ -187,6 +179,7 @@ void app_loop(void)
 			rtcm3_pending_len = 0;
 		}
 	}
+#endif
 }
 
 static void app_tests(void)

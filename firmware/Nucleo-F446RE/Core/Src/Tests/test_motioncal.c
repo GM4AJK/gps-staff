@@ -12,6 +12,9 @@ void test_motioncal_init(lis3mdl_t *mag)
 
 void test_motioncal_poll(lis3mdl_t *mag)
 {
+	bool ready = false;
+	if(lis3mdl_data_ready(mag, &ready) != HAL_OK || !ready) return;
+
 	int16_t mx, my, mz;
 	if(lis3mdl_read_mag(mag, &mx, &my, &mz) != HAL_OK) return;
 
