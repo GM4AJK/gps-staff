@@ -4,6 +4,13 @@
 #include "app.h"
 #include <math.h>
 
+const float3_t lis3mdl_default_hard_iron = { .v = { 0.0f, 0.0f, 0.0f } };
+const float3x3_t lis3mdl_default_soft_iron = { .m = {
+    { 1.0f, 0.0f, 0.0f },
+    { 0.0f, 1.0f, 0.0f },
+    { 0.0f, 0.0f, 1.0f }
+} };
+
 #define LIS3MDL_I2C_TIMEOUT_MS 100
 
 #define LIS3MDL_DEG_TO_RAD (3.14159265358979323846f / 180.0f)
@@ -187,6 +194,17 @@ void lis3mdl_apply_calibration(const lis3mdl_calibration_t *cal, int16_t mx, int
 	*out_x = ((float)mx - offset_x) * (avg_range / range_x);
 	*out_y = ((float)my - offset_y) * (avg_range / range_y);
 	*out_z = ((float)mz - offset_z) * (avg_range / range_z);
+}
+
+void lis3mdl_apply_mag_cal(float3_t *mag, const float3_t *hard_iron, const float3x3_t *soft_iron)
+{
+	float cx = mag->v[0] - hard_iron->v[0];
+	float cy = mag->v[1] - hard_iron->v[1];
+	float cz = mag->v[2] - hard_iron->v[2];
+
+	mag->v[0] = soft_iron->m[0][0]*cx + soft_iron->m[0][1]*cy + soft_iron->m[0][2]*cz;
+	mag->v[1] = soft_iron->m[1][0]*cx + soft_iron->m[1][1]*cy + soft_iron->m[1][2]*cz;
+	mag->v[2] = soft_iron->m[2][0]*cx + soft_iron->m[2][1]*cy + soft_iron->m[2][2]*cz;
 }
 
 HAL_StatusTypeDef lis3mdl_loop(lis3mdl_t *p)
