@@ -6,6 +6,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+typedef struct { float v[3];    } float3_t;
+typedef struct { float m[3][3]; } float3x3_t;
+
+/* Ready-to-use defaults: zero hard-iron offset, identity soft-iron matrix. */
+extern const float3_t    lis3mdl_default_hard_iron;
+extern const float3x3_t  lis3mdl_default_soft_iron;
+
 /* Register map (LIS3MDL datasheet section 6/7) */
 #define LIS3MDL_REG_WHO_AM_I   0x0F
 #define LIS3MDL_REG_CTRL_REG1  0x20
@@ -185,5 +192,22 @@ void lis3mdl_calibration_update(lis3mdl_calibration_t *cal, int16_t mx, int16_t 
  * dividing by a near-zero range and amplifying that noise.
  */
 void lis3mdl_apply_calibration(const lis3mdl_calibration_t *cal, int16_t mx, int16_t my, int16_t mz, float *out_x, float *out_y, float *out_z);
+
+/**
+ * lis3mdl_apply_mag_cal
+ * @param mag        - Float 3-vector of raw mag readings (µT or LSB); corrected
+ *                     in place
+ * @param hard_iron  - Hard-iron offset vector to subtract; pass
+ *                     &lis3mdl_default_hard_iron when no calibration is available
+ * @param soft_iron  - Soft-iron 3×3 correction matrix to apply after the
+ *                     hard-iron subtraction; pass &lis3mdl_default_soft_iron
+ *                     when no calibration is available (identity — no-op)
+ *
+ * Applies hard- and soft-iron calibration to mag in place:
+ *   corrected = raw - hard_iron
+ *   result    = soft_iron × corrected
+ * Pure math, no I2C traffic.
+ */
+void lis3mdl_apply_mag_cal(float3_t *mag, const float3_t *hard_iron, const float3x3_t *soft_iron);
 
 #endif /* INC_LIS3MDL_H_ */
