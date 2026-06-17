@@ -66,10 +66,15 @@ void app_log(const char *fmt, ...)
 	HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, 100);
 }
 
+static void uart_log(const char *buf, int len)
+{
+	HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, 100);
+}
+
 #ifdef SX1262_WITH_LOGGING
 static void sx1262_logger(const char *buf, int len)
 {
-	HAL_UART_Transmit(&huart2, (uint8_t *)buf, len, 100);
+	uart_log(buf, len);
 }
 #endif /* SX1262_WITH_LOGGING */
 
@@ -105,6 +110,7 @@ void app_init(void)
 	HAL_Delay(500);
 
 	config_init(&config, &hi2c1, CONFIG_I2C_ADDR);
+	config_set_log_callback(&config, uart_log);
 	config_load(&config);
 
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);

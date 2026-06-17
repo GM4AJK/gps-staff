@@ -26,8 +26,19 @@ typedef struct {
 typedef struct {
 	I2C_HandleTypeDef *port;
 	uint16_t           i2c_addr;
+	void             (*on_log)(const char *buf, int len);
 	config_data_t      data;
 } config_t;
+
+/**
+ * config_set_log_callback
+ * @param p        - Pointer to an initialised config_t struct
+ * @param callback - Function to call for log output, or NULL to disable
+ *
+ * Registers a logging callback invoked with a pre-formatted string and its
+ * length.  Must be called before config_load() to capture startup messages.
+ */
+void config_set_log_callback(config_t *p, void (*callback)(const char *buf, int len));
 
 /**
  * config_init
