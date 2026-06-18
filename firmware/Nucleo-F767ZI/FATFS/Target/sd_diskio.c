@@ -21,7 +21,11 @@
    as "Use dma template" is disabled. */
 
 /* USER CODE BEGIN firstSection */
-/* can be used to modify / undefine following code or add new definitions */
+/* Cap read/write timeout at 5 s. The BSP default (SD_DATATIMEOUT=100000000 ms)
+ * is effectively infinite and permanently bricks the system if a card stalls
+ * mid-transfer. SDMMC_DATATIMEOUT takes priority in the SD_TIMEOUT selection
+ * logic below. */
+#define SDMMC_DATATIMEOUT 5000U
 /* USER CODE END firstSection*/
 
 /* Includes ------------------------------------------------------------------*/
@@ -147,6 +151,7 @@ DSTATUS SD_status(BYTE lun)
 DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_ERROR;
+  uint32_t tickstart = HAL_GetTick();
 
   if(BSP_SD_ReadBlocks((uint32_t*)buff,
                        (uint32_t) (sector),
@@ -155,6 +160,8 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
     /* wait until the read operation is finished */
     while(BSP_SD_GetCardState()!= MSD_OK)
     {
+      if((HAL_GetTick() - tickstart) >= SD_TIMEOUT)
+        return RES_ERROR;
     }
     res = RES_OK;
   }
@@ -178,14 +185,17 @@ DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 {
   DRESULT res = RES_ERROR;
+  uint32_t tickstart = HAL_GetTick();
 
   if(BSP_SD_WriteBlocks((uint32_t*)buff,
                         (uint32_t)(sector),
                         count, SD_TIMEOUT) == MSD_OK)
   {
-	/* wait until the Write operation is finished */
+    /* wait until the Write operation is finished */
     while(BSP_SD_GetCardState() != MSD_OK)
     {
+      if((HAL_GetTick() - tickstart) >= SD_TIMEOUT)
+        return RES_ERROR;
     }
     res = RES_OK;
   }

@@ -242,13 +242,7 @@ static void MX_SDMMC2_SD_Init(void)
 {
 
   /* USER CODE BEGIN SDMMC2_Init 0 */
-  /* BUG-SDMMC-001: HAL_SD_Init() runs full card enumeration (CMD0/CMD8/ACMD41)
-   * and calls Error_Handler() if no card responds. Skip init when CD pin is
-   * high (no card; pull-up active). App code must call HAL_SD_Init() itself
-   * after detecting card insertion via CD. */
-  if (HAL_GPIO_ReadPin(SDMMC_CD_GPIO_Port, SDMMC_CD_Pin) == GPIO_PIN_SET) {
-      return;
-  }
+
   /* USER CODE END SDMMC2_Init 0 */
 
   /* USER CODE BEGIN SDMMC2_Init 1 */
@@ -262,10 +256,7 @@ static void MX_SDMMC2_SD_Init(void)
   hsd2.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
   hsd2.Init.ClockDiv = 0;
   /* USER CODE BEGIN SDMMC2_Init 2 */
-  /* BUG-SDMMC-003 / BUG-SDMMC-004: running in 1-bit mode (BSP_SD_Init override
-   * in app.c skips HAL_SD_ConfigWideBusOperation). In 1-bit mode the FIFO
-   * fills 4x slower than 4-bit for the same clock, so ClockDiv=0 (24 MHz,
-   * ~3 MB/s) is safe in polling mode — no RXOVERR risk. */
+
   /* USER CODE END SDMMC2_Init 2 */
 
 }
