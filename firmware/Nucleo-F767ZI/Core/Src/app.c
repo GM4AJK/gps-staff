@@ -6,12 +6,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-
-#define TEST_SDCARD
-
 #include "main.h"
-#include "fatfs.h"
-#include "bsp_driver_sd.h"
 #include "flags.h"
 #include "rtcm3.h"
 #include "ota_tx.h"
@@ -19,20 +14,7 @@
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
 
-static void app_tests(void);
-
-#ifdef TEST_SDCARD
-/* Diagnostic: override weak BSP_SD_Init() to force 1-bit mode.
- * DATA_CRC_FAIL in 4-bit mode suggests D1/D2/D3 wiring issue on the SD BOB.
- * Remove once 4-bit wiring is confirmed or fixed. */
-uint8_t BSP_SD_Init(void)
-{
-    extern SD_HandleTypeDef hsd2;
-    if (BSP_SD_IsDetected() != SD_PRESENT)
-        return MSD_ERROR_SD_NOT_PRESENT;
-    return (HAL_SD_Init(&hsd2) == HAL_OK) ? MSD_OK : MSD_ERROR;
-}
-#endif
+void app_log(const char *fmt, ...);
 
 rtcm3_t rtcm3;
 static ota_tx_t ota_tx;
@@ -98,7 +80,7 @@ void app_init(void)
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
-	app_log("F767ZI starting\r\n");
+	app_log("\r\n\r\nF767ZI starting\r\n");
 
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
 
@@ -127,8 +109,6 @@ void app_init(void)
 	ota_tx_init(&ota_tx, &sx1262);
 
 	app_log("F767ZI Base Start up\r\n");
-
-	app_tests();
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -156,46 +136,4 @@ void app_loop(void)
 	}
 }
 
-static void app_tests(void)
-{
-#ifdef TEST_SSD1309
-	HAL_StatusTypeDef r = test_ssd1309_shapes(&oled);
-	if (r != HAL_OK) {
-		app_log("ssd1309_flush failed: %d\r\n", r);
-	}
-#endif /* TEST_SSD1309 */
 
-#ifdef TEST_SDCARD
-	extern SD_HandleTypeDef hsd2;
-	static const char *test_path = "test.txt";
-	static const char *test_str  = "gps-staff sdcard ok\r\n";
-	FRESULT fr;
-	UINT bw, br;
-	char rbuf[32];
-
-	fr = f_mount(&SDFatFS, SDPath, 1);
-	app_log("sd: mount %d err=0x%08lx state=%d\r\n", fr, hsd2.ErrorCode, (int)hsd2.State);
-	if (fr != FR_OK) goto sd_done;
-
-	fr = f_open(&SDFile, test_path, FA_CREATE_ALWAYS | FA_WRITE);
-	app_log("sd: open(w) %d\r\n", fr);
-	if (fr != FR_OK) goto sd_unmount;
-
-	fr = f_write(&SDFile, test_str, strlen(test_str), &bw);
-	app_log("sd: write %d bytes, fr=%d\r\n", bw, fr);
-	f_close(&SDFile);
-
-	fr = f_open(&SDFile, test_path, FA_READ);
-	app_log("sd: open(r) %d\r\n", fr);
-	if (fr != FR_OK) goto sd_unmount;
-
-	fr = f_read(&SDFile, rbuf, sizeof(rbuf) - 1, &br);
-	rbuf[br] = '\0';
-	app_log("sd: read '%s' fr=%d\r\n", rbuf, fr);
-	f_close(&SDFile);
-
-sd_unmount:
-	f_mount(NULL, SDPath, 0);
-sd_done:;
-#endif /* TEST_SDCARD */
-}

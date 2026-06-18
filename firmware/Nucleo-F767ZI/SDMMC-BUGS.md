@@ -21,25 +21,89 @@ no response is received, the HAL returns `HAL_ERROR`, and the generated code
 calls `Error_Handler()`.
 
 **Fix**
-Add a Card Detect (CD) pin check in `USER CODE BEGIN SDMMC2_Init 0` (the
-earliest USER CODE slot, executed before any field assignments or HAL calls)
-and return early when the CD pin reads `GPIO_PIN_SET` (no card; pull-up
-active):
+Add a CD pin poll in `USER CODE BEGIN SDMMC2_Init 0` (the earliest USER CODE
+slot, before any field assignments or HAL calls).  A single instantaneous read
+is unreliable — if the card was re-inserted just before reset, the mechanical
+CD contact may still be bouncing and reads HIGH even though the card is seated.
+Poll for up to 50 ms so any bounce settles before deciding:
 
 ```c
 /* USER CODE BEGIN SDMMC2_Init 0 */
-if (HAL_GPIO_ReadPin(SDMMC_CD_GPIO_Port, SDMMC_CD_Pin) == GPIO_PIN_SET) {
-    return;
+{
+    uint32_t t = HAL_GetTick();
+    while (HAL_GPIO_ReadPin(SDMMC_CD_GPIO_Port, SDMMC_CD_Pin) == GPIO_PIN_SET) {
+        if ((HAL_GetTick() - t) >= 50U)
+            return;  /* No card after 50 ms — skip init. */
+    }
 }
 /* USER CODE END SDMMC2_Init 0 */
 ```
 
-Application code is then responsible for calling `HAL_SD_Init()` (and
-`HAL_SD_ConfigWideBusOperation()`) when a card insertion is detected via a
-CD pin edge or a polling loop.
+`HAL_GetTick()` works here because `HAL_Init()` has already been called.
+The 50 ms overhead only applies when no card is present.  When a card IS
+seated the CD contact asserts within a few ms (typical contact bounce < 10 ms)
+and the poll exits immediately.  When a card was just inserted during reset,
+the 50 ms window lets the contact settle before the check completes.
+
+The companion fix is BUG-SDMMC-005: `BSP_SD_Init()` (app.c override) never
+calls `HAL_SD_Init()`.  Instead, `sd_late_init()` (called from `app_init()`
+after `HAL_Delay(500)`) is the second and final chance to enumerate the card
+while OTA is still not running.  If the card has not been enumerated by the
+time `f_mount()` calls `BSP_SD_Init()`, `BSP_SD_Init()` returns `MSD_ERROR`
+immediately without blocking.
 
 **Affected section**
 `Core/Src/main.c` → `MX_SDMMC2_SD_Init()`
+
+---
+
+## BUG-SDMMC-005 — Double HAL_SD_Init() blocks OTA for seconds on some cards
+
+**Symptom**
+When a card is present at boot and `f_mount()` is subsequently called, OTA
+packets stop flowing for several seconds (or permanently if the card's ACMD41
+loop takes long enough to let an in-progress TX complete while blocked).
+
+**Root cause**
+At boot, `MX_SDMMC2_SD_Init()` calls `HAL_SD_Init()` (after the CD-pin guard
+passes), which runs the full SD power-up enumeration: CMD0 → CMD8 → ACMD41
+loop → CMD2 → CMD3. This sets `hsd2.State = HAL_SD_STATE_READY`.
+
+Later, when `f_mount()` is called from application code, FatFS calls
+`disk_initialize()` → `BSP_SD_Init()`. The original `BSP_SD_Init()` override
+(in app.c, replacing the `__weak` version) called `HAL_SD_Init()` again —
+another full ACMD41 enumeration sequence. On the same card used during
+development (test card) this second enumeration is fast (<100 ms), so OTA
+was not visibly affected. On a different card (different brand or speed class),
+the ACMD41 loop can take up to `SDMMC_CMDTIMEOUT` (5000 ms) to complete.
+This blocks `app_loop()` during `app_tests()`, causing OTA to stall.
+
+**Fix**
+In `BSP_SD_Init()`, check `hsd2.State == HAL_SD_STATE_READY`. If true, the
+card was already enumerated at boot; skip `HAL_SD_Init()` entirely and only
+send CMD13 (GetCardState) to confirm the card is still responsive (~100 µs).
+Only call `HAL_SD_Init()` when `hsd2.State == HAL_SD_STATE_RESET` (i.e., no
+card was present at boot and this is the first-ever init).
+
+```c
+uint8_t BSP_SD_Init(void)
+{
+    extern SD_HandleTypeDef hsd2;
+    if (BSP_SD_IsDetected() != SD_PRESENT)
+        return MSD_ERROR_SD_NOT_PRESENT;
+    if (hsd2.State == HAL_SD_STATE_READY) {
+        return (HAL_SD_GetCardState(&hsd2) == HAL_SD_CARD_TRANSFER) ? MSD_OK : MSD_ERROR;
+    }
+    if (HAL_SD_Init(&hsd2) != HAL_OK) {
+        HAL_SD_DeInit(&hsd2);
+        return MSD_ERROR;
+    }
+    return MSD_OK;
+}
+```
+
+**Affected section**
+`Core/Src/app.c` → `BSP_SD_Init()` override
 
 ---
 
