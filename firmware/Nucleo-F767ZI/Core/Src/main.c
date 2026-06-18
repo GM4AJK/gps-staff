@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -44,8 +43,6 @@
 
 I2C_HandleTypeDef hi2c1;
 
-SD_HandleTypeDef hsd2;
-
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim14;
@@ -66,7 +63,6 @@ static void MX_I2C1_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART2_UART_Init(void);
-static void MX_SDMMC2_SD_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -113,8 +109,6 @@ int main(void)
   MX_TIM14_Init();
   MX_SPI2_Init();
   MX_USART2_UART_Init();
-  MX_SDMMC2_SD_Init();
-  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   app_init();
   app_loop(); // Never returns
@@ -230,34 +224,6 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
-}
-
-/**
-  * @brief SDMMC2 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SDMMC2_SD_Init(void)
-{
-
-  /* USER CODE BEGIN SDMMC2_Init 0 */
-
-  /* USER CODE END SDMMC2_Init 0 */
-
-  /* USER CODE BEGIN SDMMC2_Init 1 */
-
-  /* USER CODE END SDMMC2_Init 1 */
-  hsd2.Instance = SDMMC2;
-  hsd2.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
-  hsd2.Init.ClockBypass = SDMMC_CLOCK_BYPASS_DISABLE;
-  hsd2.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
-  hsd2.Init.BusWide = SDMMC_BUS_WIDE_1B;
-  hsd2.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd2.Init.ClockDiv = 0;
-  /* USER CODE BEGIN SDMMC2_Init 2 */
-
-  /* USER CODE END SDMMC2_Init 2 */
 
 }
 
