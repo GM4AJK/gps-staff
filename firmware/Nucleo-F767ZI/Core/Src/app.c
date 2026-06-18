@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
-#include <string.h>
+
 #include "main.h"
 #include "flags.h"
 #include "rtcm3.h"
@@ -14,7 +14,7 @@
 #include "Tests/test_ssd1309.h"
 #include "sx1262.h"
 
-void app_log(const char *fmt, ...);
+static void app_tests(void);
 
 rtcm3_t rtcm3;
 static ota_tx_t ota_tx;
@@ -80,8 +80,6 @@ void app_init(void)
 	/* Allow externally connected devices time to power up before init */
 	HAL_Delay(500);
 
-	app_log("\r\n\r\nF767ZI starting\r\n");
-
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
 
 	if (ssd1309_bringup(&oled) != HAL_OK) {
@@ -109,6 +107,8 @@ void app_init(void)
 	ota_tx_init(&ota_tx, &sx1262);
 
 	app_log("F767ZI Base Start up\r\n");
+
+	app_tests();
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
@@ -136,4 +136,12 @@ void app_loop(void)
 	}
 }
 
-
+static void app_tests(void)
+{
+#ifdef TEST_SSD1309
+	HAL_StatusTypeDef r = test_ssd1309_shapes(&oled);
+	if (r != HAL_OK) {
+		app_log("ssd1309_flush failed: %d\r\n", r);
+	}
+#endif /* TEST_SSD1309 */
+}

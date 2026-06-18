@@ -47,7 +47,6 @@ extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
 extern I2C_HandleTypeDef hi2c1;
 extern SPI_HandleTypeDef hspi2;
-//extern SD_HandleTypeDef hsd2;
 
 //extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* USER CODE END EC */
@@ -119,8 +118,6 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
-#define SDMMC_CD_Pin GPIO_PIN_13
-#define SDMMC_CD_GPIO_Port GPIOG
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_7
