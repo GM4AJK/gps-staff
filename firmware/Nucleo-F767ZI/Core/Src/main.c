@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -43,6 +44,8 @@
 
 I2C_HandleTypeDef hi2c1;
 
+SD_HandleTypeDef hsd2;
+
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim14;
@@ -63,6 +66,7 @@ static void MX_I2C1_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_SDMMC2_SD_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -109,6 +113,8 @@ int main(void)
   MX_TIM14_Init();
   MX_SPI2_Init();
   MX_USART2_UART_Init();
+  MX_SDMMC2_SD_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
   app_init();
   app_loop(); // Never returns
@@ -224,6 +230,43 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief SDMMC2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SDMMC2_SD_Init(void)
+{
+
+  /* USER CODE BEGIN SDMMC2_Init 0 */
+  /* BUG-SDMMC-001: HAL_SD_Init() runs full card enumeration (CMD0/CMD8/ACMD41)
+   * and calls Error_Handler() if no card responds. Skip init when CD pin is
+   * high (no card; pull-up active). App code must call HAL_SD_Init() itself
+   * after detecting card insertion via CD. */
+  if (HAL_GPIO_ReadPin(SDMMC_CD_GPIO_Port, SDMMC_CD_Pin) == GPIO_PIN_SET) {
+      return;
+  }
+  /* USER CODE END SDMMC2_Init 0 */
+
+  /* USER CODE BEGIN SDMMC2_Init 1 */
+
+  /* USER CODE END SDMMC2_Init 1 */
+  hsd2.Instance = SDMMC2;
+  hsd2.Init.ClockEdge = SDMMC_CLOCK_EDGE_RISING;
+  hsd2.Init.ClockBypass = SDMMC_CLOCK_BYPASS_DISABLE;
+  hsd2.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
+  hsd2.Init.BusWide = SDMMC_BUS_WIDE_1B;
+  hsd2.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
+  hsd2.Init.ClockDiv = 0;
+  /* USER CODE BEGIN SDMMC2_Init 2 */
+  /* BUG-SDMMC-003 / BUG-SDMMC-004: running in 1-bit mode (BSP_SD_Init override
+   * in app.c skips HAL_SD_ConfigWideBusOperation). In 1-bit mode the FIFO
+   * fills 4x slower than 4-bit for the same clock, so ClockDiv=0 (24 MHz,
+   * ~3 MB/s) is safe in polling mode — no RXOVERR risk. */
+  /* USER CODE END SDMMC2_Init 2 */
 
 }
 
