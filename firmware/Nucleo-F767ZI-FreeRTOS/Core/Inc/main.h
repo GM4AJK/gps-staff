@@ -112,6 +112,14 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define SDMMC2_CK_Pin GPIO_PIN_6
+#define SDMMC2_CK_GPIO_Port GPIOD
+#define SDMMC2_CMD_Pin GPIO_PIN_7
+#define SDMMC2_CMD_GPIO_Port GPIOD
+#define SDMMC2_D0_Pin GPIO_PIN_9
+#define SDMMC2_D0_GPIO_Port GPIOG
+#define SDMMC2_CD_Pin GPIO_PIN_13
+#define SDMMC2_CD_GPIO_Port GPIOG
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_7
