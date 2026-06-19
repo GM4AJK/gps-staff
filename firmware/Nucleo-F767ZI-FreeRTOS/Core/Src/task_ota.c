@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task.h"
+#include "queue.h"
 #include "main.h"
 #include "rtcm3.h"
 #include "ota_tx.h"
@@ -13,6 +14,7 @@ static ota_tx_t ota_tx;
 static sx1262_t sx1262;
 
 static SemaphoreHandle_t dio1_sem;
+QueueHandle_t            uart2_rxq;
 
 void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 {
@@ -20,19 +22,6 @@ void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 		BaseType_t woken = pdFALSE;
 		xSemaphoreGiveFromISR(dio1_sem, &woken);
 		portYIELD_FROM_ISR(woken);
-	}
-}
-
-void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-{
-	if (huart->Instance == USART2) {
-		/* Re-arm IT before calling rtcm3_uart_in_irq. The re-arm puts the
-		 * UART back into BUSY_RX so the HAL_UART_Receive() call inside
-		 * rtcm3_uart_in_irq hits the busy check and returns immediately
-		 * instead of blocking — which would deadlock in FreeRTOS because
-		 * the HAL tick (TIM14) can't preempt this ISR. */
-		HAL_UART_Receive_IT(huart, &rtcm3.irq_rx_byte, 1);
-		rtcm3_uart_in_irq(&rtcm3);
 	}
 }
 
@@ -53,18 +42,28 @@ static void ota_task(void *arg)
 	sx1262_config_gfsk(&sx1262, 434000000UL, 50000, 25000, OTA_TX_PACKET_SIZE, 0);
 
 	ota_tx_init(&ota_tx, &sx1262);
-	rtcm3_init(&rtcm3, &huart2, on_rtcm3_frame);
+	rtcm3_init(&rtcm3, on_rtcm3_frame);
+
+	__HAL_UART_ENABLE_IT(&huart2, UART_IT_RXNE);
 
 	for (;;) {
+		uint8_t b;
+		if (xQueueReceive(uart2_rxq, &b, pdMS_TO_TICKS(1)) == pdTRUE) {
+			rtcm3_process_byte(&rtcm3, b);
+			while (xQueueReceive(uart2_rxq, &b, 0) == pdTRUE)
+				rtcm3_process_byte(&rtcm3, b);
+		}
 		rtcm3_loop(&rtcm3);
-		if (xSemaphoreTake(dio1_sem, pdMS_TO_TICKS(1)) == pdTRUE)
+		if (xSemaphoreTake(dio1_sem, 0) == pdTRUE)
 			sx1262_service_tx(&sx1262);
 	}
 }
 
 void task_ota_init(void)
 {
-	dio1_sem = xSemaphoreCreateBinary();
+	dio1_sem  = xSemaphoreCreateBinary();
+	uart2_rxq = xQueueCreate(256, sizeof(uint8_t));
 	configASSERT(dio1_sem);
+	configASSERT(uart2_rxq);
 	xTaskCreate(ota_task, "ota", 512, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
