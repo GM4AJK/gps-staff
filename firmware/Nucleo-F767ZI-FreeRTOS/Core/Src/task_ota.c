@@ -1,4 +1,5 @@
 #include "task_ota.h"
+#include "task_sdcard.h"
 
 #include "FreeRTOS.h"
 #include "semphr.h"
@@ -28,6 +29,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 static void on_rtcm3_frame(const uint8_t *frame, uint16_t len)
 {
 	ota_tx_push_frame(&ota_tx, frame, len);
+	task_sdcard_push_frame(frame, len);
 }
 
 static void ota_task(void *arg)
