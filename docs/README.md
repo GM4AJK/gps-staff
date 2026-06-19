@@ -12,6 +12,7 @@ System and firmware architecture documentation, with PlantUML diagrams.
 | [arch/sx1262.md](arch/sx1262.md) | SX1262 driver — bring-up sequence, interrupt model, full API |
 | [arch/ota-protocol.md](arch/ota-protocol.md) | OTA protocol — packet format, ota_tx / ota_rx, timing analysis |
 | [arch/rtcm3.md](arch/rtcm3.md) | RTCM3 framing — frame format, state machine, buffer pool, CRC24Q |
+| [arch/sdcard.md](arch/sdcard.md) | SD card module — state machine, card-detect debounce, DMA transfer model, FatFS integration, D-cache maintenance |
 
 ## Datasheets (`datasheets/`)
 
