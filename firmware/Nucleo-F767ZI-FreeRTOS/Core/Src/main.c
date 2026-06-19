@@ -594,6 +594,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
+{
+    sdcard_on_hal_error(hsd);
+}
+
 static void blink_task(void *arg)
 {
     (void)arg;
@@ -684,7 +689,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if (htim->Instance == TIM6) {
+      ms_sd_card();
+  }
   /* USER CODE END Callback 1 */
 }
 

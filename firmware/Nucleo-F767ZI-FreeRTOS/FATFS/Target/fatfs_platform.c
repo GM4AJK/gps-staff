@@ -26,7 +26,9 @@ uint8_t	BSP_PlatformIsDetected(void) {
         status = SD_NOT_PRESENT;
     }
     /* USER CODE BEGIN 1 */
-    /* user code can be inserted here */
+    /* Override GPIO-based result with the debounced flag from ms_sd_card(). */
+    extern volatile bool sd_card_present;
+    status = sd_card_present ? SD_PRESENT : SD_NOT_PRESENT;
     /* USER CODE END 1 */
     return status;
 }
