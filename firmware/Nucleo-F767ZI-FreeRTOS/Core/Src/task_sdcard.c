@@ -5,8 +5,10 @@
 #include "queue.h"
 
 #include "bsp_driver_sd.h"
+#include "fatfs.h"
 #include "task_logger.h"
 
+#include <stdio.h>
 #include <string.h>
 
 extern SD_HandleTypeDef hsd2;
@@ -45,7 +47,7 @@ void ms_sd_card(void)
 			if (sd_task_handle) {
 				BaseType_t woken = pdFALSE;
 				vTaskNotifyGiveFromISR(sd_task_handle, &woken);
-				portYIELD_FROM_ISR(woken);
+					portYIELD_FROM_ISR(woken);
 			}
 		}
 		sd_detect_count = 0;
@@ -70,11 +72,33 @@ typedef enum {
 	SD_XFER,
 } sd_state_t;
 
-/* Called on every transition to SD_ABSENT. Extended in Steps 4 and 5 to
- * close the open file and unmount FatFS before tearing down the hardware. */
+static FATFS   fs;
+static FIL     fp;
+static uint8_t mounted   = 0;
+static uint8_t file_open = 0;
+
+static uint8_t open_next_file(void)
+{
+	char path[13];
+	for (unsigned n = 1; n <= 9999; n++) {
+		snprintf(path, sizeof(path), "RTCM%04u.BIN", n);
+		if (f_stat(path, NULL) != FR_OK) {
+			if (f_open(&fp, path, FA_CREATE_NEW | FA_WRITE) == FR_OK) {
+				logger_log("[%lu] sd: logging to %s\r\n", ts_ms(), path);
+				return 1;
+			}
+		}
+	}
+	logger_log("[%lu] sd: no free filename slot\r\n", ts_ms());
+	return 0;
+}
+
+/* Called on every transition to SD_ABSENT. Extended each step:
+ * Step 5 will add f_sync before f_close. */
 static void sd_teardown(void)
 {
-	/* Step 4: f_close(&fp); f_mount(NULL, "", 0); */
+	if (file_open) { f_close(&fp); file_open = 0; }
+	if (mounted)   { f_mount(NULL, "", 0); mounted = 0; }
 	HAL_SD_DeInit(&hsd2);
 	__HAL_RCC_SDMMC2_FORCE_RESET();
 	HAL_Delay(2);
@@ -125,12 +149,26 @@ static void sdcard_task(void *arg)
 			state = SD_MOUNTING;
 			break;
 
-		case SD_MOUNTING:
-			/* Step 4: f_mount + open_next_file. */
-			logger_log("[%lu] sd: MOUNTING stub -> ABSENT\r\n", ts_ms());
-			sd_teardown();
-			state = SD_ABSENT;
+		case SD_MOUNTING: {
+			FRESULT r = f_mount(&fs, "", 1);
+			if (r != FR_OK) {
+				logger_log("[%lu] sd: f_mount FAIL %d -> ABSENT\r\n", ts_ms(), (int)r);
+				sd_teardown();
+				state = SD_ABSENT;
+				break;
+			}
+			mounted = 1;
+			logger_log("[%lu] sd: f_mount OK\r\n", ts_ms());
+			if (!open_next_file()) {
+				sd_teardown();
+				state = SD_ABSENT;
+				break;
+			}
+			file_open = 1;
+			logger_log("[%lu] sd: -> IDLE\r\n", ts_ms());
+			state = SD_IDLE;
 			break;
+		}
 
 		case SD_IDLE:
 			/* Step 5: xQueueReceive + f_write + f_sync. */
@@ -153,7 +191,7 @@ static void sdcard_task(void *arg)
 
 void task_sdcard_push_frame(const uint8_t *data, uint16_t len)
 {
-	/* Step 5: push frame to write queue. No-op until IDLE/XFER implemented. */
+	/* Step 5: push frame to write queue. No-op until IDLE implemented. */
 	(void)data;
 	(void)len;
 }
