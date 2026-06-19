@@ -558,7 +558,7 @@ void StartDefaultTask(void *argument)
   display_msg_t dmsg = { .type = DISPLAY_CLEAR };
   display_send(&dmsg);
   dmsg.type = DISPLAY_STRING;
-  dmsg.string.font = &font8x8;
+  dmsg.string.font = &font5x7;
   dmsg.string.x = 0;
   dmsg.string.y = 0;
   snprintf(dmsg.string.text, sizeof(dmsg.string.text), "F767ZI FreeRTOS");
