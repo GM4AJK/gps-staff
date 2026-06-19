@@ -31,7 +31,8 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "FreeRTOS.h"
+#include "semphr.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -117,10 +118,11 @@ void Error_Handler(void);
 #define LD2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-extern UART_HandleTypeDef huart2;
-extern UART_HandleTypeDef huart3;
-extern SPI_HandleTypeDef  hspi2;
-extern I2C_HandleTypeDef  hi2c1;
+extern UART_HandleTypeDef  huart2;
+extern UART_HandleTypeDef  huart3;
+extern SPI_HandleTypeDef   hspi2;
+extern I2C_HandleTypeDef   hi2c1;
+extern SemaphoreHandle_t   hi2c1_mutex;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

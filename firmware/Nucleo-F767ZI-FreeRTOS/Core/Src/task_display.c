@@ -2,6 +2,7 @@
 
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "semphr.h"
 #include "task.h"
 #include "main.h"
 
@@ -15,7 +16,9 @@ static void display_task(void *arg)
 	(void)arg;
 
 	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
+	xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
 	ssd1309_bringup(&oled);
+	xSemaphoreGive(hi2c1_mutex);
 
 	display_msg_t msg;
 	for (;;) {
@@ -32,7 +35,9 @@ static void display_task(void *arg)
 				msg.string.text, SSD1309_COLOR_ON);
 			break;
 		case DISPLAY_FLUSH:
+			xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
 			ssd1309_flush(&oled);
+			xSemaphoreGive(hi2c1_mutex);
 			break;
 		}
 	}
