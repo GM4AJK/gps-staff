@@ -23,8 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
-#include "logger.h"
-#include "display.h"
+#include "task_logger.h"
+#include "task_display.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
