@@ -22,7 +22,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "logger.h"
+#include <stdio.h>
+#include "task_logger.h"
+#include "task_display.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -545,11 +547,23 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   logger_init();
+  display_init();
 
   /* Allow externally connected devices time to power up */
   vTaskDelay(pdMS_TO_TICKS(500));
 
   logger_log("\r\n\r\nF767ZI FreeRTOS starting\r\n");
+
+  display_msg_t dmsg = { .type = DISPLAY_CLEAR };
+  display_send(&dmsg);
+  dmsg.type = DISPLAY_STRING;
+  dmsg.string.font = &font8x8;
+  dmsg.string.x = 0;
+  dmsg.string.y = 0;
+  snprintf(dmsg.string.text, sizeof(dmsg.string.text), "F767ZI FreeRTOS");
+  display_send(&dmsg);
+  dmsg.type = DISPLAY_FLUSH;
+  display_send(&dmsg);
 
   for (;;)
     vTaskDelay(pdMS_TO_TICKS(1000));
