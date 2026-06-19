@@ -117,7 +117,10 @@ void Error_Handler(void);
 #define LD2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
+extern SPI_HandleTypeDef  hspi2;
+extern I2C_HandleTypeDef  hi2c1;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
