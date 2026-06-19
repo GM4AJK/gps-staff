@@ -1,6 +1,7 @@
 #include "task_display.h"
 
 #include <stdio.h>
+#include <string.h>
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"
@@ -76,7 +77,18 @@ void display_clear(void)
 	xQueueSend(display_queue, &msg, 0);
 }
 
-void display_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char *fmt, ...)
+void display_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char *str)
+{
+	display_msg_t msg = { .type = DISPLAY_STRING };
+	msg.string.x    = x;
+	msg.string.y    = y;
+	msg.string.font = font;
+	strncpy(msg.string.text, str, sizeof(msg.string.text) - 1);
+	msg.string.text[sizeof(msg.string.text) - 1] = '\0';
+	xQueueSend(display_queue, &msg, 0);
+}
+
+void display_va_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char *fmt, ...)
 {
 	display_msg_t msg = { .type = DISPLAY_STRING };
 	msg.string.x    = x;
