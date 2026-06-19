@@ -10,9 +10,9 @@
   * CubeMX regeneration will overwrite the function bodies and must be
   * followed by re-applying this file from version control.
   *
-  * Step 4: polling read/write via HAL_SD_ReadBlocks/WriteBlocks.
-  * Step 5 will replace these with HAL_SD_ReadBlocks_DMA/WriteBlocks_DMA
-  * plus an xfer_done binary semaphore for non-blocking DMA operation.
+  * Step 5: DMA read/write via HAL_SD_ReadBlocks_DMA/WriteBlocks_DMA with
+  * xSemaphoreTake on sd_xfer_done.  BSP completion callbacks give the
+  * semaphore from ISR.  Cortex-M7 D-cache maintenance applied per transfer.
   ******************************************************************************
   */
 /* USER CODE END Header */
@@ -23,20 +23,31 @@
 #include "bsp_driver_sd.h"
 #include "stm32f7xx_hal.h"
 
+#include "FreeRTOS.h"
+#include "semphr.h"
+
 #include <string.h>
 
-/* Sector size is fixed at 512 for all supported cards. */
+/* Sector size fixed at 512 for all supported cards. */
 #define SD_DEFAULT_BLOCK_SIZE  512U
 #define BLOCKSIZE              SD_DEFAULT_BLOCK_SIZE
 
-/* Scratch buffer for unaligned-address slow path.
- * HAL_SD_ReadBlocks/WriteBlocks require 4-byte aligned buffers.
- * Step 5 DMA cache maintenance also requires 32-byte alignment. */
+/* Scratch buffer for the non-32-byte-aligned slow path.
+ * Cortex-M7 D-cache maintenance (SCB_Clean/Invalidate) requires buffers to
+ * be 32-byte aligned and sized to a multiple of the 32-byte cache line.
+ * 512 bytes = 16 cache lines — exactly aligned. */
 static uint8_t scratch[BLOCKSIZE] __attribute__((aligned(32)));
 
 /* USER CODE BEGIN beforeFunctionSection */
-/* hsd2 is initialised by the state machine before disk_initialize is called. */
+/* hsd2 is owned by main.c / MX_SDMMC2_SD_Init; fully initialised by the
+ * state machine before disk_initialize is ever called. */
 extern SD_HandleTypeDef hsd2;
+
+/* sd_xfer_done / sd_xfer_error live in task_sdcard.c.
+ * sd_xfer_done is a binary semaphore: given from ISR by BSP callbacks,
+ * taken in task context by disk_read / disk_write. */
+extern SemaphoreHandle_t sd_xfer_done;
+extern volatile uint8_t  sd_xfer_error;
 /* USER CODE END beforeFunctionSection */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -66,7 +77,7 @@ const Diskio_drvTypeDef SD_Driver = {
 
 /* ── disk_initialize / disk_status ──────────────────────────────────────── */
 /* SDMMC is already initialised by the state machine before f_mount is called.
- * Confirm the card is in TRANSFER state by sending CMD13 via BSP_SD_GetCardState. */
+ * Confirm the card is in TRANSFER state by sending CMD13. */
 
 /* USER CODE BEGIN beforeInitSection */
 /* USER CODE END beforeInitSection */
@@ -84,9 +95,12 @@ static DSTATUS SD_status(BYTE lun)
 	return (BSP_SD_GetCardState() == SD_TRANSFER_OK) ? 0 : STA_NOINIT;
 }
 
-/* ── disk_read (Step 4: polling via HAL_SD_ReadBlocks) ───────────────────── */
-/* CPU reads directly from SDMMC RXFIFO — no DMA, no D-cache coherency issue.
- * Step 5 replaces this with DMA + xSemaphoreTake. */
+/* ── disk_read (DMA) ─────────────────────────────────────────────────────── */
+/* Cortex-M7 D-cache maintenance:
+ *   Invalidate destination BEFORE DMA — clears any stale cached data so the
+ *   CPU sees the DMA result from memory, not from a prefetched cache line.
+ * The scratch buffer is used for any destination that is not 32-byte aligned
+ * (required so cache line maintenance doesn't corrupt adjacent memory). */
 
 /* USER CODE BEGIN beforeReadSection */
 /* USER CODE END beforeReadSection */
@@ -96,19 +110,19 @@ static DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 
 	for (UINT i = 0; i < count; i++) {
 		uint8_t *dst  = buff + (size_t)i * BLOCKSIZE;
-		/* HAL polling read requires 4-byte aligned destination. */
-		uint8_t *rdst = ((uint32_t)dst & 3u) ? scratch : dst;
+		uint8_t *rdst = ((uint32_t)dst & 31u) ? scratch : dst;
 
-		if (HAL_SD_ReadBlocks(&hsd2, rdst, sector + i, 1, 5000) != HAL_OK)
+		SCB_InvalidateDCache_by_Addr((uint32_t *)rdst, BLOCKSIZE);
+
+		sd_xfer_error = 0;
+		if (HAL_SD_ReadBlocks_DMA(&hsd2, rdst, sector + i, 1) != HAL_OK)
 			return RES_ERROR;
 
-		/* Wait for card to return to TRANSFER state before the next command.
-		 * SDMMC DTIMER fires on card removal so this doesn't spin for 5 s. */
-		uint32_t t = HAL_GetTick();
-		for (;;) {
-			if (BSP_SD_GetCardState() == SD_TRANSFER_OK) break;
-			if ((HAL_GetTick() - t) >= 5000)            return RES_ERROR;
-		}
+		if (xSemaphoreTake(sd_xfer_done, pdMS_TO_TICKS(5000)) != pdTRUE)
+			return RES_ERROR;
+
+		if (sd_xfer_error)
+			return RES_ERROR;
 
 		if (rdst != dst)
 			memcpy(dst, scratch, BLOCKSIZE);
@@ -116,8 +130,12 @@ static DRESULT SD_read(BYTE lun, BYTE *buff, DWORD sector, UINT count)
 	return RES_OK;
 }
 
-/* ── disk_write (Step 4: polling via HAL_SD_WriteBlocks) ─────────────────── */
-/* Step 5 replaces this with DMA + xSemaphoreTake. */
+/* ── disk_write (DMA) ────────────────────────────────────────────────────── */
+/* Cortex-M7 D-cache maintenance:
+ *   Clean (write-back) source BEFORE DMA — flushes dirty cache lines to
+ *   memory so DMA reads the data the CPU actually wrote.
+ * After DMA completes the card may still be programming flash (PRG state);
+ * poll BSP_SD_GetCardState before returning so the next command is safe. */
 
 /* USER CODE BEGIN beforeWriteSection */
 /* USER CODE END beforeWriteSection */
@@ -128,15 +146,24 @@ static DRESULT SD_write(BYTE lun, const BYTE *buff, DWORD sector, UINT count)
 
 	for (UINT i = 0; i < count; i++) {
 		const uint8_t *src  = buff + (size_t)i * BLOCKSIZE;
-		uint8_t       *wbuf = ((uint32_t)src & 3u) ? scratch : (uint8_t *)src;
+		uint8_t       *wbuf = ((uint32_t)src & 31u) ? scratch : (uint8_t *)src;
 
 		if (wbuf == scratch)
 			memcpy(scratch, src, BLOCKSIZE);
 
-		if (HAL_SD_WriteBlocks(&hsd2, wbuf, sector + i, 1, 5000) != HAL_OK)
+		SCB_CleanDCache_by_Addr((uint32_t *)wbuf, BLOCKSIZE);
+
+		sd_xfer_error = 0;
+		if (HAL_SD_WriteBlocks_DMA(&hsd2, wbuf, sector + i, 1) != HAL_OK)
 			return RES_ERROR;
 
-		/* Card enters PRG state during internal flash write; poll until ready. */
+		if (xSemaphoreTake(sd_xfer_done, pdMS_TO_TICKS(5000)) != pdTRUE)
+			return RES_ERROR;
+
+		if (sd_xfer_error)
+			return RES_ERROR;
+
+		/* Wait for card to finish internal flash programming (PRG -> TRANSFER). */
 		uint32_t t = HAL_GetTick();
 		for (;;) {
 			if (BSP_SD_GetCardState() == SD_TRANSFER_OK) break;
@@ -183,15 +210,39 @@ static DRESULT SD_ioctl(BYTE lun, BYTE cmd, void *buff)
 /* USER CODE BEGIN callbackSection */
 /* USER CODE END callbackSection */
 
-/* BSP callbacks — strong overrides of the weak stubs in bsp_driver_sd.c.
- * Called in ISR context via HAL_SD_TxCpltCallback / RxCpltCallback / AbortCallback.
- * Step 5: give xfer_done semaphore (set xfer_error on abort) from ISR. */
+/* ── BSP completion callbacks ─────────────────────────────────────────────── */
+/* Strong overrides of the weak stubs in bsp_driver_sd.c.
+ * Called in ISR context from HAL_SD_TxCpltCallback / RxCpltCallback / AbortCallback.
+ * Give the binary semaphore to unblock the waiting disk_read / disk_write. */
 
-void BSP_SD_WriteCpltCallback(void) {}
-void BSP_SD_ReadCpltCallback(void)  {}
+void BSP_SD_WriteCpltCallback(void)
+{
+	if (sd_xfer_done) {
+		BaseType_t woken = pdFALSE;
+		xSemaphoreGiveFromISR(sd_xfer_done, &woken);
+		portYIELD_FROM_ISR(woken);
+	}
+}
+
+void BSP_SD_ReadCpltCallback(void)
+{
+	if (sd_xfer_done) {
+		BaseType_t woken = pdFALSE;
+		xSemaphoreGiveFromISR(sd_xfer_done, &woken);
+		portYIELD_FROM_ISR(woken);
+	}
+}
 
 /* USER CODE BEGIN ErrorAbortCallbacks */
-void BSP_SD_AbortCallback(void) {}
+void BSP_SD_AbortCallback(void)
+{
+	sd_xfer_error = 1;
+	if (sd_xfer_done) {
+		BaseType_t woken = pdFALSE;
+		xSemaphoreGiveFromISR(sd_xfer_done, &woken);
+		portYIELD_FROM_ISR(woken);
+	}
+}
 /* USER CODE END ErrorAbortCallbacks */
 
 /* USER CODE BEGIN lastSection */

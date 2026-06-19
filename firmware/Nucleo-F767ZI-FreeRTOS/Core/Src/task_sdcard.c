@@ -3,6 +3,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "semphr.h"
 
 #include "bsp_driver_sd.h"
 #include "fatfs.h"
@@ -47,20 +48,45 @@ void ms_sd_card(void)
 			if (sd_task_handle) {
 				BaseType_t woken = pdFALSE;
 				vTaskNotifyGiveFromISR(sd_task_handle, &woken);
-					portYIELD_FROM_ISR(woken);
+				portYIELD_FROM_ISR(woken);
 			}
 		}
 		sd_detect_count = 0;
 	}
 }
 
+/* ── DMA transfer completion signals (extern'd by sd_diskio.c) ───────────── */
+/* Semaphore given from ISR (BSP_SD_*CpltCallback / sdcard_on_hal_error).
+ * Taken in task context by disk_read / disk_write in sd_diskio.c. */
+
+SemaphoreHandle_t  sd_xfer_done  = NULL;
+volatile uint8_t   sd_xfer_error = 0;
+
 /* ── HAL error callback (forwarded from main.c HAL_SD_ErrorCallback) ────── */
 
 void sdcard_on_hal_error(SD_HandleTypeDef *hsd)
 {
 	(void)hsd;
-	/* Step 5: set xfer_error flag and give xfer_done semaphore from ISR. */
+	sd_xfer_error = 1;
+	if (sd_xfer_done) {
+		BaseType_t woken = pdFALSE;
+		xSemaphoreGiveFromISR(sd_xfer_done, &woken);
+		portYIELD_FROM_ISR(woken);
+	}
 }
+
+/* ── Write queue ──────────────────────────────────────────────────────────── */
+
+#define SD_QUEUE_LEN  3U
+
+typedef struct {
+	uint8_t  data[SD_FRAME_MAX];
+	uint16_t len;
+} sd_frame_t;
+
+static QueueHandle_t sd_q       = NULL;
+/* Static to avoid a 1034-byte stack hit in the sdcard_task loop. */
+static sd_frame_t   sd_recv_frame;
 
 /* ── State machine ────────────────────────────────────────────────────────── */
 
@@ -93,8 +119,8 @@ static uint8_t open_next_file(void)
 	return 0;
 }
 
-/* Called on every transition to SD_ABSENT. Extended each step:
- * Step 5 will add f_sync before f_close. */
+/* Called on every transition to SD_ABSENT.
+ * f_close implies f_sync so the final FAT + directory entry flush happens here. */
 static void sd_teardown(void)
 {
 	if (file_open) { f_close(&fp); file_open = 0; }
@@ -126,7 +152,7 @@ static void sdcard_task(void *arg)
 			}
 			break;
 
-		case SD_INIT:
+		case SD_INIT: {
 			if (!sd_card_present) {
 				logger_log("[%lu] sd: ejected before INIT -> ABSENT\r\n", ts_ms());
 				state = SD_ABSENT;
@@ -144,10 +170,26 @@ static void sdcard_task(void *arg)
 				state = SD_ABSENT;
 				break;
 			}
+			/* Wait for card to confirm TRANSFER state before handing off to FatFS.
+			 * When the card is already powered at MCU boot, HAL_SD_Init completes in
+			 * <25 ms (vs ~180 ms on a cold insert); a brief CMD13 poll here lets the
+			 * card finish any post-CMD7 internal housekeeping before the first DMA. */
+			uint32_t t = HAL_GetTick();
+			while (BSP_SD_GetCardState() != SD_TRANSFER_OK) {
+				if ((HAL_GetTick() - t) >= 1000) {
+					logger_log("[%lu] sd: TRANSFER wait timeout -> ABSENT\r\n", ts_ms());
+					sd_teardown();
+					state = SD_ABSENT;
+					break;
+				}
+				HAL_Delay(5);
+			}
+			if (state == SD_ABSENT) break;
 			logger_log("[%lu] sd: HAL_SD_Init OK state=%d -> MOUNTING\r\n",
 			           ts_ms(), (int)hsd2.State);
 			state = SD_MOUNTING;
 			break;
+		}
 
 		case SD_MOUNTING: {
 			FRESULT r = f_mount(&fs, "", 1);
@@ -170,16 +212,48 @@ static void sdcard_task(void *arg)
 			break;
 		}
 
-		case SD_IDLE:
-			/* Step 5: xQueueReceive + f_write + f_sync. */
-			logger_log("[%lu] sd: IDLE stub -> ABSENT\r\n", ts_ms());
-			sd_teardown();
-			state = SD_ABSENT;
+		case SD_IDLE: {
+			/* Drain queue, write frames, sync after each.
+			 * Check sd_card_present on every 200 ms timeout. */
+			sd_state_t next = SD_IDLE;
+			while (next == SD_IDLE) {
+				BaseType_t got = xQueueReceive(sd_q, &sd_recv_frame,
+				                               pdMS_TO_TICKS(200));
+
+				if (!sd_card_present) {
+					logger_log("[%lu] sd: eject in IDLE -> ABSENT\r\n", ts_ms());
+					sd_teardown();
+					next = SD_ABSENT;
+					break;
+				}
+
+				if (got == pdTRUE) {
+					UINT bw;
+					FRESULT r = f_write(&fp, sd_recv_frame.data,
+					                    sd_recv_frame.len, &bw);
+					if (r != FR_OK || bw != sd_recv_frame.len) {
+						logger_log("[%lu] sd: f_write FAIL r=%d bw=%u -> ABSENT\r\n",
+						           ts_ms(), (int)r, (unsigned)bw);
+						sd_teardown();
+						next = SD_ABSENT;
+						break;
+					}
+					r = f_sync(&fp);
+					if (r != FR_OK) {
+						logger_log("[%lu] sd: f_sync FAIL %d -> ABSENT\r\n",
+						           ts_ms(), (int)r);
+						sd_teardown();
+						next = SD_ABSENT;
+					}
+				}
+			}
+			state = next;
 			break;
+		}
 
 		case SD_XFER:
-			/* Step 5: DMA write, blocked on semaphore. */
-			logger_log("[%lu] sd: XFER stub -> ABSENT\r\n", ts_ms());
+			/* All DMA transfers complete synchronously inside disk_read/write;
+			 * the state machine never transitions here — defensive only. */
 			sd_teardown();
 			state = SD_ABSENT;
 			break;
@@ -191,12 +265,18 @@ static void sdcard_task(void *arg)
 
 void task_sdcard_push_frame(const uint8_t *data, uint16_t len)
 {
-	/* Step 5: push frame to write queue. No-op until IDLE implemented. */
-	(void)data;
-	(void)len;
+	if (!sd_q) return;
+	sd_frame_t f;
+	if (len > SD_FRAME_MAX) len = SD_FRAME_MAX;
+	memcpy(f.data, data, len);
+	f.len = len;
+	xQueueSend(sd_q, &f, 0);	/* drop frame if queue full — do not stall sender */
 }
 
 void task_sdcard_init(void)
 {
-	xTaskCreate(sdcard_task, "sdcard", 512, NULL, tskIDLE_PRIORITY + 1, NULL);
+	sd_xfer_done = xSemaphoreCreateBinary();
+	sd_q = xQueueCreate(SD_QUEUE_LEN, sizeof(sd_frame_t));
+	/* Stack is 1024 words: extra headroom for FatFS + DMA buffer paths. */
+	xTaskCreate(sdcard_task, "sdcard", 1024, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
