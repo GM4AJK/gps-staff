@@ -553,6 +553,10 @@ void StartDefaultTask(void *argument)
   vTaskDelay(pdMS_TO_TICKS(500));
 
   logger_log("\r\n\r\nF767ZI FreeRTOS starting\r\n");
+  logger_log("heap free: %u  min-ever: %u  of %u\r\n",
+             xPortGetFreeHeapSize(),
+             xPortGetMinimumEverFreeHeapSize(),
+             configTOTAL_HEAP_SIZE);
 
   display_clear();
   display_string(0, 0, &font5x7, "F767ZI FreeRTOS");
