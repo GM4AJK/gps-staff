@@ -147,7 +147,7 @@ int main(void)
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  xTaskCreate(blink_task, "blink", 128, NULL, tskIDLE_PRIORITY + 1, NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -524,7 +524,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+static void blink_task(void *arg)
+{
+    (void)arg;
+    for (;;) {
+        HAL_GPIO_TogglePin(LD1_GPIO_Port, LD1_Pin);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
