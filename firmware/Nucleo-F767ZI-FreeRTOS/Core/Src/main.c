@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "logger.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -537,11 +537,15 @@ static void MX_GPIO_Init(void)
 void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  logger_init();
+
+  /* Allow externally connected devices time to power up */
+  vTaskDelay(pdMS_TO_TICKS(500));
+
+  logger_log("\r\n\r\nF767ZI FreeRTOS starting\r\n");
+
+  for (;;)
+    vTaskDelay(pdMS_TO_TICKS(1000));
   /* USER CODE END 5 */
 }
 
