@@ -74,7 +74,7 @@ static void MX_USART2_UART_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
-
+static void blink_task(void *arg);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
