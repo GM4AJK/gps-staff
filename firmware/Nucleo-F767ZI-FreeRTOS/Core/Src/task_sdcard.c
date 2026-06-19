@@ -82,7 +82,7 @@ static void sdcard_task(void *arg)
 		case SD_ABSENT:
 			ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 			if (sd_card_present) {
-				logger_log("[%lu] sd: card present → INIT\r\n", ts_ms());
+				logger_log("[%lu] sd: card present -> INIT\r\n", ts_ms());
 				state = SD_INIT;
 			} else {
 				logger_log("[%lu] sd: card absent\r\n", ts_ms());
@@ -91,25 +91,25 @@ static void sdcard_task(void *arg)
 
 		case SD_INIT:
 			/* Step 3: RCC reset + HAL_SD_DeInit + HAL_SD_Init. */
-			logger_log("[%lu] sd: INIT stub → ABSENT\r\n", ts_ms());
+			logger_log("[%lu] sd: INIT stub -> ABSENT\r\n", ts_ms());
 			state = SD_ABSENT;
 			break;
 
 		case SD_MOUNTING:
 			/* Step 4: f_mount + open_next_file. */
-			logger_log("[%lu] sd: MOUNTING stub → ABSENT\r\n", ts_ms());
+			logger_log("[%lu] sd: MOUNTING stub -> ABSENT\r\n", ts_ms());
 			state = SD_ABSENT;
 			break;
 
 		case SD_IDLE:
 			/* Step 5: xQueueReceive + f_write + f_sync. */
-			logger_log("[%lu] sd: IDLE stub → ABSENT\r\n", ts_ms());
+			logger_log("[%lu] sd: IDLE stub -> ABSENT\r\n", ts_ms());
 			state = SD_ABSENT;
 			break;
 
 		case SD_XFER:
 			/* Step 5: DMA write, blocked on semaphore. */
-			logger_log("[%lu] sd: XFER stub → ABSENT\r\n", ts_ms());
+			logger_log("[%lu] sd: XFER stub -> ABSENT\r\n", ts_ms());
 			state = SD_ABSENT;
 			break;
 		}
