@@ -25,13 +25,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if (huart->Instance == USART2)
+	if (huart->Instance == USART2) {
+		/* Re-arm IT before calling rtcm3_uart_in_irq. The re-arm puts the
+		 * UART back into BUSY_RX so the HAL_UART_Receive() call inside
+		 * rtcm3_uart_in_irq hits the busy check and returns immediately
+		 * instead of blocking — which would deadlock in FreeRTOS because
+		 * the HAL tick (TIM14) can't preempt this ISR. */
+		HAL_UART_Receive_IT(huart, &rtcm3.irq_rx_byte, 1);
 		rtcm3_uart_in_irq(&rtcm3);
-}
-
-void task_ota_uart2_irq(void)
-{
-	rtcm3_uart_in_irq(&rtcm3);
+	}
 }
 
 static void on_rtcm3_frame(const uint8_t *frame, uint16_t len)

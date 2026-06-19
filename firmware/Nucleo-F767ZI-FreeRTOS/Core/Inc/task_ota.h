@@ -8,12 +8,3 @@
  * scheduler is running, before USART2 interrupt traffic begins.
  */
 void task_ota_init(void);
-
-/**
- * task_ota_uart2_irq
- *
- * Call at the top of USART2_IRQHandler (USER CODE BEGIN 0), before
- * HAL_UART_IRQHandler(). Forwards the received byte into the rtcm3
- * state machine.
- */
-void task_ota_uart2_irq(void);
