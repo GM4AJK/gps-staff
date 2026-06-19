@@ -9,6 +9,8 @@
 
 #include <string.h>
 
+extern SD_HandleTypeDef hsd2;
+
 static inline uint32_t ts_ms(void)
 {
 	return DWT->CYCCNT / (SystemCoreClock / 1000U);
@@ -68,6 +70,17 @@ typedef enum {
 	SD_XFER,
 } sd_state_t;
 
+/* Called on every transition to SD_ABSENT. Extended in Steps 4 and 5 to
+ * close the open file and unmount FatFS before tearing down the hardware. */
+static void sd_teardown(void)
+{
+	/* Step 4: f_close(&fp); f_mount(NULL, "", 0); */
+	HAL_SD_DeInit(&hsd2);
+	__HAL_RCC_SDMMC2_FORCE_RESET();
+	HAL_Delay(2);
+	__HAL_RCC_SDMMC2_RELEASE_RESET();
+}
+
 static void sdcard_task(void *arg)
 {
 	(void)arg;
@@ -90,26 +103,46 @@ static void sdcard_task(void *arg)
 			break;
 
 		case SD_INIT:
-			/* Step 3: RCC reset + HAL_SD_DeInit + HAL_SD_Init. */
-			logger_log("[%lu] sd: INIT stub -> ABSENT\r\n", ts_ms());
-			state = SD_ABSENT;
+			if (!sd_card_present) {
+				logger_log("[%lu] sd: ejected before INIT -> ABSENT\r\n", ts_ms());
+				state = SD_ABSENT;
+				break;
+			}
+			__HAL_RCC_SDMMC2_FORCE_RESET();
+			HAL_Delay(2);
+			__HAL_RCC_SDMMC2_RELEASE_RESET();
+			HAL_SD_DeInit(&hsd2);
+			logger_log("[%lu] sd: HAL_SD_Init start\r\n", ts_ms());
+			if (HAL_SD_Init(&hsd2) != HAL_OK) {
+				logger_log("[%lu] sd: HAL_SD_Init FAIL state=%d err=0x%lx -> ABSENT\r\n",
+				           ts_ms(), (int)hsd2.State, (unsigned long)hsd2.ErrorCode);
+				sd_teardown();
+				state = SD_ABSENT;
+				break;
+			}
+			logger_log("[%lu] sd: HAL_SD_Init OK state=%d -> MOUNTING\r\n",
+			           ts_ms(), (int)hsd2.State);
+			state = SD_MOUNTING;
 			break;
 
 		case SD_MOUNTING:
 			/* Step 4: f_mount + open_next_file. */
 			logger_log("[%lu] sd: MOUNTING stub -> ABSENT\r\n", ts_ms());
+			sd_teardown();
 			state = SD_ABSENT;
 			break;
 
 		case SD_IDLE:
 			/* Step 5: xQueueReceive + f_write + f_sync. */
 			logger_log("[%lu] sd: IDLE stub -> ABSENT\r\n", ts_ms());
+			sd_teardown();
 			state = SD_ABSENT;
 			break;
 
 		case SD_XFER:
 			/* Step 5: DMA write, blocked on semaphore. */
 			logger_log("[%lu] sd: XFER stub -> ABSENT\r\n", ts_ms());
+			sd_teardown();
 			state = SD_ABSENT;
 			break;
 		}
