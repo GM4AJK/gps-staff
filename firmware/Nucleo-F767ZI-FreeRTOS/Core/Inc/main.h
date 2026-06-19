@@ -118,6 +118,8 @@ void Error_Handler(void);
 #define LD2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
+#define GPIO_PIN_DEF(x, y) GPIO_TypeDef *x; uint16_t y
+
 extern UART_HandleTypeDef  huart2;
 extern UART_HandleTypeDef  huart3;
 extern SPI_HandleTypeDef   hspi2;

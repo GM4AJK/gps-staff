@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "task_logger.h"
 #include "task_display.h"
+#include "task_ota.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -548,6 +549,7 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN 5 */
   logger_init();
   display_init();
+  task_ota_init();
 
   /* Allow externally connected devices time to power up */
   vTaskDelay(pdMS_TO_TICKS(500));

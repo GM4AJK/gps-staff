@@ -1,0 +1,17 @@
+#pragma once
+
+#include "FreeRTOS.h"
+#include "queue.h"
+
+/**
+ * task_ota_init
+ *
+ * Creates the DIO1 binary semaphore, the USART2 byte queue (uart2_rxq), and
+ * spawns the OTA task, which owns the rtcm3, ota_tx, and sx1262 instances.
+ * Must be called once while the scheduler is running, before USART2
+ * interrupt traffic begins.
+ */
+void task_ota_init(void);
+
+/* Byte queue fed by USART2_IRQHandler; drained by the OTA task. */
+extern QueueHandle_t uart2_rxq;

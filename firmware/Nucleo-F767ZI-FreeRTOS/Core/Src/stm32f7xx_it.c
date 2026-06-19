@@ -22,6 +22,7 @@
 #include "stm32f7xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "task_ota.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -181,9 +182,18 @@ void EXTI9_5_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
-
+  {
+    BaseType_t woken = pdFALSE;
+    while (huart2.Instance->ISR & USART_ISR_RXNE) {
+      uint8_t b = (uint8_t)(huart2.Instance->RDR & 0xFF);
+      xQueueSendFromISR(uart2_rxq, &b, &woken);
+    }
+    huart2.Instance->ICR = USART_ICR_FECF | USART_ICR_PECF |
+                           USART_ICR_NCF  | USART_ICR_ORECF;
+    portYIELD_FROM_ISR(woken);
+  }
   /* USER CODE END USART2_IRQn 0 */
-  HAL_UART_IRQHandler(&huart2);
+  HAL_UART_IRQHandler(&huart2); /* RXNE=0, error flags cleared: no-op */
   /* USER CODE BEGIN USART2_IRQn 1 */
 
   /* USER CODE END USART2_IRQn 1 */
