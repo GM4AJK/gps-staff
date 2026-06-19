@@ -7,7 +7,6 @@
 #include "bsp_driver_sd.h"
 #include "task_logger.h"
 
-#include <stdbool.h>
 #include <string.h>
 
 static inline uint32_t ts_ms(void)
@@ -17,7 +16,7 @@ static inline uint32_t ts_ms(void)
 
 /* ── Card detect debounce (ms_sd_card called from TIM6 ISR via main.c) ─── */
 
-volatile bool       sd_card_present = false;	/* level: debounced card state  */
+volatile uint8_t    sd_card_present = 0;		/* level: debounced card state  */
 static uint8_t      sd_detect_count = 0;		/* insert debounce counter      */
 static TaskHandle_t sd_task_handle  = NULL;		/* set by task at startup       */
 
@@ -28,7 +27,7 @@ void ms_sd_card(void)
 		if (sd_detect_count < 20) {
 			sd_detect_count++;
 			if (sd_detect_count == 20) {
-				sd_card_present = true;
+				sd_card_present = 1;
 				if (sd_task_handle) {
 					BaseType_t woken = pdFALSE;
 					vTaskNotifyGiveFromISR(sd_task_handle, &woken);
@@ -40,7 +39,7 @@ void ms_sd_card(void)
 		/* Card absent or bouncing — clear flag and counter immediately.
 		 * Notify task on the falling edge so it can log the transition. */
 		if (sd_card_present) {
-			sd_card_present = false;
+			sd_card_present = 0;
 			if (sd_task_handle) {
 				BaseType_t woken = pdFALSE;
 				vTaskNotifyGiveFromISR(sd_task_handle, &woken);
