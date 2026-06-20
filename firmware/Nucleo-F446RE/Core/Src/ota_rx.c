@@ -13,10 +13,10 @@ static void on_rx_done(sx1262_t *sx,
                        int8_t rssi, int8_t snr_quarter_db)
 {
 	(void)sx;
-	(void)rssi;
-	(void)snr_quarter_db;
 
 	ota_rx_t *p = ota_rx_instance;
+	p->last_rssi           = rssi;
+	p->last_snr_quarter_db = snr_quarter_db;
 
 	if(len < OTA_RX_PACKET_SIZE) {
 		return;

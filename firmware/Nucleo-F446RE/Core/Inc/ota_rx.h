@@ -74,6 +74,8 @@ typedef struct {
 	uint8_t    expected_chunk_idx;
 	uint8_t    chunk_count;
 	bool       in_progress;
+	int8_t     last_rssi;
+	int8_t     last_snr_quarter_db;
 } ota_rx_t;
 
 void ota_rx_init(ota_rx_t *p, sx1262_t *sx1262,
