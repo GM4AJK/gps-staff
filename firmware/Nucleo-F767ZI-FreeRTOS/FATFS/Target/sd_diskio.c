@@ -152,8 +152,6 @@ const Diskio_drvTypeDef  SD_Driver =
 #define BSP_SD_WriteCpltCallback    _cx_BSP_SD_WriteCpltCallback
 #define BSP_SD_ReadCpltCallback     _cx_BSP_SD_ReadCpltCallback
 
-#define BLOCKSIZE SD_DEFAULT_BLOCK_SIZE
-
 /* 32-byte aligned scratch buffer for DMA transfers to/from buffers that are
  * not 32-byte aligned (Cortex-M7 cache line size = 32 bytes). */
 static uint8_t scratch[BLOCKSIZE] __attribute__((aligned(32)));
