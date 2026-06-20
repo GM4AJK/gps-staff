@@ -29,6 +29,8 @@ typedef struct {
 	};
 } display_msg_t;
 
+extern SemaphoreHandle_t hi2c1_mutex;
+
 static QueueHandle_t display_queue;
 static ssd1309_t oled;
 
