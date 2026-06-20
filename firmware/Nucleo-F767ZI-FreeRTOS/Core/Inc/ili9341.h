@@ -89,4 +89,28 @@ void ili9341_write_pixels(ili9341_t *p,
  */
 void ili9341_read_id(ili9341_t *p, uint8_t id[3]);
 
+/*
+ * ili9341_draw_image
+ * Display a w*h block of pre-packed RGB565 bytes (big-endian, row-major)
+ * from a const array (typically in Flash). DMA-driven; caller must have
+ * called ili9341_dma_init() first.
+ */
+void ili9341_draw_image(ili9341_t *p,
+	uint16_t x, uint16_t y, uint16_t w, uint16_t h,
+	const uint8_t *data);
+
+/*
+ * ili9341_dma_init
+ * Create the binary semaphore used by DMA fill transfers.
+ * Must be called once from a FreeRTOS task before any fill calls.
+ */
+void ili9341_dma_init(void);
+
+/*
+ * ili9341_spi_tx_cplt
+ * Signal DMA transfer complete. Call from HAL_SPI_TxCpltCallback
+ * when hspi->Instance == SPI3.
+ */
+void ili9341_spi_tx_cplt(void);
+
 #endif /* ILI9341_H */
