@@ -19,26 +19,14 @@
    as FreeRTOS is enabled. */
 
 /* USER CODE BEGIN firstSection */
-/* Bare FreeRTOS project — stub the cmsis_os types used in the CubeMX-generated
- * function bodies below.  Those bodies are redirected to _cx_* dead code by
- * #define macros in beforeFunctionSection; they must still compile. */
+/* Includes needed by the real implementations in lastSection.
+ * cmsis_os.h is pulled in transitively (via bsp_driver_sd.h) so the
+ * renamed CubeMX dead-code bodies compile against the real cmsis_os v2
+ * API without any stubs here. */
 #include "stm32f7xx_hal.h"
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "bsp_driver_sd.h"
-
-#define osCMSIS 0x00001U	/* force v1 branch so only one set of stubs needed */
-typedef void *osMessageQId;
-typedef struct { int status; struct { uint32_t v; } value; } osEvent;
-#define osEventMessage 0x02
-static inline int          osKernelRunning(void)                                 { return 1; }
-static inline uint32_t     osKernelSysTick(void)                                 { return 0; }
-static inline osMessageQId _osmc_stub(void)                                      { return NULL; }
-#define osMessageQDef(name, queue_sz, type)
-#define osMessageQ(name)                      NULL
-#define osMessageCreate(qdef, thread_id)      _osmc_stub()
-static inline osEvent osMessageGet(osMessageQId q, uint32_t ms)                  { (void)q; (void)ms; osEvent e = {0}; return e; }
-static inline int     osMessagePut(osMessageQId q, uint32_t i, uint32_t ms)      { (void)q; (void)i; (void)ms; return 0; }
 /* USER CODE END firstSection*/
 
 /* Includes ------------------------------------------------------------------*/
