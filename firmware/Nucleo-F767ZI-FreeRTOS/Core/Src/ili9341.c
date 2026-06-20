@@ -34,11 +34,6 @@ static void write_data(ili9341_t *p, const uint8_t *buf, size_t len)
 	cs(p, 1);
 }
 
-static void write_byte(ili9341_t *p, uint8_t b)
-{
-	write_data(p, &b, 1);
-}
-
 static void set_window(ili9341_t *p,
                        uint16_t x0, uint16_t y0,
                        uint16_t x1, uint16_t y1)
