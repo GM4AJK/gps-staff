@@ -3,7 +3,6 @@
 #include <stdbool.h>
 
 #include "main.h"
-#include "app.h"
 #include "ota_rx.h"
 #include "sx1262.h"
 
