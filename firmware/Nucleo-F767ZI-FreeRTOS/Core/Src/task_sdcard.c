@@ -77,7 +77,8 @@ void sdcard_on_hal_error(SD_HandleTypeDef *hsd)
 
 /* ── Write queue ──────────────────────────────────────────────────────────── */
 
-#define SD_QUEUE_LEN  3U
+#define SD_QUEUE_LEN     3U
+#define SD_ROTATE_FRAMES 50000U
 
 typedef struct {
 	uint8_t  data[SD_FRAME_MAX];
@@ -98,10 +99,11 @@ typedef enum {
 	SD_XFER,
 } sd_state_t;
 
-static FATFS   fs;
-static FIL     fp;
-static uint8_t mounted   = 0;
-static uint8_t file_open = 0;
+static FATFS    fs;
+static FIL      fp;
+static uint8_t  mounted      = 0;
+static uint8_t  file_open    = 0;
+static uint32_t frame_count  = 0;
 
 static uint8_t open_next_file(void)
 {
@@ -200,6 +202,7 @@ static void sdcard_task(void *arg)
 				break;
 			}
 			mounted = 1;
+			frame_count = 0;
 			logger_log("[%lu] sd: f_mount OK\r\n", ts_ms());
 			if (!open_next_file()) {
 				sd_teardown();
@@ -244,6 +247,15 @@ static void sdcard_task(void *arg)
 						           ts_ms(), (int)r);
 						sd_teardown();
 						next = SD_ABSENT;
+						break;
+					}
+					if (++frame_count >= SD_ROTATE_FRAMES) {
+						f_close(&fp);
+						frame_count = 0;
+						if (!open_next_file()) {
+							sd_teardown();
+							next = SD_ABSENT;
+						}
 					}
 				}
 			}
