@@ -82,7 +82,13 @@ This document is a pre-design requirements and decisions capture, maintained as 
 
 ### Display Planning
 
-- OLED is rover-only -- base station builds are DNP. The rover acts as the UI "head" for the whole system even in the field (fix status, satellite count, survey-in progress, etc.); the base station only needs status LEDs. Internet/WiFi configuration is handled by the RPi companion (see "Base Station: Internet Relay and Operating Modes" below), so there is no remaining use case for a base-station display
+The system uses a three-device architecture. The rover (staff/pole) is a headless instrument; the rich UI lives on a separate handheld data collector:
+
+- **Base station**: no display -- status LEDs only. Internet/WiFi configuration handled by the RPi companion (see "Base Station: Internet Relay and Operating Modes" below)
+- **Rover (staff)**: minimal SSD1309 128x64 OLED for local status only (tilt bubble level, RTK fix indicator, SD/LoRa status) -- the information a solo operator needs while planting the pole, without requiring a second person
+- **Handheld data collector**: separate battery-powered device communicating with the rover over Bluetooth LE -- carries the ILI9341 240x320 colour TFT and is the primary UI for the surveyor (position readout, fix quality, survey session management, log review)
+
+See "Handheld Data Collector" section below for options and decisions.
 
 ### Base Station: Internet Relay and Operating Modes
 
@@ -216,6 +222,38 @@ corrected_lon = gnss_lon + (offset x sin(tilt_azimuth + 180)) / (earth_radius x 
 - Lean angle and correction magnitude shown on display
 - At 2m pole height: 1 degree lean = 35mm uncorrected error; LSM6DSRX+LIS3MDL correction reduces residual to ~3.5mm
 
+### Handheld Data Collector
+
+The handheld is a separate battery-powered device that connects to the rover over Bluetooth LE and provides the primary user interface for the surveyor. Keeping it separate from the staff is deliberate -- the pole is planted and held steady while the operator steps back and reads the handheld. This mirrors professional survey equipment (Leica, Trimble data collectors) and avoids the ergonomic problem of reading a screen mounted on a 2m pole.
+
+**Rover BLE interface:**
+- STM32F765 on the rover exposes a UART-bridge BLE module (e.g. u-blox NINA-B3, or similar AT-command UART BLE module)
+- BLE looks like a UART to the STM32 -- simple serial framing, no BLE stack in the STM32 firmware
+- GATT service broadcasts: corrected position (lat/lon/height), fix type (none/float/fixed), satellite count, HDOP, tilt angle, tilt direction, battery %, SD status, LoRa link quality
+- Command channel: rover receives mark-point, start/stop logging, pole height update from handheld
+- The spare UART on STM32F765 (noted in schematic checklist) serves this link
+
+**Option A: ESP32 handheld (custom device)**
+- ESP32 or ESP32-S3 module -- BLE 4.2/5.0 built in, no separate module needed
+- ILI9341 240x320 colour TFT via SPI -- driver already proven on Nucleo-F767ZI bench
+- LiPo battery + USB-C charging (trivially available on ESP32 dev boards, e.g. Adafruit Feather ESP32-S3)
+- Arduino or ESP-IDF firmware -- separate codebase, different ecosystem from the STM32 firmware
+- Primary motivation: learning exercise with ESP32; secondary: full control over UI
+- ILI9341 driver (C, HAL-abstracted) already written; port to ESP32 SPI API is straightforward
+
+**Option B: Mobile phone app**
+- Android or iOS app connects to rover BLE GATT service directly
+- Phone provides display, processing, storage -- no custom hardware needed
+- Advantage: any phone works, no extra device to carry or charge
+- Disadvantage: outdoor display glare, app development effort (different language/ecosystem again)
+- Compatible with Option A: same GATT service definition serves both; a phone can connect when the ESP32 handheld is not present
+
+**Open decisions:**
+- [ ] BLE module selection for rover PCB (NINA-B3 vs HM-10 vs nRF52 module)
+- [ ] GATT service / packet format definition (TBD during firmware development)
+- [ ] Whether ESP32 handheld gets its own custom PCB or stays on a dev board for the prototype
+- [ ] Whether to pursue the phone app in parallel or after the ESP32 handheld is working
+
 ### Data Logging -- SD Card
 
 - MicroSD via **SDMMC1 4-bit mode** -- native SD interface, not SPI
@@ -313,29 +351,31 @@ corrected_lon = gnss_lon + (offset x sin(tilt_azimuth + 180)) / (earth_radius x 
 ## System Architecture
 
 ```
-BASE STATION                         ROVER
-+------------------+                 +-------------------+
-|  F9P (base mode) |                 |  F9P (rover mode)  |
-|  generates RTCM  |                 |  receives RTCM     |
-|  on UART out     |                 |  solves RTK        |
-+--------+---------+                 |  outputs NMEA/UBX  |
-         | UART                      +--------+-----------+
-+--------v---------+  LoRa RTCM -> +--------v-----------+
-|   STM32F7        | <- LoRa CMD   |   STM32F7           |
-|   reads RTCM     |               |   feeds RTCM->F9P   |
-|   forwards via   |               |   logs position     |
-|   LoRa           |               |   to SD card        |
-+--------+---------+               +---------------------+
-         | USB CDC (RTCM)
-         | [gateway mode only]
-+--------v---------+
-|  Raspberry Pi    |
-|  str2str relay   |
-+--------+---------+
-         |
-         v
-  NTRIP caster
-  (RTK2GO, Emlid, etc.)
+BASE STATION                         ROVER (staff/pole)
++------------------+                 +----------------------+
+|  F9P (base mode) |                 |  F9P (rover mode)    |
+|  generates RTCM  |                 |  receives RTCM       |
+|  on UART out     |                 |  solves RTK          |
++--------+---------+                 |  outputs NMEA/UBX    |
+         | UART                      +----------+-----------+
++--------v---------+  LoRa RTCM -> +----------v-----------+
+|   STM32F7        | <- LoRa CMD   |   STM32F7             |
+|   reads RTCM     |               |   feeds RTCM->F9P     |
+|   forwards via   |               |   logs position       |
+|   LoRa           |               |   to SD card          |
++--------+---------+               |   OLED: tilt/fix/link |
+         | USB CDC (RTCM)          +----------+-----------+
+         | [gateway mode only]                | BLE (GATT)
++--------v---------+               +----------v-----------+
+|  Raspberry Pi    |               |  Handheld data        |
+|  str2str relay   |               |  collector            |
++--------+---------+               |                       |
+         |                         |  Option A:            |
+         v                         |  ESP32 + ILI9341 TFT  |
+  NTRIP caster                     |                       |
+  (RTK2GO, Emlid, etc.)            |  Option B:            |
+                                   |  Mobile phone app     |
+                                   +-----------------------+
 ```
 
 - Single PCB design, identical firmware flashed to both units, mode (base/rover) selected by hardware jumper read at boot
@@ -548,6 +588,7 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 15. **Status LEDs**: 3x LEDs each on a PWM-capable (TIMx_CHx) GPIO with a current-limiting resistor
 16. **Mode-selection jumper**: GPIO with pull-up/pull-down, sampled once at boot to select base vs rover
 17. **BOOT0**: 2-pin jumper header with 10K pull-down to GND, for entering the STM32 DFU bootloader
+18. **Bluetooth LE module (rover only)**: UART-bridge BLE module (e.g. u-blox NINA-B3) on the spare STM32 UART; module power + decoupling; antenna (PCB trace or small chip antenna on module); base station DNP
 
 ---
 
