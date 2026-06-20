@@ -1,5 +1,6 @@
 #include "task_ota_rx.h"
 #include "task_logger.h"
+#include "task_display.h"
 
 #include "FreeRTOS.h"
 #include "semphr.h"
@@ -9,9 +10,7 @@
 #include "sx1262.h"
 #include "ota_rx.h"
 #include "config.h"
-#include "ssd1309.h"
 
-#include <stdio.h>
 #include <string.h>
 
 extern SemaphoreHandle_t hi2c1_mutex;
@@ -21,7 +20,6 @@ static SemaphoreHandle_t dio1_sem;
 static sx1262_t  sx1262;
 static ota_rx_t  ota_rx;
 static config_t  config;
-static ssd1309_t oled;
 
 void HAL_GPIO_EXTI_Callback(uint16_t gpio_pin)
 {
@@ -45,13 +43,10 @@ static void ota_rx_task(void *arg)
 
 	vTaskDelay(pdMS_TO_TICKS(500));
 
+	xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
 	config_init(&config, &hi2c1, CONFIG_I2C_ADDR);
 	config_set_log_callback(&config, logger_log);
 	config_load(&config);
-
-	xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
-	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
-	ssd1309_bringup(&oled);
 	xSemaphoreGive(hi2c1_mutex);
 
 	sx1262_init(
@@ -80,23 +75,16 @@ static void ota_rx_task(void *arg)
 			int snr_neg   = snr_centi < 0;
 			if (snr_neg) snr_centi = -snr_centi;
 
-			char line[24];
-			xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
-			ssd1309_clear(&oled);
-			snprintf(line, sizeof(line), "RSSI: %ddBm", (int)ota_rx.last_rssi);
-			ssd1309_draw_string(&oled, &font5x7, 0, 0, line, SSD1309_COLOR_ON);
-			snprintf(line, sizeof(line), "SNR: %s%d.%02ddB",
-			         snr_neg ? "-" : "", snr_centi / 100, snr_centi % 100);
-			ssd1309_draw_string(&oled, &font5x7, 0, 12, line, SSD1309_COLOR_ON);
-			ssd1309_flush(&oled);
-			xSemaphoreGive(hi2c1_mutex);
+			display_clear();
+			display_va_string(0, 0,  &font5x7, "RSSI: %ddBm", (int)ota_rx.last_rssi);
+			display_va_string(0, 10, &font5x7, "SNR: %s%d.%02ddB",
+			                  snr_neg ? "-" : "", snr_centi / 100, snr_centi % 100);
+			display_flush();
 		} else {
 			logger_log("ota_rx: no packets for 5s\r\n");
-			xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
-			ssd1309_clear(&oled);
-			ssd1309_draw_string(&oled, &font5x7, 0, 0, "No signal", SSD1309_COLOR_ON);
-			ssd1309_flush(&oled);
-			xSemaphoreGive(hi2c1_mutex);
+			display_clear();
+			display_string(0, 0, &font5x7, "No signal");
+			display_flush();
 		}
 	}
 }

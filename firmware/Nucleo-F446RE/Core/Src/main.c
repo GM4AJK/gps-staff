@@ -26,6 +26,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 #include "task_logger.h"
+#include "task_display.h"
 #include "task_ota_rx.h"
 
 /* USER CODE END Includes */
@@ -474,6 +475,7 @@ void StartDefaultTask(void *argument)
 {
   /* USER CODE BEGIN 5 */
   logger_init();
+  display_init();
   task_ota_rx_init();
 
   vTaskDelay(pdMS_TO_TICKS(600));
