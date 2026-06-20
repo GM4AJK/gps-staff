@@ -27,6 +27,7 @@
 #include "task_display.h"
 #include "task_ota.h"
 #include "task_sdcard.h"
+#include "ili9341.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -53,6 +54,7 @@ DMA_HandleTypeDef hdma_sdmmc2_rx;
 DMA_HandleTypeDef hdma_sdmmc2_tx;
 
 SPI_HandleTypeDef hspi2;
+SPI_HandleTypeDef hspi3;
 
 TIM_HandleTypeDef htim14;
 
@@ -81,6 +83,7 @@ static void MX_TIM14_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SDMMC2_SD_Init(void);
+static void MX_SPI3_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -136,6 +139,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_SDMMC2_SD_Init();
   MX_FATFS_Init();
+  MX_SPI3_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -358,6 +362,46 @@ static void MX_SPI2_Init(void)
 }
 
 /**
+  * @brief SPI3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_SPI3_Init(void)
+{
+
+  /* USER CODE BEGIN SPI3_Init 0 */
+
+  /* USER CODE END SPI3_Init 0 */
+
+  /* USER CODE BEGIN SPI3_Init 1 */
+
+  /* USER CODE END SPI3_Init 1 */
+  /* SPI3 parameter configuration*/
+  hspi3.Instance = SPI3;
+  hspi3.Init.Mode = SPI_MODE_MASTER;
+  hspi3.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi3.Init.NSS = SPI_NSS_SOFT;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi3.Init.CRCPolynomial = 7;
+  hspi3.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi3.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI3_Init 2 */
+
+  /* USER CODE END SPI3_Init 2 */
+
+}
+
+/**
   * @brief TIM14 Initialization Function
   * @param None
   * @retval None
@@ -497,16 +541,20 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD1_Pin|SX1262_SPI_RESET_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LD1_Pin|SX1262_SPI_RESET_Pin|LD3_Pin|ILI9341_RST_Pin
+                          |LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SX1262_SPI_CS_GPIO_Port, SX1262_SPI_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(USB_PowerSwitchOn_GPIO_Port, USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOG, ILI9341_DC_Pin|ILI9341_Lite_Pin|USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, SX1262_SPI_TXEN_Pin|SX1262_SPI_RXEN_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(ILI9341_CS_GPIO_Port, ILI9341_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : SX1262_SPI_BUSY_Pin SX1262_SPI_DIO2_Pin */
   GPIO_InitStruct.Pin = SX1262_SPI_BUSY_Pin|SX1262_SPI_DIO2_Pin;
@@ -514,8 +562,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LD1_Pin SX1262_SPI_RESET_Pin LD3_Pin LD2_Pin */
-  GPIO_InitStruct.Pin = LD1_Pin|SX1262_SPI_RESET_Pin|LD3_Pin|LD2_Pin;
+  /*Configure GPIO pins : LD1_Pin SX1262_SPI_RESET_Pin LD3_Pin ILI9341_RST_Pin
+                           LD2_Pin */
+  GPIO_InitStruct.Pin = LD1_Pin|SX1262_SPI_RESET_Pin|LD3_Pin|ILI9341_RST_Pin
+                          |LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -528,12 +578,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(SX1262_SPI_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : USB_PowerSwitchOn_Pin */
-  GPIO_InitStruct.Pin = USB_PowerSwitchOn_Pin;
+  /*Configure GPIO pins : ILI9341_DC_Pin ILI9341_Lite_Pin USB_PowerSwitchOn_Pin */
+  GPIO_InitStruct.Pin = ILI9341_DC_Pin|ILI9341_Lite_Pin|USB_PowerSwitchOn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(USB_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pins : USB_OverCurrent_Pin SCMMC_CD_Pin */
   GPIO_InitStruct.Pin = USB_OverCurrent_Pin|SCMMC_CD_Pin;
@@ -574,6 +624,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_VBUS_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : ILI9341_CS_Pin */
+  GPIO_InitStruct.Pin = ILI9341_CS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  HAL_GPIO_Init(ILI9341_CS_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
@@ -627,6 +684,16 @@ void StartDefaultTask(void *argument)
   display_clear();
   display_string(0, 0, &font5x7, "F767ZI FreeRTOS");
   display_flush();
+
+  static ili9341_t lcd;
+  ili9341_init(&lcd, &hspi3,
+               ILI9341_CS_GPIO_Port,  ILI9341_CS_Pin,
+               ILI9341_DC_GPIO_Port,  ILI9341_DC_Pin,
+               ILI9341_RST_GPIO_Port, ILI9341_RST_Pin,
+               ILI9341_Lite_GPIO_Port, ILI9341_Lite_Pin);
+  ili9341_bringup(&lcd);
+  ili9341_backlight(&lcd, 1);
+  ili9341_fill(&lcd, ILI9341_BLUE);
 
   for (;;)
     vTaskDelay(pdMS_TO_TICKS(1000));

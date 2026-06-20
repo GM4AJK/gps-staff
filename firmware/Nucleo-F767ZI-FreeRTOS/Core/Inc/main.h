@@ -82,6 +82,10 @@ void Error_Handler(void);
 #define SX1262_SPI_MOSI_GPIO_Port GPIOB
 #define STLK_TX_Pin GPIO_PIN_9
 #define STLK_TX_GPIO_Port GPIOD
+#define ILI9341_DC_Pin GPIO_PIN_2
+#define ILI9341_DC_GPIO_Port GPIOG
+#define ILI9341_Lite_Pin GPIO_PIN_3
+#define ILI9341_Lite_GPIO_Port GPIOG
 #define USB_PowerSwitchOn_Pin GPIO_PIN_6
 #define USB_PowerSwitchOn_GPIO_Port GPIOG
 #define USB_OverCurrent_Pin GPIO_PIN_7
@@ -109,6 +113,14 @@ void Error_Handler(void);
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
 #define TCK_GPIO_Port GPIOA
+#define ILI9341_SCK_Pin GPIO_PIN_10
+#define ILI9341_SCK_GPIO_Port GPIOC
+#define ILI9341_MISO_Pin GPIO_PIN_11
+#define ILI9341_MISO_GPIO_Port GPIOC
+#define ILI9341_MOSI_Pin GPIO_PIN_12
+#define ILI9341_MOSI_GPIO_Port GPIOC
+#define ILI9341_CS_Pin GPIO_PIN_2
+#define ILI9341_CS_GPIO_Port GPIOD
 #define SDMMC2_CK_Pin GPIO_PIN_6
 #define SDMMC2_CK_GPIO_Port GPIOD
 #define SDMMC2_CMD_Pin GPIO_PIN_7
@@ -119,6 +131,8 @@ void Error_Handler(void);
 #define SCMMC_CD_GPIO_Port GPIOG
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
+#define ILI9341_RST_Pin GPIO_PIN_4
+#define ILI9341_RST_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
 
@@ -128,6 +142,7 @@ void Error_Handler(void);
 extern UART_HandleTypeDef  huart2;
 extern UART_HandleTypeDef  huart3;
 extern SPI_HandleTypeDef   hspi2;
+extern SPI_HandleTypeDef   hspi3;
 extern I2C_HandleTypeDef   hi2c1;
 extern SemaphoreHandle_t   hi2c1_mutex;
 /* USER CODE END Private defines */
