@@ -1,7 +1,7 @@
 
 
 #include "lsm6dsrx.h"
-#include "app.h"
+#include "task_logger.h"
 #include <math.h>
 
 #define LSM6DSRX_I2C_TIMEOUT_MS 100
@@ -75,12 +75,12 @@ HAL_StatusTypeDef lsm6dsrx_bringup(lsm6dsrx_t *p)
 		p->address = LSM6DSRX_I2C_ADDR_SA0_HIGH;
 		status = lsm6dsrx_read_reg(p, LSM6DSRX_REG_WHO_AM_I, &who_am_i, 1);
 		if (status != HAL_OK || (who_am_i != LSM6DSRX_WHOAMI_LSM6DSRX && who_am_i != LSM6DSRX_WHOAMI_LSM6DSOX)) {
-			app_log("lsm6dsrx: who_am_i mismatch (0x%02X)\r\n", who_am_i);
+			logger_log("lsm6dsrx: who_am_i mismatch (0x%02X)\r\n", who_am_i);
 			return HAL_ERROR;
 		}
 	}
 
-	app_log(
+	logger_log(
 		"lsm6dsrx: found %s at 0x%02X\r\n",
 		(who_am_i == LSM6DSRX_WHOAMI_LSM6DSRX) ? "LSM6DSRX" : "LSM6DSOX",
 		p->address
