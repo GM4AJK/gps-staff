@@ -58,9 +58,6 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define USER_Btn_Pin GPIO_PIN_13
-#define USER_Btn_GPIO_Port GPIOC
-#define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
 #define SX1262_SPI_BUSY_Pin GPIO_PIN_0
 #define SX1262_SPI_BUSY_GPIO_Port GPIOC
 #define SX1262_SPI_MISO_Pin GPIO_PIN_2
@@ -118,8 +115,8 @@ void Error_Handler(void);
 #define SDMMC2_CMD_GPIO_Port GPIOD
 #define SDMMC2_D0_Pin GPIO_PIN_9
 #define SDMMC2_D0_GPIO_Port GPIOG
-#define SDMMC2_CD_Pin GPIO_PIN_13
-#define SDMMC2_CD_GPIO_Port GPIOG
+#define SCMMC_CD_Pin GPIO_PIN_13
+#define SCMMC_CD_GPIO_Port GPIOG
 #define SWO_Pin GPIO_PIN_3
 #define SWO_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_7
