@@ -84,8 +84,9 @@ This document is a pre-design requirements and decisions capture, maintained as 
 
 The system uses a three-device architecture. The rover (staff/pole) is a headless instrument; the rich UI lives on a separate handheld data collector:
 
-- **Base station**: no display -- status LEDs only. Internet/WiFi configuration handled by the RPi companion (see "Base Station: Internet Relay and Operating Modes" below)
-- **Rover (staff)**: minimal SSD1309 128x64 OLED for local status only (tilt bubble level, RTK fix indicator, SD/LoRa status) -- the information a solo operator needs while planting the pole, without requiring a second person
+- **Base station and rover share an identical PCB build** -- OLED fitted on both. The base does not need a display for operation, but a single-PCB design makes the OLED a DNP-or-fit decision at assembly rather than a layout decision. Status LEDs remain on both.
+- **OLED role on rover (staff)**: local status only -- tilt bubble level, RTK fix indicator, SD/LoRa status. The information a solo operator needs while planting the pole, without requiring a second person. Rich position data and session management live on the handheld.
+- **OLED size**: if a handheld data collector is used, 0.96" (SSD1306/SH1106, 128x64) is sufficient for the rover's minimal status role and is smaller, cheaper, and lower power than the 2.42" unit. If no handheld is used and the rover must stand alone as the primary UI, the 2.42" SSD1309 (as currently specced) is preferable for readability. Decision deferred until handheld direction is confirmed.
 - **Handheld data collector**: separate battery-powered device communicating with the rover over Bluetooth LE -- carries the ILI9341 240x320 colour TFT and is the primary UI for the surveyor (position readout, fix quality, survey session management, log review)
 
 See "Handheld Data Collector" section below for options and decisions.
@@ -478,11 +479,11 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
   - Jumper absent (BOOT0 pulled low): normal boot from flash
   - Jumper fitted (BOOT0 pulled high): STM32 built-in DFU bootloader -- firmware update via USB-C without SWD programmer
   - 10k pull-down resistor to GND ensures defined state when jumper absent
-- [x] Display: Podazz 2.42" SSD1309 128x64 OLED via I2C (https://www.amazon.co.uk/Podazz-SSD1309-128x64-OLED-Display/dp/B0FD9XFVMV/)
-  - Chosen over 0.96" SH1106 (used in previous dog scales project) for readability -- 2.5x physical area, same resolution
-  - Interface: I2C, address 0x3C/0x3D -- same bus and address range as SH1106, no PCB wiring changes
-  - Driver port from SH1106: remove column +2 offset, update init sequence (SSD1306-compatible base) -- framebuffer and layout code unchanged
-  - SH1106 available as fallback for prototype bring-up (driver already written)
+- [ ] Display: 128x64 OLED via I2C -- size TBD pending handheld direction
+  - **If handheld used**: 0.96" SSD1306 or SH1106 -- sufficient for minimal rover status role (tilt bubble, fix, SD/LoRa); smaller, cheaper, lower power
+  - **If no handheld**: 2.42" SSD1309 (Podazz, https://www.amazon.co.uk/Podazz-SSD1309-128x64-OLED-Display/dp/B0FD9XFVMV/) -- 2.5x physical area, same resolution, better readability when rover is the primary UI
+  - Both options: I2C, address 0x3C/0x3D, same bus and driver; SH1106 driver already written; SSD1309 init sequence is a minor variant
+  - Fitted on both base and rover PCBs (identical build); base usage is optional/informational
   - Dedicated I2C bus on STM32F765 (avoid sharing with F9P UART path)
   - Layout: split screen -- left panel bubble level, right panel data fields
     - Left ~40x48px: circular bubble level (Bresenham circle, filled dot)
