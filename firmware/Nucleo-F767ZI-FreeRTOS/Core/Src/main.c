@@ -27,7 +27,6 @@
 #include "task_display.h"
 #include "task_ota.h"
 #include "task_sdcard.h"
-#include "ili9341.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -384,7 +383,7 @@ static void MX_SPI3_Init(void)
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi3.Init.NSS = SPI_NSS_SOFT;
-  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -541,11 +540,10 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOG_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD1_Pin|SX1262_SPI_RESET_Pin|LD3_Pin|ILI9341_RST_Pin
-                          |LD2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LD1_Pin|SX1262_SPI_RESET_Pin|LD3_Pin|LD2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(SX1262_SPI_CS_GPIO_Port, SX1262_SPI_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, SX1262_SPI_CS_Pin|ILI9341_RST_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, ILI9341_DC_Pin|ILI9341_Lite_Pin|USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
@@ -684,16 +682,6 @@ void StartDefaultTask(void *argument)
   display_clear();
   display_string(0, 0, &font5x7, "F767ZI FreeRTOS");
   display_flush();
-
-  static ili9341_t lcd;
-  ili9341_init(&lcd, &hspi3,
-               ILI9341_CS_GPIO_Port,  ILI9341_CS_Pin,
-               ILI9341_DC_GPIO_Port,  ILI9341_DC_Pin,
-               ILI9341_RST_GPIO_Port, ILI9341_RST_Pin,
-               ILI9341_Lite_GPIO_Port, ILI9341_Lite_Pin);
-  ili9341_bringup(&lcd);
-  ili9341_backlight(&lcd, 1);
-  ili9341_fill(&lcd, ILI9341_BLUE);
 
   for (;;)
     vTaskDelay(pdMS_TO_TICKS(1000));

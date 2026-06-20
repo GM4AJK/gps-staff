@@ -56,24 +56,23 @@ static void set_window(ili9341_t *p,
 /*
  * Init table: {cmd, n_data, data[0..n-1]}
  * cmd == DELAY means n_data is the delay in ms, no data bytes follow.
+ *
+ * Minimal sequence using only documented ILI9341 registers. Extended
+ * panel-specific commands (0xCB, 0xCF, 0xE8, 0xEA, 0xED, 0xF7) are
+ * omitted — they vary by panel and are not required for basic operation.
  */
 static const uint8_t init_seq[] = {
-	0xCF, 3, 0x00, 0xC1, 0x30,
-	0xED, 4, 0x64, 0x03, 0x12, 0x81,
-	0xE8, 3, 0x85, 0x00, 0x78,
-	0xCB, 5, 0x39, 0x2C, 0x00, 0x34, 0x02,
-	0xF7, 1, 0x20,
-	0xEA, 2, 0x00, 0x00,
-	0xC0, 1, 0x23,          /* Power Control 1 */
-	0xC1, 1, 0x10,          /* Power Control 2 */
+	0x01, 0,                /* Software reset */
+	DELAY, 150,
+	0xC0, 1, 0x23,          /* Power Control 1: VRH=4.60V */
+	0xC1, 1, 0x10,          /* Power Control 2: SAP, BT */
 	0xC5, 2, 0x3E, 0x28,    /* VCOM Control 1 */
 	0xC7, 1, 0x86,          /* VCOM Control 2 */
 	0x36, 1, 0x48,          /* MADCTL: portrait, BGR */
 	0x3A, 1, 0x55,          /* Pixel format: 16-bit RGB565 */
-	0xB1, 2, 0x00, 0x18,    /* Frame rate: 79 Hz */
-	0xB6, 3, 0x08, 0x82, 0x27,
-	0xF2, 1, 0x00,
-	0x26, 1, 0x01,
+	0xB1, 2, 0x00, 0x18,    /* Frame rate: ~79 Hz */
+	0xB6, 3, 0x08, 0x82, 0x27, /* Display function control */
+	0x26, 1, 0x01,          /* Gamma curve 1 */
 	0xE0, 15,               /* Positive gamma */
 		0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08,
 		0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03,
@@ -179,6 +178,24 @@ void ili9341_fill_rect(ili9341_t *p,
 void ili9341_draw_pixel(ili9341_t *p, uint16_t x, uint16_t y, uint16_t colour)
 {
 	ili9341_fill_rect(p, x, y, 1, 1, colour);
+}
+
+void ili9341_read_id(ili9341_t *p, uint8_t id[3])
+{
+	uint8_t buf[4] = {0, 0, 0, 0};
+
+	dc(p, 0);
+	cs(p, 0);
+	uint8_t cmd = 0x04;
+	HAL_SPI_Transmit(p->spi, &cmd, 1, SPI_TIMEOUT);
+	dc(p, 1);
+	HAL_SPI_Receive(p->spi, buf, 4, SPI_TIMEOUT);
+	cs(p, 1);
+
+	/* buf[0] is a dummy byte; buf[1..3] are the three ID bytes */
+	id[0] = buf[1];
+	id[1] = buf[2];
+	id[2] = buf[3];
 }
 
 void ili9341_write_pixels(ili9341_t *p,

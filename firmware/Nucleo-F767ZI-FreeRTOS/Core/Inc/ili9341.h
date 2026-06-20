@@ -81,4 +81,12 @@ void ili9341_write_pixels(ili9341_t *p,
 	uint16_t x, uint16_t y, uint16_t w, uint16_t h,
 	const uint16_t *pixels, uint32_t n_pixels);
 
+/*
+ * ili9341_read_id
+ * Read the 3-byte display ID (command 0x04). Returns the three ID bytes
+ * in id[0..2]. The first dummy byte from the controller is discarded.
+ * Requires MISO connected.
+ */
+void ili9341_read_id(ili9341_t *p, uint8_t id[3]);
+
 #endif /* ILI9341_H */
