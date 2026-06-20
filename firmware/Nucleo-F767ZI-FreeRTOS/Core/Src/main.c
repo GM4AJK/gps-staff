@@ -27,6 +27,7 @@
 #include "task_display.h"
 #include "task_ota.h"
 #include "task_sdcard.h"
+#include "ili9341.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,6 +55,7 @@ DMA_HandleTypeDef hdma_sdmmc2_tx;
 
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
+DMA_HandleTypeDef hdma_spi3_tx;
 
 TIM_HandleTypeDef htim14;
 
@@ -383,7 +385,7 @@ static void MX_SPI3_Init(void)
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi3.Init.NSS = SPI_NSS_SOFT;
-  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi3.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -509,8 +511,12 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream5_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream5_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
@@ -645,6 +651,12 @@ void HAL_SD_ErrorCallback(SD_HandleTypeDef *hsd)
     sdcard_on_hal_error(hsd);
 }
 
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi->Instance == SPI3)
+        ili9341_spi_tx_cplt();
+}
+
 static void blink_task(void *arg)
 {
     (void)arg;
@@ -683,8 +695,22 @@ void StartDefaultTask(void *argument)
   display_string(0, 0, &font5x7, "F767ZI FreeRTOS");
   display_flush();
 
-  for (;;)
-    vTaskDelay(pdMS_TO_TICKS(1000));
+  static ili9341_t lcd;
+  ili9341_init(&lcd, &hspi3,
+               ILI9341_CS_GPIO_Port,   ILI9341_CS_Pin,
+               ILI9341_DC_GPIO_Port,   ILI9341_DC_Pin,
+               ILI9341_RST_GPIO_Port,  ILI9341_RST_Pin,
+               ILI9341_Lite_GPIO_Port, ILI9341_Lite_Pin);
+  ili9341_bringup(&lcd);
+  ili9341_backlight(&lcd, 1);
+  ili9341_dma_init();
+
+  for (;;) {
+    ili9341_fill(&lcd, ILI9341_RED);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    ili9341_fill(&lcd, ILI9341_GREEN);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
   /* USER CODE END 5 */
 }
 

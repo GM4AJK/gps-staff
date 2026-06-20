@@ -1,7 +1,29 @@
 #include "ili9341.h"
+#include "FreeRTOS.h"
+#include "semphr.h"
 #include <string.h>
 
 #define SPI_TIMEOUT HAL_MAX_DELAY
+
+/* Binary semaphore signalled from HAL_SPI_TxCpltCallback via ili9341_spi_tx_cplt() */
+static SemaphoreHandle_t spi_tx_done;
+
+/* Rows sent per DMA transfer. 32 rows × 480 bytes = 15 KB; 10 transfers per full fill. */
+#define DMA_ROWS 32
+static uint8_t dma_buf[ILI9341_WIDTH * DMA_ROWS * 2] __attribute__((aligned(32)));
+
+void ili9341_dma_init(void)
+{
+	spi_tx_done = xSemaphoreCreateBinary();
+	configASSERT(spi_tx_done);
+}
+
+void ili9341_spi_tx_cplt(void)
+{
+	BaseType_t woken = pdFALSE;
+	xSemaphoreGiveFromISR(spi_tx_done, &woken);
+	portYIELD_FROM_ISR(woken);
+}
 
 /* Marker byte in init table meaning "delay N ms" instead of a command */
 #define DELAY 0xFF
@@ -154,24 +176,22 @@ void ili9341_fill_rect(ili9341_t *p,
 
 	uint8_t hi = colour >> 8;
 	uint8_t lo = colour & 0xFF;
-
-	/* Fill a 256-byte chunk once, reuse it for all transfers */
-	static uint8_t chunk[256];
-	for (int i = 0; i < (int)sizeof(chunk); i += 2) {
-		chunk[i]   = hi;
-		chunk[i+1] = lo;
+	for (int i = 0; i < (int)sizeof(dma_buf); i += 2) {
+		dma_buf[i]   = hi;
+		dma_buf[i+1] = lo;
 	}
-
-	uint32_t total = (uint32_t)w * h * 2;
+	/* One cache flush covers all transfers — dma_buf is not touched between them */
+	SCB_CleanDCache_by_Addr((uint32_t *)dma_buf, sizeof(dma_buf));
 
 	dc(p, 1);
 	cs(p, 0);
-	while (total >= sizeof(chunk)) {
-		HAL_SPI_Transmit(p->spi, chunk, sizeof(chunk), SPI_TIMEOUT);
-		total -= sizeof(chunk);
+	uint32_t rows_left = h;
+	while (rows_left > 0) {
+		uint16_t rows = (rows_left > DMA_ROWS) ? DMA_ROWS : (uint16_t)rows_left;
+		HAL_SPI_Transmit_DMA(p->spi, dma_buf, (uint16_t)(rows * w * 2u));
+		xSemaphoreTake(spi_tx_done, pdMS_TO_TICKS(100));
+		rows_left -= rows;
 	}
-	if (total > 0)
-		HAL_SPI_Transmit(p->spi, chunk, total, SPI_TIMEOUT);
 	cs(p, 1);
 }
 
@@ -196,6 +216,31 @@ void ili9341_read_id(ili9341_t *p, uint8_t id[3])
 	id[0] = buf[1];
 	id[1] = buf[2];
 	id[2] = buf[3];
+}
+
+void ili9341_draw_image(ili9341_t *p,
+                        uint16_t x, uint16_t y, uint16_t w, uint16_t h,
+                        const uint8_t *data)
+{
+	set_window(p, x, y, x + w - 1, y + h - 1);
+	dc(p, 1);
+	cs(p, 0);
+
+	/* DMA cannot source directly from Flash on Cortex-M7 AXIM bus.
+	 * Copy each chunk into dma_buf (SRAM) first, then DMA from there. */
+	uint32_t remaining = (uint32_t)w * h * 2;
+	const uint8_t *src = data;
+	while (remaining > 0) {
+		uint16_t chunk = (remaining > sizeof(dma_buf)) ? (uint16_t)sizeof(dma_buf) : (uint16_t)remaining;
+		memcpy(dma_buf, src, chunk);
+		SCB_CleanDCache_by_Addr((uint32_t *)dma_buf, sizeof(dma_buf));
+		HAL_SPI_Transmit_DMA(p->spi, dma_buf, chunk);
+		xSemaphoreTake(spi_tx_done, pdMS_TO_TICKS(100));
+		src       += chunk;
+		remaining -= chunk;
+	}
+
+	cs(p, 1);
 }
 
 void ili9341_write_pixels(ili9341_t *p,
