@@ -11,6 +11,7 @@
 #include "config.h"
 #include "ssd1309.h"
 
+#include <stdio.h>
 #include <string.h>
 
 extern SemaphoreHandle_t hi2c1_mutex;
@@ -74,8 +75,28 @@ static void ota_rx_task(void *arg)
 		if (xSemaphoreTake(dio1_sem, pdMS_TO_TICKS(5000)) == pdTRUE) {
 			sx1262_service_rx(&sx1262);
 			sx1262_set_rx(&sx1262, SX1262_RX_TIMEOUT_CONTINUOUS);
+
+			int snr_centi = (int)ota_rx.last_snr_quarter_db * 25;
+			int snr_neg   = snr_centi < 0;
+			if (snr_neg) snr_centi = -snr_centi;
+
+			char line[24];
+			xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
+			ssd1309_clear(&oled);
+			snprintf(line, sizeof(line), "RSSI: %ddBm", (int)ota_rx.last_rssi);
+			ssd1309_draw_string(&oled, &font5x7, 0, 0, line, SSD1309_COLOR_ON);
+			snprintf(line, sizeof(line), "SNR: %s%d.%02ddB",
+			         snr_neg ? "-" : "", snr_centi / 100, snr_centi % 100);
+			ssd1309_draw_string(&oled, &font5x7, 0, 12, line, SSD1309_COLOR_ON);
+			ssd1309_flush(&oled);
+			xSemaphoreGive(hi2c1_mutex);
 		} else {
 			logger_log("ota_rx: no packets for 5s\r\n");
+			xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
+			ssd1309_clear(&oled);
+			ssd1309_draw_string(&oled, &font5x7, 0, 0, "No signal", SSD1309_COLOR_ON);
+			ssd1309_flush(&oled);
+			xSemaphoreGive(hi2c1_mutex);
 		}
 	}
 }
