@@ -96,17 +96,23 @@ See "Handheld Data Collector" section below for options and decisions.
 The base station has two operating modes -- same hardware and firmware in both:
 
 - **Field / portable**: battery-powered, standalone -- surveys-in, enters fixed mode, broadcasts RTCM corrections to the rover over LoRa. No internet connection. All interaction is from the rover (display + controls); the base just does its job
-- **Fixed / gateway**: mains-powered via a Raspberry Pi companion connected over USB -- the RPi handles internet connectivity, NTRIP caster upload, WiFi management, and user credentials; can also power the base station over USB (check budget -- USB 2.0 host sources 500mA, USB 3.0 sources 900mA)
+- **Fixed / gateway**: connects to WiFi via the on-board ESP32-S3 Mini coprocessor and streams RTCM directly to an NTRIP caster -- no companion computer required; can also be mains-powered via USB-C
 
-**Internet relay -- USB CDC to Raspberry Pi (primary approach):**
+**Internet relay -- on-board ESP32-S3 Mini (primary approach):**
+- STM32 forwards the RTCM stream to the ESP32-S3 Mini over a dedicated UART
+- ESP32-S3 handles WiFi credentials, NTRIP protocol, TLS, and reconnect -- nothing of this complexity touches the STM32 firmware
+- WiFi and NTRIP credentials provisioned via an ESP32 captive-portal / BLE config flow (phone or browser) -- no keyboard or monitor needed on the base unit
+- Same ESP32-S3 Mini module fitted on both base and rover PCBs (identical build); firmware differs by role -- base: WiFi NTRIP push; rover: BLE GATT server + WiFi NTRIP client
+
+**Internet relay -- Raspberry Pi companion (optional, advanced):**
 - STM32 presents a USB CDC virtual serial port (TinyUSB CDC device on the base station's USB-C connector)
 - RPi receives the RTCM stream on `/dev/ttyACM0` (or similar)
 - `str2str` from RTKLIB relays to an NTRIP caster in a single command, run as a `systemd` service:
   ```
   str2str -in serial://ttyACM0:115200 -out ntrips://user:pass@rtk2go.com:2101/mountpoint
   ```
-- All TLS, WiFi reconnect, credential management, and NTRIP protocol handling lives on the RPi -- nothing of this complexity touches the STM32 firmware
-- RPi has HDMI + keyboard for easy initial WiFi and credential setup -- no on-unit display or config UI needed
+- RPi path is a fallback for locations without known WiFi, or where RTKLIB processing / logging on a full Linux system is needed; the ESP32-S3 WiFi path covers typical field use
+- RPi can power the base via USB (check budget: USB 2.0 host sources 500mA, USB 3.0 sources 900mA)
 
 ### Antenna
 
@@ -169,7 +175,8 @@ The base station has two operating modes -- same hardware and firmware in both:
   - ADC reads VBATT/2; firmware doubles reading to get VBATT, maps to battery %
   - LiPo range: 3.0V (0%) to 4.2V (100%) -- midpoint 1.5V to 2.1V, well within STM32 ADC range
   - Divider current: ~4.2V / 200K = ~21uA -- negligible quiescent drain
-- **Estimated current draw**: ~300-400 mA typical survey (F9P ~50mA, ANN-MB LNA ~15mA via bias-T, STM32F7 ~100mA, LoRa TX ~120mA, SD ~100mA peak, display ~10mA, LSM6DSRX+LIS3MDL ~1mA, buzzer ~20mA when active, USB3300 ~0.1mA suspend)
+- **Estimated current draw**: ~320-430 mA typical survey (F9P ~50mA, ANN-MB LNA ~15mA via bias-T, STM32F7 ~100mA, LoRa TX ~120mA, SD ~100mA peak, display ~10mA, LSM6DSRX+LIS3MDL ~1mA, buzzer ~20mA when active, USB3300 ~0.1mA suspend, ESP32-S3 Mini ~20-30mA BLE active / ~3mA modem sleep)
+  - Base in gateway mode (WiFi active): add ~100-200mA for ESP32-S3 WiFi TX -- revisit battery sizing once measured
   - USB file transfer mode (rover): add ~55mA for USB3300 active + SD read current
 
 ### IMU: LSM6DSRX + LIS3MDL
@@ -228,11 +235,11 @@ corrected_lon = gnss_lon + (offset x sin(tilt_azimuth + 180)) / (earth_radius x 
 The handheld is a separate battery-powered device that connects to the rover over Bluetooth LE and provides the primary user interface for the surveyor. Keeping it separate from the staff is deliberate -- the pole is planted and held steady while the operator steps back and reads the handheld. This mirrors professional survey equipment (Leica, Trimble data collectors) and avoids the ergonomic problem of reading a screen mounted on a 2m pole.
 
 **Rover BLE interface:**
-- STM32F765 on the rover exposes a UART-bridge BLE module (e.g. u-blox NINA-B3, or similar AT-command UART BLE module)
-- BLE looks like a UART to the STM32 -- simple serial framing, no BLE stack in the STM32 firmware
+- The ESP32-S3 Mini coprocessor on the rover PCB provides BLE 5.0 natively -- no separate BLE module needed
+- BLE looks like a UART to the STM32F765 -- simple serial framing; the ESP32-S3 runs the GATT stack transparently
 - GATT service broadcasts: corrected position (lat/lon/height), fix type (none/float/fixed), satellite count, HDOP, tilt angle, tilt direction, battery %, SD status, LoRa link quality
 - Command channel: rover receives mark-point, start/stop logging, pole height update from handheld
-- The spare UART on STM32F765 (noted in schematic checklist) serves this link
+- A spare UART on STM32F765 connects to the ESP32-S3 (same UART also used for WiFi NTRIP client path on the rover when near a known network)
 
 **Option A: ESP32 handheld (custom device)**
 - ESP32 or ESP32-S3 module -- BLE 4.2/5.0 built in, no separate module needed
@@ -250,8 +257,9 @@ The handheld is a separate battery-powered device that connects to the rover ove
 - Compatible with Option A: same GATT service definition serves both; a phone can connect when the ESP32 handheld is not present
 
 **Open decisions:**
-- [ ] BLE module selection for rover PCB (NINA-B3 vs HM-10 vs nRF52 module)
+- [x] BLE coprocessor for rover/base PCB: Waveshare ESP32-S3 Mini (BLE 5.0 + WiFi, castellated module, fitted on both boards)
 - [ ] GATT service / packet format definition (TBD during firmware development)
+- [ ] ESP32-S3 Mini firmware: credential provisioning UX (captive portal vs BLE config vs hardcoded for bench)
 - [ ] Whether ESP32 handheld gets its own custom PCB or stays on a dev board for the prototype
 - [ ] Whether to pursue the phone app in parallel or after the ESP32 handheld is working
 
@@ -352,34 +360,35 @@ The handheld is a separate battery-powered device that connects to the rover ove
 ## System Architecture
 
 ```
-BASE STATION                         ROVER (staff/pole)
-+------------------+                 +----------------------+
-|  F9P (base mode) |                 |  F9P (rover mode)    |
-|  generates RTCM  |                 |  receives RTCM       |
-|  on UART out     |                 |  solves RTK          |
-+--------+---------+                 |  outputs NMEA/UBX    |
-         | UART                      +----------+-----------+
-+--------v---------+  LoRa RTCM -> +----------v-----------+
-|   STM32F7        | <- LoRa CMD   |   STM32F7             |
-|   reads RTCM     |               |   feeds RTCM->F9P     |
-|   forwards via   |               |   logs position       |
-|   LoRa           |               |   to SD card          |
-+--------+---------+               |   OLED: tilt/fix/link |
-         | USB CDC (RTCM)          +----------+-----------+
-         | [gateway mode only]                | BLE (GATT)
-+--------v---------+               +----------v-----------+
-|  Raspberry Pi    |               |  Handheld data        |
-|  str2str relay   |               |  collector            |
-+--------+---------+               |                       |
-         |                         |  Option A:            |
-         v                         |  ESP32 + ILI9341 TFT  |
-  NTRIP caster                     |                       |
-  (RTK2GO, Emlid, etc.)            |  Option B:            |
-                                   |  Mobile phone app     |
-                                   +-----------------------+
+BASE STATION [identical PCB]          ROVER (staff/pole) [identical PCB]
++-------------------------+           +-------------------------+
+|  F9P (base mode)        |           |  F9P (rover mode)       |
+|  RTCM out on UART       |           |  receives RTCM, RTK fix |
++--------+----------------+           +--------+----------------+
+         | UART                                | UART
++--------v----------------+  LoRa RTCM -->   +--------v----------------+
+|   STM32F7               |  <-- LoRa CMD    |   STM32F7               |
+|   RTCM reader, LoRa TX  |                  |   RTCM->F9P, SD log     |
+|   survey-in control     |                  |   OLED: tilt/fix/status |
++--------+----------------+                  +--------+----------------+
+         | UART (RTCM)                                | UART
++--------v----------------+                +----------v--------------+
+|   ESP32-S3 Mini         |                |   ESP32-S3 Mini         |
+|   WiFi -> NTRIP caster  |                |   BLE 5.0 GATT server   |
+|   (push, when connected)|                |   WiFi NTRIP client     |
++--------+----------------+                |   (pull, when near AP)  |
+         |                                 +----------+--------------+
+         v                                            | BLE
+  NTRIP caster                             +----------v--------------+
+  (RTK2GO, Emlid, etc.)                    |   Handheld data         |
+                                           |   collector             |
+  [RPi companion optional for             |   Option A: ESP32 + TFT |
+   advanced relay via USB CDC]             |   Option B: Phone app   |
+                                           +-------------------------+
 ```
 
-- Single PCB design, identical firmware flashed to both units, mode (base/rover) selected by hardware jumper read at boot
+- Single PCB design, identical STM32 firmware flashed to both units, mode (base/rover) selected by hardware jumper read at boot
+- Different ESP32-S3 Mini firmware per role (base: WiFi NTRIP push; rover: BLE GATT + WiFi NTRIP client) -- same module fitted on both boards
 - F9P handles all RTK computation onboard -- STM32F7 is smart pipe + data logger
 - RTCM data rate: ~2-2.5 kbps for GPS+GLONASS at 1 Hz -- well within LoRa capability
 
@@ -494,7 +503,7 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
     - Right panel data fields: mode (base/rover), RTK fix status, satellite count, HDOP, tilt angle (degrees numeric), battery %, SD status/recording, LoRa link quality
 - [x] USB-C interface -- two connector footprints on PCB, one fitted per build
   - **USB-C #1 (base station build)**: D+/D- routed to STM32 OTG FS (PA11/PA12) -- internal PHY, 12 Mbps FS
-    - **Dual use**: VBUS charging (BQ24075 EN1/EN2 current negotiation as normal) + TinyUSB CDC device streaming RTCM corrections to an RPi companion for internet relay (see "Base Station: Internet Relay and Operating Modes")
+    - **Dual use**: VBUS charging (BQ24075 EN1/EN2 current negotiation as normal) + TinyUSB CDC device (debug/config, and RTCM relay to optional RPi companion -- see "Base Station: Internet Relay and Operating Modes"). Primary internet gateway is now the on-board ESP32-S3 Mini over WiFi; USB CDC / RPi path is a fallback
     - CDC throughput at 1Hz RTCM (~5 kbps) is trivially within FS USB bandwidth
     - Internal D+ pull-up on STM32F765 -- no external 1.5k ohm required
   - **USB-C #2 (rover build)**: D+/D- routed to external ULPI PHY -- STM32 OTG HS, 480 Mbps
@@ -589,7 +598,7 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 15. **Status LEDs**: 3x LEDs each on a PWM-capable (TIMx_CHx) GPIO with a current-limiting resistor
 16. **Mode-selection jumper**: GPIO with pull-up/pull-down, sampled once at boot to select base vs rover
 17. **BOOT0**: 2-pin jumper header with 10K pull-down to GND, for entering the STM32 DFU bootloader
-18. **Bluetooth LE module (rover only)**: UART-bridge BLE module (e.g. u-blox NINA-B3) on the spare STM32 UART; module power + decoupling; antenna (PCB trace or small chip antenna on module); base station DNP
+18. **ESP32-S3 Mini coprocessor (both builds, identical PCB)**: spare STM32F765 UART to ESP32-S3 UART0; 3.3V power + decoupling; PCB trace or chip antenna for BLE 5.0 / 2.4GHz WiFi; programming header (UART0 + IO0 boot-strapping pin). Base role: WiFi NTRIP gateway (push RTCM to caster). Rover role: BLE 5.0 GATT server to handheld + WiFi NTRIP client (pull corrections). Different ESP32-S3 firmware per role, same PCB footprint.
 
 ---
 
