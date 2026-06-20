@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "FreeRTOS.h"
+#include "semphr.h"
 #include "task_logger.h"
 #include "task_ota_rx.h"
 
