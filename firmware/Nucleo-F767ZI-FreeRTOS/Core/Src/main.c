@@ -310,7 +310,7 @@ static void MX_SDMMC2_SD_Init(void)
   hsd2.Init.ClockPowerSave = SDMMC_CLOCK_POWER_SAVE_DISABLE;
   hsd2.Init.BusWide = SDMMC_BUS_WIDE_1B;
   hsd2.Init.HardwareFlowControl = SDMMC_HARDWARE_FLOW_CONTROL_DISABLE;
-  hsd2.Init.ClockDiv = 12;
+  hsd2.Init.ClockDiv = 4;
   /* USER CODE BEGIN SDMMC2_Init 2 */
 
   /* USER CODE END SDMMC2_Init 2 */
@@ -508,12 +508,6 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, SX1262_SPI_TXEN_Pin|SX1262_SPI_RXEN_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : USER_Btn_Pin SX1262_SPI_DIO1_Pin */
-  GPIO_InitStruct.Pin = USER_Btn_Pin|SX1262_SPI_DIO1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
-
   /*Configure GPIO pins : SX1262_SPI_BUSY_Pin SX1262_SPI_DIO2_Pin */
   GPIO_InitStruct.Pin = SX1262_SPI_BUSY_Pin|SX1262_SPI_DIO2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -541,11 +535,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(USB_PowerSwitchOn_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : USB_OverCurrent_Pin */
-  GPIO_InitStruct.Pin = USB_OverCurrent_Pin;
+  /*Configure GPIO pins : USB_OverCurrent_Pin SCMMC_CD_Pin */
+  GPIO_InitStruct.Pin = USB_OverCurrent_Pin|SCMMC_CD_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SX1262_SPI_TXEN_Pin */
   GPIO_InitStruct.Pin = SX1262_SPI_TXEN_Pin;
@@ -561,6 +555,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(SX1262_SPI_RXEN_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : SX1262_SPI_DIO1_Pin */
+  GPIO_InitStruct.Pin = SX1262_SPI_DIO1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(SX1262_SPI_DIO1_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : USB_SOF_Pin USB_ID_Pin USB_DM_Pin USB_DP_Pin */
   GPIO_InitStruct.Pin = USB_SOF_Pin|USB_ID_Pin|USB_DM_Pin|USB_DP_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
@@ -575,18 +575,9 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_VBUS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SDMMC2_CD_Pin */
-  GPIO_InitStruct.Pin = SDMMC2_CD_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(SDMMC2_CD_GPIO_Port, &GPIO_InitStruct);
-
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
