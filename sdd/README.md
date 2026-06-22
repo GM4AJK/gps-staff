@@ -162,7 +162,10 @@ The base station has two operating modes -- same hardware and firmware in both:
 - **USB-C**: 5V charge/power port
   - No PD negotiation needed for basic 5V charging
   - CC1 + CC2 pulled to GND via 5.1k ohm resistors identifies unit as 5V sink
-- **Power path management**: BQ24075 -- allows simultaneous USB-powered operation + battery charging, no glitches on hot-plug
+- **Power path management**: BQ24075TRGTR (TI) -- allows simultaneous USB-powered operation + battery charging, no glitches on hot-plug
+  - Package: 16-VQFN (3x3mm exposed pad) -- surface mount, reflow/hot-air solderable
+  - 1.5A max programmable charge current, single-cell Li-ion, 4.2V termination
+  - DigiKey: https://www.digikey.co.uk/en/products/detail/texas-instruments/BQ24075TRGTR/2202252
   - TI WEBENCH / reference designs available for both TPS63020 and BQ24075
   - BQ24075 control pins wired to STM32 GPIOs (spare pins available on LQFP100):
     - EN1, EN2: input current limit select -- 00=100mA, 10=500mA, 01=suspend; firmware switches 100mA->500mA after USB enumeration
