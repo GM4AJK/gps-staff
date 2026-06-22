@@ -148,7 +148,10 @@ The base station has two operating modes -- same hardware and firmware in both:
   - BQ24075 TS pin: fit fixed 10K resistor from TS to GND -- mimics NTC at 25C, keeps charger in valid range, temperature monitoring effectively disabled (PCM provides thermal protection independently)
 - **Prototype**: Bench PSU -- UNI-T UDP3305S (professional programmable unit, current limiting for safe bring-up)
 - **Final design**: Integrated on PCB
-- **Regulator**: TPS63020 (TI) buck-boost -- 1.8-5.5V in, up to 2A, stable 3.3V across full LiPo discharge curve
+- **Regulator**: TPS63020DSJR (TI) buck-boost -- 1.8-5.5V in, up to 2A output, stable 3.3V across full LiPo discharge curve
+  - Package: 14-VFDFN (VSON 4x3mm exposed pad) -- surface mount, reflow/hot-air solderable
+  - 2.4MHz switching frequency, synchronous rectification, ~90% peak efficiency
+  - DigiKey: https://www.digikey.co.uk/en/products/detail/texas-instruments/TPS63020DSJR/2353761
   - LDO ruled out -- loses 3.3V rail below ~3.5V input, wasting usable battery capacity
   - **Soft-start / inrush current**: TPS63020 can exhibit a soft-start trip on startup due to output capacitor inrush current
     - Mitigation: add a small switching diode (D1) and soft-start capacitor (C_SS) directly to the FB node
