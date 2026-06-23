@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "db781532-e8f1-47a0-94e1-2721721386eb")
+	(uuid "f1601490-858a-4d71-bb7e-3b998b0f80e9")
 	(paper "A4")
 	(lib_symbols
 		(symbol "Battery_Management:BQ24075RGT"
@@ -3117,12 +3117,6 @@
 		(uuid "37ab81fe-1659-4a8f-b6d1-55d75d730e4e")
 	)
 	(junction
-		(at 30.48 144.78)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "39c1ac0c-51b9-4fd8-a8a9-7af535165397")
-	)
-	(junction
 		(at 160.02 139.7)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3133,12 +3127,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "4b868776-1123-4d0d-9918-0285c6cbde58")
-	)
-	(junction
-		(at 30.48 132.08)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "5b5913ce-ffc9-4f10-b8c4-7abb2e99e721")
 	)
 	(junction
 		(at 175.26 78.74)
@@ -3313,12 +3301,20 @@
 		(uuid "03b0880e-484e-47df-977c-3f87c3dc7429")
 	)
 	(no_connect
+		(at 36.83 46.99)
+		(uuid "1d9c5406-5d23-4b1e-b3af-7aa64138ee06")
+	)
+	(no_connect
 		(at 246.38 68.58)
 		(uuid "2d049d12-f492-4f68-8760-d38dacfbce68")
 	)
 	(no_connect
 		(at 236.22 124.46)
 		(uuid "da14e087-e9a7-4fcc-8035-50d08db1e9e5")
+	)
+	(no_connect
+		(at 36.83 49.53)
+		(uuid "e56e18c7-ade8-48b1-a5b0-6c4995d59154")
 	)
 	(wire
 		(pts
@@ -3942,16 +3938,6 @@
 	)
 	(wire
 		(pts
-			(xy 30.48 132.08) (xy 36.83 132.08)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "65fff300-bfac-47b7-9df0-bbef0182ea6c")
-	)
-	(wire
-		(pts
 			(xy 262.89 133.35) (xy 262.89 119.38)
 		)
 		(stroke
@@ -3959,16 +3945,6 @@
 			(type default)
 		)
 		(uuid "66cc9d92-4efb-472e-a338-1854a27663c1")
-	)
-	(wire
-		(pts
-			(xy 30.48 144.78) (xy 30.48 147.32)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "69271e57-c09b-48cd-a7ac-8f8b4f4aa3e4")
 	)
 	(wire
 		(pts
@@ -4252,16 +4228,6 @@
 	)
 	(wire
 		(pts
-			(xy 30.48 132.08) (xy 30.48 134.62)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9b60030d-1089-49ad-86f5-fe9a89a14653")
-	)
-	(wire
-		(pts
 			(xy 162.56 63.5) (xy 143.51 63.5)
 		)
 		(stroke
@@ -4279,16 +4245,6 @@
 			(type default)
 		)
 		(uuid "9c1c8471-011a-4568-83fc-e07371f12a69")
-	)
-	(wire
-		(pts
-			(xy 30.48 142.24) (xy 30.48 144.78)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9eb5f3ba-a0aa-42a3-9d43-10747d6d614c")
 	)
 	(wire
 		(pts
@@ -4482,26 +4438,6 @@
 	)
 	(wire
 		(pts
-			(xy 30.48 144.78) (xy 36.83 144.78)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ba49f5ea-7c6b-43d0-9b7b-05ed8ed55c76")
-	)
-	(wire
-		(pts
-			(xy 30.48 128.27) (xy 30.48 132.08)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bb1644db-52d3-4b65-a3b8-b70856cf6bd4")
-	)
-	(wire
-		(pts
 			(xy 162.56 124.46) (xy 170.18 124.46)
 		)
 		(stroke
@@ -4572,16 +4508,6 @@
 	)
 	(wire
 		(pts
-			(xy 36.83 142.24) (xy 30.48 142.24)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c63eb428-50f7-427c-9589-c2c5172baef8")
-	)
-	(wire
-		(pts
 			(xy 241.3 134.62) (xy 236.22 134.62)
 		)
 		(stroke
@@ -4599,16 +4525,6 @@
 			(type default)
 		)
 		(uuid "c81fe96a-40b1-49bd-903d-e3c90297f2c2")
-	)
-	(wire
-		(pts
-			(xy 30.48 134.62) (xy 36.83 134.62)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c92858a1-f301-4ad7-9ae0-8edcc5462de4")
 	)
 	(wire
 		(pts
@@ -6581,84 +6497,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:VBUS")
-		(at 30.48 128.27 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "7515fdd5-452e-499b-a264-f6bc6915e22a")
-		(property "Reference" "#PWR011"
-			(at 30.48 132.08 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "VBUS"
-			(at 30.48 123.19 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 30.48 128.27 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 30.48 128.27 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"VBUS\""
-			(at 30.48 128.27 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "0331cc95-4ae6-4a47-aab5-62e673319667")
-		)
-		(instances
-			(project "rtk"
-				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/9c50a478-943f-4253-b881-679de7b7c263"
-					(reference "#PWR011")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 165.1 36.83 0)
 		(unit 1)
@@ -7518,84 +7356,6 @@
 			(project "rtk"
 				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/9c50a478-943f-4253-b881-679de7b7c263"
 					(reference "U1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:GND")
-		(at 30.48 147.32 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "a8e63179-584f-4bd8-918f-a6da01217b6b")
-		(property "Reference" "#PWR04"
-			(at 30.48 153.67 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "GND"
-			(at 30.48 152.4 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 30.48 147.32 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 30.48 147.32 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 30.48 147.32 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "294e47c8-11da-4816-bc5f-5b63d1d69843")
-		)
-		(instances
-			(project "rtk"
-				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/9c50a478-943f-4253-b881-679de7b7c263"
-					(reference "#PWR04")
 					(unit 1)
 				)
 			)
@@ -8651,118 +8411,6 @@
 			(project "rtk"
 				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/9c50a478-943f-4253-b881-679de7b7c263"
 					(reference "LD1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "USB4105-GF-A-060:USB4105-GF-A")
-		(at 36.83 109.22 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "fefb6e3b-5d11-40bc-a900-8389e8fe0dfe")
-		(property "Reference" "J2"
-			(at 57.15 96.52 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.524 1.524)
-				)
-			)
-		)
-		(property "Value" "USB4105-GF-A"
-			(at 57.15 99.06 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.524 1.524)
-				)
-			)
-		)
-		(property "Footprint" "USB4105_GCT"
-			(at 36.83 109.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-					(italic yes)
-				)
-			)
-		)
-		(property "Datasheet" "USB4105-GF-A"
-			(at 36.83 109.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-					(italic yes)
-				)
-			)
-		)
-		(property "Description" ""
-			(at 36.83 109.22 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "B5"
-			(uuid "84cdec16-d8d3-46ff-ba20-32f9780b412b")
-		)
-		(pin "B4-A9"
-			(uuid "361097f1-1f73-4820-8956-7c5edc805dbf")
-		)
-		(pin "B7"
-			(uuid "feb422c2-99f2-4768-97d5-278d92913f07")
-		)
-		(pin "B1-A12"
-			(uuid "736f4474-6f3d-4c15-acd7-4d8a014002cc")
-		)
-		(pin "A5"
-			(uuid "9f0461b7-5a04-488d-ad77-6ad6c956120e")
-		)
-		(pin "A6"
-			(uuid "1754a289-8665-432f-bf02-9c71b01b8f6c")
-		)
-		(pin "A4-B9"
-			(uuid "a1fa58c9-1d43-49d3-88f7-3ed413794b30")
-		)
-		(pin "A1-B12"
-			(uuid "a858f8a7-70eb-446e-8d47-60e5b7cb6c06")
-		)
-		(pin "B6"
-			(uuid "1f843365-c49d-4d07-809a-9531b17d9470")
-		)
-		(pin "A7"
-			(uuid "980dd610-db3e-4a8a-a0e2-9fc3cd12758f")
-		)
-		(pin "A8"
-			(uuid "e2c20283-a89e-43cf-b847-9769c2e28eea")
-		)
-		(pin "B8"
-			(uuid "4d244c97-f309-4307-bd6e-6e7ba678153e")
-		)
-		(instances
-			(project "rtk"
-				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/9c50a478-943f-4253-b881-679de7b7c263"
-					(reference "J2")
 					(unit 1)
 				)
 			)
