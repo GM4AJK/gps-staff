@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "18cbe1d1-326f-4c52-8b49-a960748e8b10")
+	(uuid "2d5d4d07-613c-4c82-b22b-61d43120d9e4")
 	(paper "A4")
 	(lib_symbols
 		(symbol "Battery_Management:BQ24075RGT"

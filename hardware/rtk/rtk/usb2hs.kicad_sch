@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "1a23f23d-759b-4764-bdca-c55171744e8c")
+	(uuid "22c556b0-5f02-4ba7-93ba-e22bf5e8c095")
 	(paper "A4")
 	(lib_symbols
 		(symbol "ASTX-H11-16.000MHZ-T:ASTX-H11-16.000MHZ-T"
@@ -2518,12 +2518,6 @@
 		(uuid "0d2ed693-c892-4a75-90e4-e15a617ec529")
 	)
 	(junction
-		(at 71.12 170.18)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "16ca9e0b-7f78-492c-968d-e300ae0f4b50")
-	)
-	(junction
 		(at 143.51 50.8)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -2558,12 +2552,6 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "91f4b7b6-6398-4a02-a2a8-a9b07e4312c5")
-	)
-	(junction
-		(at 71.12 180.34)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "9b91c6f5-b4f9-4020-a2d3-a2afe44fe7d1")
 	)
 	(junction
 		(at 59.69 170.18)
@@ -2685,16 +2673,6 @@
 	)
 	(wire
 		(pts
-			(xy 71.12 177.8) (xy 71.12 180.34)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "0fe93ad9-1060-4321-afb3-942fbe4ffa70")
-	)
-	(wire
-		(pts
 			(xy 63.5 46.99) (xy 63.5 50.8)
 		)
 		(stroke
@@ -2752,16 +2730,6 @@
 			(type default)
 		)
 		(uuid "297808ba-3503-46ec-b58c-4b7cdb9a1948")
-	)
-	(wire
-		(pts
-			(xy 59.69 170.18) (xy 71.12 170.18)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2b8762da-0b7c-4968-88e3-81c581b0f880")
 	)
 	(wire
 		(pts
@@ -3095,7 +3063,7 @@
 	)
 	(wire
 		(pts
-			(xy 71.12 180.34) (xy 81.28 180.34)
+			(xy 59.69 180.34) (xy 81.28 180.34)
 		)
 		(stroke
 			(width 0)
@@ -3152,16 +3120,6 @@
 			(type default)
 		)
 		(uuid "99ff670c-c6d9-4f06-bd22-85d31d7dabfa")
-	)
-	(wire
-		(pts
-			(xy 59.69 180.34) (xy 71.12 180.34)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9d6cd0ca-12d4-40ae-a245-bb9e6f97ea2e")
 	)
 	(wire
 		(pts
@@ -3305,7 +3263,7 @@
 	)
 	(wire
 		(pts
-			(xy 71.12 170.18) (xy 81.28 170.18)
+			(xy 59.69 170.18) (xy 81.28 170.18)
 		)
 		(stroke
 			(width 0)
@@ -3572,16 +3530,6 @@
 			(type default)
 		)
 		(uuid "f3f208b3-d095-4fd3-80d5-dfe61d7b8dc9")
-	)
-	(wire
-		(pts
-			(xy 71.12 170.18) (xy 71.12 172.72)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f68e099e-7109-4c8b-b8eb-eaae9b44ccbb")
 	)
 	(wire
 		(pts
@@ -4456,88 +4404,6 @@
 			(project "rtk"
 				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/d8cc858a-b41d-4a13-a4a7-a7323237874f"
 					(reference "C22")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Device:C_Small")
-		(at 71.12 175.26 0)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "3767865a-af4b-4067-a4f9-cad908ee5b93")
-		(property "Reference" "C24"
-			(at 73.66 173.9962 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "100n"
-			(at 73.66 176.5362 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
-			(at 71.12 175.26 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 71.12 175.26 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Unpolarized capacitor, small symbol"
-			(at 71.12 175.26 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "1"
-			(uuid "ebdc49a7-f208-46cf-b8a3-965d7e6c15d3")
-		)
-		(pin "2"
-			(uuid "ab54790b-c714-4a7f-b399-8a0ec8a1de78")
-		)
-		(instances
-			(project "rtk"
-				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/d8cc858a-b41d-4a13-a4a7-a7323237874f"
-					(reference "C24")
 					(unit 1)
 				)
 			)
