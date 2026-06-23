@@ -92,8 +92,8 @@ Key:
 |-----|-------|-----------|-------|-------|
 | D1 | 1N4148W | `D_SOD-123` | power | TPS63020 inrush diode |
 | D2 | USBLC6-2SC6 | `SOT-23-6` | usb2hs | USB D+/D- dual-line ESD TVS — replaced PRTR5V0U2X (bulk only). D3 removed (one chip covers both lines) ✓ |
-| LD1 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | Status LED |
-| LD2 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | Status LED |
+| LD1 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | **Green** — nPGOOD status |
+| LD2 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | **Red** — nCHG status |
 
 ---
 
