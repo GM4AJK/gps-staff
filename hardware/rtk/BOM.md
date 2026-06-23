@@ -55,8 +55,8 @@ Key:
 | Ref | Value | Footprint | Sheet | Notes |
 |-----|-------|-----------|-------|-------|
 | R1 | 1k13 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | BQ24075 ISET |
-| R2 | 1K5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | USB CC1 pull-down (5.1kΩ typo? check value vs R11) |
-| R3 | 1K5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | USB CC2 pull-down |
+| R2 | 1K5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | BQ24075 nPGOOD LED pull-up |
+| R3 | 1K5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | BQ24075 nCHG LED pull-up |
 | R4 | 1k18 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | BQ24075 — check function |
 | R5 | 46k4 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | BQ24075 TMR |
 | R6 | 1k | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | LED current limit |
@@ -119,7 +119,7 @@ Key:
 |-----|-------|-----------|-------|-------|
 | J1 | USB4105-GF-A | `USB4105_GCT` | power | USB-C receptacle (power in) |
 | J3 | B2B-PH-SM4-TBLFSN | `CONN_B2B-PH-SM4-TBLFSN_JST` | power | Battery connector (JST PH 2-pin) |
-| J4 | Conn_01x02_Pin | — | power | ⚠ **No footprint assigned** |
+| J4 | Conn_01x02_Pin | `PinHeader_1x02_P2.54mm_Vertical` | power | On/off switch header ✓ |
 | J5 | Conn_Coaxial | `SMA_BAT_Wireless_BWSMA-KWE-Z001` | zed-f9p-05b | GNSS SMA |
 | J6 | MEM2052-00-195-00-A_REVA | `GCT_MEM2052-00-195-00-A_REVA` | stm32f765vit | microSD card socket |
 | J7 | Conn_01x04_Pin | `PinHeader_1x04_P2.54mm_Vertical` | stm32f765vit | Debug header |
@@ -154,6 +154,6 @@ Key:
 |---|-----|-------|
 | 1 | D2, D3 | **PRTR5V0U2X footprint is SOT-143 (4-pin) — must be SOT-363 (6-pin)** |
 | 2 | C16, C18, C20 | ~~Through-hole electrolytic footprint~~ **Fixed** — T529P106M010AAE200 polymer tant, 0805 HandSolder ✓ |
-| 3 | U4 | **Symbol says ZED-F9H-01B — should be ZED-F9P-05B** |
-| 4 | J4 | **No footprint assigned** |
-| 5 | R2, R3 | Value is 1K5 — if these are USB-C CC pull-downs they should be 5.1kΩ (R11/R12 are 5k1). Check what R2/R3 are actually for |
+| 3 | U4 | ~~Symbol says ZED-F9H-01B~~ **Confirmed OK** — same symbol and footprint as ZED-F9P-05B ✓ |
+| 4 | J4 | ~~No footprint~~ **Fixed** — on/off switch, PinHeader_1x02_P2.54mm_Vertical ✓ |
+| 5 | R2, R3 | ~~Value query~~ **Confirmed OK** — BQ24075 nPGOOD/nCHG open-drain LED pull-ups, 1K5 correct ✓ |
