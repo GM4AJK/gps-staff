@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "8560eab7-d7c3-482e-b4eb-7109c5634401")
+	(uuid "124f6dce-d866-4e37-950a-273f67eb084b")
 	(paper "A4")
 	(lib_symbols
 		(symbol "ASTX-H11-16.000MHZ-T:ASTX-H11-16.000MHZ-T"
@@ -7851,6 +7851,16 @@
 	)
 	(wire
 		(pts
+			(xy 99.06 132.08) (xy 107.95 132.08)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "9819b0d3-46b5-4044-b61f-648bc1923638")
+	)
+	(wire
+		(pts
 			(xy 209.55 133.35) (xy 213.36 133.35)
 		)
 		(stroke
@@ -8128,6 +8138,16 @@
 			(type default)
 		)
 		(uuid "bfcd062f-0bff-4341-91d3-36d6813d00ab")
+	)
+	(wire
+		(pts
+			(xy 99.06 134.62) (xy 107.95 134.62)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c177c354-4076-47f0-8450-081be4a5c062")
 	)
 	(wire
 		(pts
@@ -8488,6 +8508,16 @@
 			(type default)
 		)
 		(uuid "e99fa37c-d367-4b04-b233-78faf0006107")
+	)
+	(wire
+		(pts
+			(xy 99.06 124.46) (xy 107.95 124.46)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ea3e2e66-6340-48bf-be68-d3b20a3b9780")
 	)
 	(wire
 		(pts
@@ -10401,6 +10431,30 @@
 			)
 		)
 	)
+	(global_label "nCHG"
+		(shape input)
+		(at 99.06 134.62 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "be341564-afc2-4bca-8afc-cdada1651ff2")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 91.0553 134.62 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+	)
 	(global_label "SX1262_UART_TX"
 		(shape input)
 		(at 209.55 138.43 180)
@@ -10558,6 +10612,54 @@
 		(uuid "d6c702f5-d343-430f-bd2d-31240f8c39b4")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 81.5606 127 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+	)
+	(global_label "SYSOFF"
+		(shape input)
+		(at 99.06 124.46 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "d71b0261-0ad3-4231-b307-a1ff9a4c296b")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 89.0595 124.46 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+	)
+	(global_label "nPGOOD"
+		(shape input)
+		(at 99.06 132.08 180)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right)
+		)
+		(uuid "da0133f3-3c25-40f4-bc65-6db4b65165e8")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 88.4548 132.08 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)

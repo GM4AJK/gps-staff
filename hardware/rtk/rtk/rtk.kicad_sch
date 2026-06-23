@@ -6,7 +6,7 @@
 	(paper "A4")
 	(lib_symbols)
 	(sheet
-		(at 120.65 110.49)
+		(at 191.77 62.23)
 		(size 48.26 24.13)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -22,7 +22,7 @@
 		)
 		(uuid "3c686553-c654-4aca-9ea8-0296b328498f")
 		(property "Sheetname" "ZED-F9P-05B"
-			(at 120.65 109.7784 0)
+			(at 191.77 61.5184 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -33,7 +33,7 @@
 			)
 		)
 		(property "Sheetfile" "zed-f9p-05b.kicad_sch"
-			(at 120.65 135.2046 0)
+			(at 191.77 86.9446 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -98,7 +98,7 @@
 		)
 	)
 	(sheet
-		(at 64.77 147.32)
+		(at 118.11 106.68)
 		(size 44.45 21.59)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -114,7 +114,7 @@
 		)
 		(uuid "d8cc858a-b41d-4a13-a4a7-a7323237874f")
 		(property "Sheetname" "USB2HS"
-			(at 64.77 146.6084 0)
+			(at 118.11 105.9684 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -125,7 +125,7 @@
 			)
 		)
 		(property "Sheetfile" "usb2hs.kicad_sch"
-			(at 64.77 169.4946 0)
+			(at 118.11 128.8546 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
