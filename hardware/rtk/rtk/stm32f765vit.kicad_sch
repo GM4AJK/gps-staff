@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "373a4568-c0c6-47f9-9366-c13245b5e74b")
+	(uuid "16c50059-787e-43dc-8d87-3630202b283a")
 	(paper "A4")
 	(lib_symbols
 		(symbol "ASTX-H11-16.000MHZ-T:ASTX-H11-16.000MHZ-T"

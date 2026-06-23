@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "34bf08fd-0c3a-429f-9797-d713017d6116")
+	(uuid "db781532-e8f1-47a0-94e1-2721721386eb")
 	(paper "A4")
 	(lib_symbols
 		(symbol "Battery_Management:BQ24075RGT"
@@ -4954,7 +4954,7 @@
 			)
 		)
 	)
-	(global_label "USB_D_N"
+	(global_label "USB_D2_N"
 		(shape input)
 		(at 26.67 39.37 180)
 		(fields_autoplaced yes)
@@ -4966,7 +4966,7 @@
 		)
 		(uuid "5a645f11-efe7-4908-a56c-038ce37e5a51")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 15.3391 39.37 0)
+			(at 14.1296 39.37 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5026,7 +5026,7 @@
 			)
 		)
 	)
-	(global_label "USB_D_P"
+	(global_label "USB_D2_P"
 		(shape input)
 		(at 95.25 46.99 0)
 		(fields_autoplaced yes)
@@ -5038,7 +5038,7 @@
 		)
 		(uuid "7ab662c4-ff60-4ff0-af39-831e4bdb6828")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 106.5204 46.99 0)
+			(at 107.7299 46.99 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
