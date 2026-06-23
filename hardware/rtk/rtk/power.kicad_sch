@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "40aee651-203b-4f80-bdbe-edbb94acf815")
+	(uuid "34bf08fd-0c3a-429f-9797-d713017d6116")
 	(paper "A4")
 	(lib_symbols
 		(symbol "Battery_Management:BQ24075RGT"
@@ -3243,12 +3243,6 @@
 		(uuid "c6e18793-fa57-46d2-be5f-3e152381a7db")
 	)
 	(junction
-		(at 242.57 59.69)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "cad99ccf-7700-4c52-b7cd-9d4197baa86b")
-	)
-	(junction
 		(at 245.11 127)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3688,7 +3682,7 @@
 	)
 	(wire
 		(pts
-			(xy 242.57 59.69) (xy 242.57 63.5)
+			(xy 242.57 55.88) (xy 242.57 63.5)
 		)
 		(stroke
 			(width 0)
@@ -4198,16 +4192,6 @@
 	)
 	(wire
 		(pts
-			(xy 242.57 55.88) (xy 242.57 59.69)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "938ecc4c-efda-46da-82e4-9f5b196346a4")
-	)
-	(wire
-		(pts
 			(xy 85.09 63.5) (xy 87.63 63.5)
 		)
 		(stroke
@@ -4525,16 +4509,6 @@
 			(type default)
 		)
 		(uuid "bc0fb29e-6fa7-499c-9fd4-aed30809fbda")
-	)
-	(wire
-		(pts
-			(xy 242.57 59.69) (xy 246.38 59.69)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bce6b7aa-c1d5-4efc-929c-13a3bec3ca62")
 	)
 	(wire
 		(pts
@@ -4946,6 +4920,16 @@
 		)
 		(uuid "fe232d2f-8e0c-4e87-891e-b00f3e140ed3")
 	)
+	(label "VBAT"
+		(at 242.57 60.96 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "2aad12de-1072-4ef1-8ccc-fa9e3c27c601")
+	)
 	(global_label "BQ24975_EN1"
 		(shape input)
 		(at 157.48 55.88 180)
@@ -5127,30 +5111,6 @@
 		(uuid "d8aae5a7-67a4-4160-8572-2e2be8d61bd5")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 221.4252 78.74 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-	)
-	(global_label "VBAT"
-		(shape input)
-		(at 246.38 59.69 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "d9b87a30-8fa0-46b7-991e-aa941505971c")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 253.78 59.69 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
