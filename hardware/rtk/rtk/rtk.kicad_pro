@@ -632,7 +632,7 @@
         "uuid": "608e0f5f-bf55-4b10-9802-aab1430116aa"
       }
     ],
-    "used_designators": "U1-8,J1-9,LD1-2,R1-8,L1,D1-2,#PWR1-41,C1-26,ESP32_S1,Y1",
+    "used_designators": "U1-8,J1-9,LD1-2,R1-10,L1-3,D1-2,#PWR1-51,C1-30,ESP32_S1,Y1-2",
     "variants": []
   },
   "sheets": [
