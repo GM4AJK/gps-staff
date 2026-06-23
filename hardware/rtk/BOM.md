@@ -91,8 +91,7 @@ Key:
 | Ref | Value | Footprint | Sheet | Notes |
 |-----|-------|-----------|-------|-------|
 | D1 | 1N4148W | `D_SOD-123` | power | TPS63020 inrush diode |
-| D2 | PRTR5V0U2X | `SOT-143` | usb2hs | ⚠ **WRONG footprint** — PRTR5V0U2X is SOT-363 (6-pin), SOT-143 is 4-pin. Change to SOT-363 |
-| D3 | PRTR5V0U2X | `SOT-143` | usb2hs | ⚠ **WRONG footprint** — same as D2 |
+| D2 | USBLC6-2SC6 | `SOT-23-6` | usb2hs | USB D+/D- dual-line ESD TVS — replaced PRTR5V0U2X (bulk only). D3 removed (one chip covers both lines) ✓ |
 | LD1 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | Status LED |
 | LD2 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | Status LED |
 
@@ -152,7 +151,7 @@ Key:
 
 | # | Ref | Issue |
 |---|-----|-------|
-| 1 | D2, D3 | **PRTR5V0U2X footprint is SOT-143 (4-pin) — must be SOT-363 (6-pin)** |
+| 1 | D2 | ~~PRTR5V0U2X SOT-143~~ **Fixed** — USBLC6-2SC6 SOT-23-6, D3 removed ✓ |
 | 2 | C16, C18, C20 | ~~Through-hole electrolytic footprint~~ **Fixed** — T529P106M010AAE200 polymer tant, 0805 HandSolder ✓ |
 | 3 | U4 | ~~Symbol says ZED-F9H-01B~~ **Confirmed OK** — same symbol and footprint as ZED-F9P-05B ✓ |
 | 4 | J4 | ~~No footprint~~ **Fixed** — on/off switch, PinHeader_1x02_P2.54mm_Vertical ✓ |
