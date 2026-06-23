@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "f1601490-858a-4d71-bb7e-3b998b0f80e9")
+	(uuid "8a491426-d4f0-4385-a580-25682ab85b6c")
 	(paper "A4")
 	(lib_symbols
 		(symbol "Battery_Management:BQ24075RGT"
@@ -4148,7 +4148,7 @@
 	)
 	(wire
 		(pts
-			(xy 157.48 55.88) (xy 162.56 55.88)
+			(xy 153.67 55.88) (xy 162.56 55.88)
 		)
 		(stroke
 			(width 0)
@@ -4318,7 +4318,7 @@
 	)
 	(wire
 		(pts
-			(xy 157.48 58.42) (xy 162.56 58.42)
+			(xy 153.67 58.42) (xy 162.56 58.42)
 		)
 		(stroke
 			(width 0)
@@ -4848,7 +4848,7 @@
 	)
 	(global_label "BQ24975_EN1"
 		(shape input)
-		(at 157.48 55.88 180)
+		(at 153.67 55.88 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -4858,7 +4858,7 @@
 		)
 		(uuid "44d7b2c0-a5ab-479d-976b-5e99bc835300")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 141.1902 55.88 0)
+			(at 137.3802 55.88 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -4896,7 +4896,7 @@
 	)
 	(global_label "BQ24975_EN2"
 		(shape input)
-		(at 157.48 58.42 180)
+		(at 153.67 58.42 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -4906,7 +4906,7 @@
 		)
 		(uuid "5c8eaa0e-17c7-4c7c-b154-760e153268c4")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 141.1902 58.42 0)
+			(at 137.3802 58.42 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
