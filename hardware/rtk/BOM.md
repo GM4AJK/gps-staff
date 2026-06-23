@@ -73,6 +73,8 @@ Key:
 | R17 | 4k7 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | stm32f765vit | I2C4 SCL pull-up |
 | R18 | 10k | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | zed-f9p-05b | ZED-F9P SAFEBOOT_N pull-up |
 | R19 | 10k | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | zed-f9p-05b | ZED-F9P RESET_N pull-up |
+| R20 | 1k5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | stm32f765vit | LD3 pull-up (PD5) |
+| R21 | 1k5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | stm32f765vit | LD4 pull-up (PD6) |
 
 ---
 
@@ -94,6 +96,8 @@ Key:
 | D2 | USBLC6-2SC6 | `SOT-23-6` | usb2hs | USB D+/D- dual-line ESD TVS — replaced PRTR5V0U2X (bulk only). D3 removed (one chip covers both lines) ✓ |
 | LD1 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | **Green** — nPGOOD status |
 | LD2 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | power | **Red** — nCHG status |
+| LD3 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | stm32f765vit | **Green** — debug/status, PD5, open-drain, on at startup |
+| LD4 | LED | `LED_0805_2012Metric_Pad1.15x1.40mm_HandSolder` | stm32f765vit | **Red** — debug/status, PD6, open-drain, on at startup |
 
 ---
 
