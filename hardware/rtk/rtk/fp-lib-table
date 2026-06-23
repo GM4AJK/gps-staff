@@ -7,4 +7,6 @@
 	(lib (name "ESP32-S3-ZERO") (type "KiCad") (uri "${KIPRJMOD}/Libs/footprints.pretty") (options "") (descr ""))
 	(lib (name "Core1262-868M") (type "KiCad") (uri "${KIPRJMOD}/Libs/footprints.pretty") (options "") (descr ""))
 	(lib (name "LSM6DSOX") (type "KiCad") (uri "${KIPRJMOD}/Libs/footprints.pretty") (options "") (descr ""))
+	(lib (name "USB3300-EZK-TR") (type "KiCad") (uri "${KIPRJMOD}/Libs/footprints.pretty") (options "") (descr ""))
+	(lib (name "ASTX-H11-16.000MHZ-T") (type "KiCad") (uri "${KIPRJMOD}/Libs/footprints.pretty") (options "") (descr ""))
 )

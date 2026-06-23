@@ -632,7 +632,7 @@
         "uuid": "608e0f5f-bf55-4b10-9802-aab1430116aa"
       }
     ],
-    "used_designators": "U1-7,J1-7,LD1-2,R1-8,L1,D1-2,#PWR1-32,C1-21,ESP32_S1",
+    "used_designators": "U1-8,J1-9,LD1-2,R1-8,L1,D1-2,#PWR1-41,C1-26,ESP32_S1,Y1",
     "variants": []
   },
   "sheets": [
@@ -651,6 +651,10 @@
     [
       "3c686553-c654-4aca-9ea8-0296b328498f",
       "ZED-F9P-05B"
+    ],
+    [
+      "d8cc858a-b41d-4a13-a4a7-a7323237874f",
+      "USB2HS"
     ]
   ],
   "text_variables": {},

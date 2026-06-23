@@ -98,6 +98,52 @@
 		)
 	)
 	(sheet
+		(at 64.77 147.32)
+		(size 44.45 21.59)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(stroke
+			(width 0.1524)
+			(type solid)
+		)
+		(fill
+			(color 0 0 0 0)
+		)
+		(uuid "d8cc858a-b41d-4a13-a4a7-a7323237874f")
+		(property "Sheetname" "USB2HS"
+			(at 64.77 146.6084 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left bottom)
+			)
+		)
+		(property "Sheetfile" "usb2hs.kicad_sch"
+			(at 64.77 169.4946 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left top)
+			)
+		)
+		(instances
+			(project "rtk"
+				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa"
+					(page "5")
+				)
+			)
+		)
+	)
+	(sheet
 		(at 111.76 58.42)
 		(size 67.31 27.94)
 		(exclude_from_sim no)
