@@ -413,7 +413,7 @@
 				)
 			)
 		)
-		(property "Value" "100n"
+		(property "Value" "470n"
 			(at 0 1.68 0)
 			(layer "F.Fab")
 			(uuid "581d7c82-acba-4204-a789-308124290a5d")
@@ -3001,9 +3001,9 @@
 			(size 0.875 0.25)
 			(layers "F.Cu" "F.Mask" "F.Paste")
 			(roundrect_rratio 0.25)
-			(net "unconnected-(U8-CPEN-Pad3)")
+			(net "GND")
 			(pinfunction "CPEN_3")
-			(pintype "output+no_connect")
+			(pintype "output")
 			(uuid "13bd8b63-5f80-4cb8-ac15-491647603884")
 		)
 		(pad "4" smd roundrect
@@ -8126,7 +8126,7 @@
 				)
 			)
 		)
-		(property "Value" "100n"
+		(property "Value" "470n"
 			(at 0 1.68 0)
 			(layer "F.Fab")
 			(uuid "bc0bea31-6740-454c-b230-9175a6c44e22")
@@ -8256,6 +8256,258 @@
 		)
 		(embedded_fonts no)
 		(model "${KICAD10_3DMODEL_DIR}/Capacitor_SMD.3dshapes/C_0805_2012Metric.step"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
+	)
+	(footprint "Package_TO_SOT_SMD:SOT-143"
+		(layer "F.Cu")
+		(uuid "5799f35e-b35e-4d69-a860-79be4737c087")
+		(at 99.855 83.815)
+		(descr "SOT-143 https://www.nxp.com/docs/en/package-information/SOT143B.pdf")
+		(tags "SOT-143")
+		(property "Reference" "D3"
+			(at 0.02 -2.7 0)
+			(layer "F.SilkS")
+			(uuid "70bbd451-3275-4a12-b214-7a985d468d46")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Value" "PRTR5V0U2X"
+			(at -0.28 2.48 0)
+			(layer "F.Fab")
+			(uuid "1f44276f-87d9-4da9-b4f4-ded3216b46b3")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/PRTR5V0U2X.pdf"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "499e8ea0-007a-4a36-96b8-5d287a75fc5c")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Description" "Ultra low capacitance double rail-to-rail ESD protection diode, SOT-143"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "0c25263e-bb23-4e7d-a079-87017282e5da")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property ki_fp_filters "SOT?143*")
+		(path "/d8cc858a-b41d-4a13-a4a7-a7323237874f/324649c4-74f5-4a66-8dfb-936b016fd63d")
+		(sheetname "/USB2HS/")
+		(sheetfile "usb2hs.kicad_sch")
+		(units
+			(unit
+				(name "A")
+				(pins "2" "4" "1" "3")
+			)
+		)
+		(attr smd)
+		(duplicate_pad_numbers_are_jumpers no)
+		(fp_line
+			(start -0.65 1.56)
+			(end 0.65 1.56)
+			(stroke
+				(width 0.12)
+				(type solid)
+			)
+			(layer "F.SilkS")
+			(uuid "7a96d20c-b106-4ae3-ab75-7b3576c65540")
+		)
+		(fp_line
+			(start 0.65 -1.56)
+			(end -0.62 -1.56)
+			(stroke
+				(width 0.12)
+				(type solid)
+			)
+			(layer "F.SilkS")
+			(uuid "d78a390e-f2ca-46f4-8f98-2878d581de2e")
+		)
+		(fp_poly
+			(pts
+				(xy -1 -1.51) (xy -1.24 -1.84) (xy -0.76 -1.84) (xy -1 -1.51)
+			)
+			(stroke
+				(width 0.12)
+				(type solid)
+			)
+			(fill yes)
+			(layer "F.SilkS")
+			(uuid "73e15086-425e-4a19-a094-edfcf13ee59e")
+		)
+		(fp_line
+			(start -1.6 1.7)
+			(end -1.6 -1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "9bf5ebfb-264a-4e61-8f9a-b881fded5590")
+		)
+		(fp_line
+			(start -1.6 1.7)
+			(end 1.6 1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "30984f0d-2646-4054-a544-80b22641a357")
+		)
+		(fp_line
+			(start 1.6 -1.7)
+			(end -1.6 -1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "b0479ae6-7886-4f23-8c84-9def4207e8c2")
+		)
+		(fp_line
+			(start 1.6 -1.7)
+			(end 1.6 1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "b9ffac42-f9fc-4c4a-8391-e6fde90482d3")
+		)
+		(fp_line
+			(start -0.65 -0.95)
+			(end -0.15 -1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "7cd8bc11-9fd0-47df-ae37-5e5e4e20ea1f")
+		)
+		(fp_line
+			(start -0.65 1.45)
+			(end -0.65 -0.95)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "41bbda2c-add0-46ce-b046-c8c3bc8e3d90")
+		)
+		(fp_line
+			(start -0.15 -1.45)
+			(end 0.65 -1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "a47d844c-7d4d-4a40-b77a-c6dd377be7f2")
+		)
+		(fp_line
+			(start 0.65 -1.45)
+			(end 0.65 1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "d3a060e7-37f0-4e8e-a4f3-be7cb9e8ab76")
+		)
+		(fp_line
+			(start 0.65 1.45)
+			(end -0.65 1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "b41ec913-849c-4d70-bca6-fee4064c2894")
+		)
+		(fp_text user "${REFERENCE}"
+			(at 0 0 90)
+			(layer "F.Fab")
+			(uuid "9217840e-3485-469b-99eb-03709059802f")
+			(effects
+				(font
+					(size 0.5 0.5)
+					(thickness 0.075)
+				)
+			)
+		)
+		(pad "1" smd roundrect
+			(at -1 -0.75)
+			(size 0.7 1)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "GND")
+			(pinfunction "GND_1")
+			(pintype "passive")
+			(uuid "8769fd17-71b4-4d1d-b3bb-e7a2d912ef9b")
+		)
+		(pad "2" smd roundrect
+			(at -1 0.95)
+			(size 0.7 0.6)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "USB_D2_N")
+			(pinfunction "I/O1_2")
+			(pintype "passive")
+			(uuid "67968a20-a306-4fce-be61-5865b09dd949")
+		)
+		(pad "3" smd roundrect
+			(at 1 0.95)
+			(size 0.7 0.6)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "USB_D_N")
+			(pinfunction "I/O2_3")
+			(pintype "passive")
+			(uuid "ed4c3e76-b37b-40e6-84db-126a4023e25c")
+		)
+		(pad "4" smd roundrect
+			(at 1 -0.95)
+			(size 0.7 0.6)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "+3V3")
+			(pinfunction "VCC_4")
+			(pintype "passive")
+			(uuid "ec0aa41f-0ba4-4361-9bee-df52230d2723")
+		)
+		(embedded_fonts no)
+		(model "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-143.step"
 			(offset
 				(xyz 0 0 0)
 			)
@@ -10709,7 +10961,7 @@
 			(at -0.25 -3.4858)
 			(size 0.3048 1.143)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net "USB_D_P")
+			(net "USB_D2_P")
 			(pinfunction "DP1_A6")
 			(pintype "bidirectional")
 			(uuid "eb4c9d90-b2a1-4bbb-ab1f-a79065fe2f2e")
@@ -10718,7 +10970,7 @@
 			(at 0.25 -3.4858)
 			(size 0.3048 1.143)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net "USB_D_N")
+			(net "USB_D2_N")
 			(pinfunction "DN1_A7")
 			(pintype "bidirectional")
 			(uuid "bd06a64d-d935-4f65-ba95-8fed5b7ecdd0")
@@ -10763,7 +11015,7 @@
 			(at 0.750001 -3.4858)
 			(size 0.3048 1.143)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net "USB_D_P")
+			(net "USB_D2_P")
 			(pinfunction "DP2_B6")
 			(pintype "bidirectional")
 			(uuid "bb183afa-c239-476e-8ea3-1d291942ff1f")
@@ -10772,7 +11024,7 @@
 			(at -0.750001 -3.4858)
 			(size 0.3048 1.143)
 			(layers "F.Cu" "F.Mask" "F.Paste")
-			(net "USB_D_N")
+			(net "USB_D2_N")
 			(pinfunction "DN2_B7")
 			(pintype "bidirectional")
 			(uuid "47901c25-cd30-4e54-a579-dc78a58b3a19")
@@ -15307,6 +15559,258 @@
 		)
 		(embedded_fonts no)
 		(model "${KICAD10_3DMODEL_DIR}/Package_QFP.3dshapes/LQFP-100_14x14mm_P0.5mm.step"
+			(offset
+				(xyz 0 0 0)
+			)
+			(scale
+				(xyz 1 1 1)
+			)
+			(rotate
+				(xyz 0 0 0)
+			)
+		)
+	)
+	(footprint "Package_TO_SOT_SMD:SOT-143"
+		(layer "F.Cu")
+		(uuid "8d183731-955b-4fa5-a47d-5df9211c12dc")
+		(at 95.605 83.815)
+		(descr "SOT-143 https://www.nxp.com/docs/en/package-information/SOT143B.pdf")
+		(tags "SOT-143")
+		(property "Reference" "D2"
+			(at 0.02 -2.7 0)
+			(layer "F.SilkS")
+			(uuid "b883cd28-139f-4bbe-8d4d-9f122d0809e3")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Value" "PRTR5V0U2X"
+			(at -0.28 2.48 0)
+			(layer "F.Fab")
+			(uuid "f779d5d0-b680-4836-a7a1-5567258fed41")
+			(effects
+				(font
+					(size 1 1)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/PRTR5V0U2X.pdf"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "dda597ab-114a-442d-8bb9-44b221dc2d51")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property "Description" "Ultra low capacitance double rail-to-rail ESD protection diode, SOT-143"
+			(at 0 0 0)
+			(unlocked yes)
+			(layer "F.Fab")
+			(hide yes)
+			(uuid "59a9ac1e-9a0a-440c-820c-c37707832f37")
+			(effects
+				(font
+					(size 1.27 1.27)
+					(thickness 0.15)
+				)
+			)
+		)
+		(property ki_fp_filters "SOT?143*")
+		(path "/d8cc858a-b41d-4a13-a4a7-a7323237874f/02d976dd-4624-4615-89b1-8b800a6e5f28")
+		(sheetname "/USB2HS/")
+		(sheetfile "usb2hs.kicad_sch")
+		(units
+			(unit
+				(name "A")
+				(pins "2" "4" "1" "3")
+			)
+		)
+		(attr smd)
+		(duplicate_pad_numbers_are_jumpers no)
+		(fp_line
+			(start -0.65 1.56)
+			(end 0.65 1.56)
+			(stroke
+				(width 0.12)
+				(type solid)
+			)
+			(layer "F.SilkS")
+			(uuid "d03d896c-c560-492e-abbb-be6baed45cc9")
+		)
+		(fp_line
+			(start 0.65 -1.56)
+			(end -0.62 -1.56)
+			(stroke
+				(width 0.12)
+				(type solid)
+			)
+			(layer "F.SilkS")
+			(uuid "d76ea773-347a-45fc-bebe-32430c5e2d38")
+		)
+		(fp_poly
+			(pts
+				(xy -1 -1.51) (xy -1.24 -1.84) (xy -0.76 -1.84) (xy -1 -1.51)
+			)
+			(stroke
+				(width 0.12)
+				(type solid)
+			)
+			(fill yes)
+			(layer "F.SilkS")
+			(uuid "42e63cf3-4eb6-4e19-8c42-6502459060f9")
+		)
+		(fp_line
+			(start -1.6 1.7)
+			(end -1.6 -1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "5ac56aef-cd42-4855-8201-ed82e456fea8")
+		)
+		(fp_line
+			(start -1.6 1.7)
+			(end 1.6 1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "98231fd3-c1f4-436d-bbdc-4a604eabd36a")
+		)
+		(fp_line
+			(start 1.6 -1.7)
+			(end -1.6 -1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "ee0611c5-5e52-431b-bdec-02a63d5b9019")
+		)
+		(fp_line
+			(start 1.6 -1.7)
+			(end 1.6 1.7)
+			(stroke
+				(width 0.05)
+				(type solid)
+			)
+			(layer "F.CrtYd")
+			(uuid "4b1f91f6-09c3-4a23-a833-21436750a05f")
+		)
+		(fp_line
+			(start -0.65 -0.95)
+			(end -0.15 -1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "b1017a97-3309-45e0-a4eb-8b396de7b5f9")
+		)
+		(fp_line
+			(start -0.65 1.45)
+			(end -0.65 -0.95)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "325d3168-808b-4bf0-a478-268750e76100")
+		)
+		(fp_line
+			(start -0.15 -1.45)
+			(end 0.65 -1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "9a8a2b05-8827-4041-bcfd-2b4265152aba")
+		)
+		(fp_line
+			(start 0.65 -1.45)
+			(end 0.65 1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "49f3d74c-8207-4871-a347-c3ed43968222")
+		)
+		(fp_line
+			(start 0.65 1.45)
+			(end -0.65 1.45)
+			(stroke
+				(width 0.1)
+				(type solid)
+			)
+			(layer "F.Fab")
+			(uuid "626f4981-d40a-405b-bee5-c76d725e29ee")
+		)
+		(fp_text user "${REFERENCE}"
+			(at 0 0 90)
+			(layer "F.Fab")
+			(uuid "470eb954-eaaa-42fe-a0ba-81545bf8d034")
+			(effects
+				(font
+					(size 0.5 0.5)
+					(thickness 0.075)
+				)
+			)
+		)
+		(pad "1" smd roundrect
+			(at -1 -0.75)
+			(size 0.7 1)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "GND")
+			(pinfunction "GND_1")
+			(pintype "passive")
+			(uuid "4fe381d4-8d41-414b-bb0e-06e53531e571")
+		)
+		(pad "2" smd roundrect
+			(at -1 0.95)
+			(size 0.7 0.6)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "USB_D2_P")
+			(pinfunction "I/O1_2")
+			(pintype "passive")
+			(uuid "12cae212-d26d-4c87-b99d-9f116b916025")
+		)
+		(pad "3" smd roundrect
+			(at 1 0.95)
+			(size 0.7 0.6)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "USB_D_P")
+			(pinfunction "I/O2_3")
+			(pintype "passive")
+			(uuid "7eec8166-2e66-479f-8f84-635bbd65c97b")
+		)
+		(pad "4" smd roundrect
+			(at 1 -0.95)
+			(size 0.7 0.6)
+			(layers "F.Cu" "F.Mask" "F.Paste")
+			(roundrect_rratio 0.25)
+			(net "+3V3")
+			(pinfunction "VCC_4")
+			(pintype "passive")
+			(uuid "25230f29-20b6-45a9-a7af-926cf66a2772")
+		)
+		(embedded_fonts no)
+		(model "${KICAD10_3DMODEL_DIR}/Package_TO_SOT_SMD.3dshapes/SOT-143.step"
 			(offset
 				(xyz 0 0 0)
 			)

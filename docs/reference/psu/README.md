@@ -25,6 +25,7 @@
 | J6 | [MEM2052-00-195-00-A](https://gct.co/files/specs/mem2052-spec.pdf) | [DigiKey](https://www.digikey.co.uk/en/products/detail/gct/MEM2052-00-195-00-A/18091687?s=N4IgTCBcDaILIFE5gAwFYwFoUswRgE41tcBBEAXQF8g) | SD card Mini |
 | PHY | [USB3300-EZK-TR](https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/DataSheets/00001783C.pdf) | [DigiKey](https://www.digikey.co.uk/en/products/detail/microchip-technology/USB3300-EZK-TR/3873181) | PHU USB3300-EZK-TR |
 | TCXO | [ASTX-H11-16.000MHZ-T](https://abracon.com/Oscillators/ASTX-H11.pdf) | [DigiKey](https://www.digikey.co.uk/en/products/detail/abracon-llc/ASTX-H11-16-000MHZ-T/3641095) | TCXO |
+| D_ESD | PRTR5V0U2X,215 | DigiKey/Mouser — search PRTR5V0U2X | USB D+/D- dual-line ESD TVS, SOT-363, Nexperia. Clamp 5V, fits between USB-C connector and USB3300 DP/DM pins |
 
 
 
