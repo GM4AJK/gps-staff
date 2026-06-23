@@ -38,6 +38,7 @@ System and firmware architecture documentation, with PlantUML diagrams.
 | [um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf](datasheets/um1724-stm32-nucleo64-boards-mb1136-stmicroelectronics-4.pdf) | STMicroelectronics UM1724 -- STM32 Nucleo-64 boards (MB1136) user manual. Reference for power supply options (Section 7.5), JP5/JP6 (IDD) jumper configuration, and connector pinouts for the Nucleo-F446RE/G491RE bench boards |
 | [Ofcom-IR-2030.pdf](datasheets/Ofcom-IR-2030.pdf) | Ofcom UK Interface Requirement (IR) 2030 -- licence-exempt Short Range Devices (SRDs). Reference for the 433/434MHz power/duty-cycle limits (Table 3.1, IR2030/1/10-12) used to confirm the LoRa link operates under the GM4AJK amateur licence rather than the SRD exemption (see `sdd/README.md`) |
 | [um2397-stm32g4-nucleo32-board-mb1430-stmicroelectronics-5.pdf](datasheets/um2397-stm32g4-nucleo32-board-mb1430-stmicroelectronics-5.pdf) | STMicroelectronics UM2397 -- STM32 Nucleo-32 boards (MB1430) user manual. Reference for power supply, jumper configuration, and connector pinouts for the Nucleo-G431KB Fake-F9P boards |
+| [USB3300-EZK-TR.pdf](datasheets/USB3300-EZK-TR.pdf) | Microchip USB3300 Hi-Speed USB ULPI PHY datasheet -- the external PHY specced for the rover USB OTG HS interface (480 Mbps MSC + CDC composite). QFN-32 (5x5mm). [DigiKey product page](https://www.digikey.co.uk/en/products/detail/microchip-technology/USB3300-EZK-TR/2355968) |
 
 ## BNO085 (`datasheets/bno085/`)
 
