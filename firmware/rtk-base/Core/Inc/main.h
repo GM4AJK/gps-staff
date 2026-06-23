@@ -127,6 +127,10 @@ void Error_Handler(void);
 #define BQ24975_EN1_GPIO_Port GPIOD
 #define BQ24975_EN2_Pin GPIO_PIN_4
 #define BQ24975_EN2_GPIO_Port GPIOD
+#define PD5_LD3_Pin GPIO_PIN_5
+#define PD5_LD3_GPIO_Port GPIOD
+#define PD6_LD4_Pin GPIO_PIN_6
+#define PD6_LD4_GPIO_Port GPIOD
 #define SYSOFF_Pin GPIO_PIN_7
 #define SYSOFF_GPIO_Port GPIOD
 #define SX1262_SPI2_DIO2_Pin GPIO_PIN_6

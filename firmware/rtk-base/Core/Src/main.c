@@ -532,7 +532,8 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(SX1262_SPI2_RST_GPIO_Port, SX1262_SPI2_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, BQ24975_nCE_Pin|BQ24975_EN2_Pin|SYSOFF_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, BQ24975_nCE_Pin|BQ24975_EN2_Pin|PD5_LD3_Pin|PD6_LD4_Pin
+                          |SYSOFF_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(BQ24975_EN1_GPIO_Port, BQ24975_EN1_Pin, GPIO_PIN_SET);
@@ -611,6 +612,13 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : BQ24975_nCE_Pin BQ24975_EN1_Pin BQ24975_EN2_Pin SYSOFF_Pin */
   GPIO_InitStruct.Pin = BQ24975_nCE_Pin|BQ24975_EN1_Pin|BQ24975_EN2_Pin|SYSOFF_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : PD5_LD3_Pin PD6_LD4_Pin */
+  GPIO_InitStruct.Pin = PD5_LD3_Pin|PD6_LD4_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
