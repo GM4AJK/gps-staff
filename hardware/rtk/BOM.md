@@ -28,11 +28,11 @@ Key:
 | C13 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | VDD decoupling |
 | C14 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | VDD decoupling |
 | C15 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | VDD decoupling |
-| C16 | 10u | `C_Elec_8x10.2` | stm32f765vit | ⚠ **Through-hole electrolytic footprint** — 8mm dia × 10.2mm height. Should this be SMD? |
+| C16 | 10u | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | **T529P106M010AAE200** — Kemet KO-CAP polymer tant, 10µF 10V 0805, 200mΩ. Polarised symbol (C_Polarized_Small). ✓ |
 | C17 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | VDD decoupling |
-| C18 | 10u | `C_Elec_8x10.2` | stm32f765vit | ⚠ **Through-hole electrolytic footprint** — same issue as C16 |
+| C18 | 10u | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | **T529P106M010AAE200** — same as C16 ✓ |
 | C19 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | VDD decoupling |
-| C20 | 10u | `C_Elec_8x10.2` | stm32f765vit | ⚠ **Through-hole electrolytic footprint** — same issue as C16 |
+| C20 | 10u | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | **T529P106M010AAE200** — same as C16 ✓ |
 | C21 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | stm32f765vit | VDD decoupling |
 | C22 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | usb2hs | USB3300 decoupling |
 | C23 | 100n | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | usb2hs | USB3300 decoupling |
@@ -153,7 +153,7 @@ Key:
 | # | Ref | Issue |
 |---|-----|-------|
 | 1 | D2, D3 | **PRTR5V0U2X footprint is SOT-143 (4-pin) — must be SOT-363 (6-pin)** |
-| 2 | C16, C18, C20 | **Through-hole electrolytic footprint (C_Elec_8x10.2)** — replace with SMD if this is an SMD board |
+| 2 | C16, C18, C20 | ~~Through-hole electrolytic footprint~~ **Fixed** — T529P106M010AAE200 polymer tant, 0805 HandSolder ✓ |
 | 3 | U4 | **Symbol says ZED-F9H-01B — should be ZED-F9P-05B** |
 | 4 | J4 | **No footprint assigned** |
 | 5 | R2, R3 | Value is 1K5 — if these are USB-C CC pull-downs they should be 5.1kΩ (R11/R12 are 5k1). Check what R2/R3 are actually for |
