@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "a48cd25d-3e6e-4470-b43a-1ef74e4857de")
+	(uuid "a1bba59c-433a-48e7-b3ac-422b5d23a396")
 	(paper "A4")
 	(lib_symbols
 		(symbol "ASTX-H11-16.000MHZ-T:ASTX-H11-16.000MHZ-T"
@@ -13238,7 +13238,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_Elec_8x10.2"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 			(at 269.24 133.35 0)
 			(hide yes)
 			(show_name no)
@@ -16119,7 +16119,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_Elec_8x10.2"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 			(at 269.24 87.63 0)
 			(hide yes)
 			(show_name no)
@@ -17233,7 +17233,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_Elec_8x10.2"
+		(property "Footprint" "Capacitor_SMD:C_0805_2012Metric_Pad1.18x1.45mm_HandSolder"
 			(at 269.24 36.83 0)
 			(hide yes)
 			(show_name no)

@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "8a491426-d4f0-4385-a580-25682ab85b6c")
+	(uuid "18cbe1d1-326f-4c52-8b49-a960748e8b10")
 	(paper "A4")
 	(lib_symbols
 		(symbol "Battery_Management:BQ24075RGT"
@@ -7476,7 +7476,7 @@
 				(justify right)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
 			(at 251.46 55.88 0)
 			(hide yes)
 			(show_name no)
