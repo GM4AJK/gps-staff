@@ -75,6 +75,8 @@ Key:
 | R19 | 10k | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | zed-f9p-05b | ZED-F9P RESET_N pull-up |
 | R20 | 1k5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | stm32f765vit | LD3 pull-up (PD5) |
 | R21 | 1k5 | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | stm32f765vit | LD4 pull-up (PD6) |
+| R22 | 100k | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | VBAT divider top — VBAT to VBAT_2 |
+| R23 | 100k | `R_0805_2012Metric_Pad1.20x1.40mm_HandSolder` | power | VBAT divider bottom — VBAT_2 to GND → PA1 ADC1_IN1 |
 
 ---
 
