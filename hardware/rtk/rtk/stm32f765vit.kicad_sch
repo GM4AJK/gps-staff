@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "6ad375eb-3e1b-4be4-8d5a-dbd9c53e0241")
+	(uuid "7b0a8116-17eb-4f16-925b-b6c3469f0609")
 	(paper "A4")
 	(lib_symbols
 		(symbol "ASTX-H11-16.000MHZ-T:ASTX-H11-16.000MHZ-T"
@@ -7112,6 +7112,16 @@
 	)
 	(wire
 		(pts
+			(xy 153.67 43.18) (xy 163.83 43.18)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "13b5db1a-7dff-4a8e-9b44-846cf4087717")
+	)
+	(wire
+		(pts
 			(xy 41.91 177.8) (xy 52.07 177.8)
 		)
 		(stroke
@@ -11817,6 +11827,30 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+			)
+		)
+	)
+	(global_label "VBAT_2"
+		(shape input)
+		(at 163.83 43.18 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "d748d137-d08d-4980-94fc-63f16ea7f43d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 173.4071 43.18 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 			)
 		)
 	)

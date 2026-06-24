@@ -71,6 +71,8 @@ void Error_Handler(void);
 #define SDMMC_CD_GPIO_Port GPIOC
 #define USB3300_RST_Pin GPIO_PIN_1
 #define USB3300_RST_GPIO_Port GPIOC
+#define VBATT_IN_Pin GPIO_PIN_1
+#define VBATT_IN_GPIO_Port GPIOA
 #define F9P_ANT_DETECT_Pin GPIO_PIN_4
 #define F9P_ANT_DETECT_GPIO_Port GPIOC
 #define F9P_ANT_OFF_Pin GPIO_PIN_5
