@@ -73,6 +73,10 @@ void Error_Handler(void);
 #define USB3300_RST_GPIO_Port GPIOC
 #define VBATT_IN_Pin GPIO_PIN_1
 #define VBATT_IN_GPIO_Port GPIOA
+#define F9P_GEOFENCH_STAT_Pin GPIO_PIN_6
+#define F9P_GEOFENCH_STAT_GPIO_Port GPIOA
+#define F9P_RTK_STAT_Pin GPIO_PIN_7
+#define F9P_RTK_STAT_GPIO_Port GPIOA
 #define F9P_ANT_DETECT_Pin GPIO_PIN_4
 #define F9P_ANT_DETECT_GPIO_Port GPIOC
 #define F9P_ANT_OFF_Pin GPIO_PIN_5

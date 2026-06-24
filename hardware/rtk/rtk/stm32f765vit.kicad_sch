@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "7b0a8116-17eb-4f16-925b-b6c3469f0609")
+	(uuid "135b67f9-3d5b-44af-821e-9306e4c0f88a")
 	(paper "A4")
 	(lib_symbols
 		(symbol "ASTX-H11-16.000MHZ-T:ASTX-H11-16.000MHZ-T"
@@ -7262,6 +7262,16 @@
 	)
 	(wire
 		(pts
+			(xy 153.67 55.88) (xy 163.83 55.88)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1f985f5d-3fc0-47c1-963b-fbdeab53e9a4")
+	)
+	(wire
+		(pts
 			(xy 248.92 140.97) (xy 251.46 140.97)
 		)
 		(stroke
@@ -7269,6 +7279,16 @@
 			(type default)
 		)
 		(uuid "201987c3-3e26-4049-8dda-f30c78207252")
+	)
+	(wire
+		(pts
+			(xy 153.67 58.42) (xy 163.83 58.42)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "20403ce9-4027-4652-8eff-1f7cbfd5e77c")
 	)
 	(wire
 		(pts
@@ -9910,6 +9930,30 @@
 			)
 		)
 	)
+	(global_label "F9P_RTK_STAT"
+		(shape input)
+		(at 163.83 58.42 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "1f2c02f2-adcd-4d36-9be2-582e783d96ae")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 180.0594 58.42 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+	)
 	(global_label "I2C4_SDA"
 		(shape input)
 		(at 50.8 35.56 0)
@@ -10339,6 +10383,30 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+			)
+		)
+	)
+	(global_label "F9P_GEOFENCE_STAT"
+		(shape input)
+		(at 163.83 55.88 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "4d80ef9a-10b9-4db1-869f-3470db43dd34")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 186.2884 55.88 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 			)
 		)
 	)

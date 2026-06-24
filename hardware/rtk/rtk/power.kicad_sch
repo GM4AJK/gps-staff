@@ -2,7 +2,7 @@
 	(version 20260306)
 	(generator "eeschema")
 	(generator_version "10.0")
-	(uuid "574e2b94-7a40-4a7b-80da-b82be20a3d17")
+	(uuid "36b354f6-ce27-4b4d-ab75-4cfaa8d587ea")
 	(paper "A4")
 	(lib_symbols
 		(symbol "Battery_Management:BQ24075RGT"
@@ -3111,6 +3111,12 @@
 		(uuid "24e0c19e-80dd-4a7b-8d71-1630f111d094")
 	)
 	(junction
+		(at 204.47 53.34)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "29ad9502-4bf1-48cf-9b05-72eb8998bcda")
+	)
+	(junction
 		(at 226.06 63.5)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -3347,6 +3353,16 @@
 			(type default)
 		)
 		(uuid "00c750cb-d27d-4952-a106-ad90973d8e91")
+	)
+	(wire
+		(pts
+			(xy 204.47 53.34) (xy 229.87 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0341e1b6-c851-40e1-927f-fe847c21380b")
 	)
 	(wire
 		(pts
@@ -3830,7 +3846,17 @@
 	)
 	(wire
 		(pts
-			(xy 187.96 53.34) (xy 229.87 53.34)
+			(xy 204.47 50.8) (xy 208.28 50.8)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5b26ad38-01bb-42d7-a29c-da3003853f50")
+	)
+	(wire
+		(pts
+			(xy 187.96 53.34) (xy 204.47 53.34)
 		)
 		(stroke
 			(width 0)
@@ -4257,6 +4283,16 @@
 			(type default)
 		)
 		(uuid "92600ee5-be1a-46c4-bdfd-2391f93a7576")
+	)
+	(wire
+		(pts
+			(xy 204.47 50.8) (xy 204.47 53.34)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "938e6ef6-bd5e-458f-a0f4-24f75ee2b48e")
 	)
 	(wire
 		(pts
@@ -5027,6 +5063,30 @@
 			(justify right bottom)
 		)
 		(uuid "e55e4f1d-c68b-4dde-baec-d04b115e853a")
+	)
+	(global_label "VBSW"
+		(shape input)
+		(at 208.28 50.8 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "00a00b2d-e10f-4064-881b-e441edcb7566")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 216.2847 50.8 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
 	)
 	(global_label "VBAT_2"
 		(shape input)

@@ -620,6 +620,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(USB3300_RST_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : F9P_GEOFENCH_STAT_Pin F9P_RTK_STAT_Pin */
+  GPIO_InitStruct.Pin = F9P_GEOFENCH_STAT_Pin|F9P_RTK_STAT_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pin : F9P_ANT_DETECT_Pin */
   GPIO_InitStruct.Pin = F9P_ANT_DETECT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
