@@ -3399,10 +3399,6 @@
 		(uuid "ff2f5ca7-09a6-4f91-a69f-1a6569c7d681")
 	)
 	(no_connect
-		(at 160.02 118.11)
-		(uuid "09b9cf22-947c-4f8f-9813-21afd58c8c9c")
-	)
-	(no_connect
 		(at 160.02 69.85)
 		(uuid "1287d7df-8d43-43ec-9d74-2b443dfb86ae")
 	)
@@ -3417,10 +3413,6 @@
 	(no_connect
 		(at 160.02 82.55)
 		(uuid "994a68ae-2fb2-4d45-a41e-2130695201bd")
-	)
-	(no_connect
-		(at 160.02 115.57)
-		(uuid "9abbb5c1-db12-4b7d-9164-47f7124e5b03")
 	)
 	(no_connect
 		(at 160.02 85.09)
@@ -4718,6 +4710,16 @@
 	)
 	(wire
 		(pts
+			(xy 160.02 115.57) (xy 173.99 115.57)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b3f8fdeb-e78c-408b-9892-9c13c8794b6b")
+	)
+	(wire
+		(pts
 			(xy 280.67 80.01) (xy 280.67 82.55)
 		)
 		(stroke
@@ -4735,6 +4737,16 @@
 			(type default)
 		)
 		(uuid "bae28c50-ea8c-4c71-a4a8-b22f8f0c9e86")
+	)
+	(wire
+		(pts
+			(xy 160.02 118.11) (xy 173.99 118.11)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "bb739e7b-a988-48e3-a167-8343b20d7060")
 	)
 	(wire
 		(pts
@@ -5076,7 +5088,7 @@
 		)
 		(uuid "693ba426-6a7c-45de-8c01-1da294b723b8")
 	)
-	(global_label "F9P_RX"
+	(global_label "UART5_RX_F9P_TXD"
 		(shape input)
 		(at 176.53 77.47 0)
 		(fields_autoplaced yes)
@@ -5088,7 +5100,7 @@
 		)
 		(uuid "0732fc2d-cf0f-49a1-8e0f-2b76d6511613")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 186.5304 77.47 0)
+			(at 197.7789 77.47 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -5145,6 +5157,30 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
+			)
+		)
+	)
+	(global_label "UART7_RX_F9P_TXD2"
+		(shape input)
+		(at 173.99 115.57 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "425df5c2-65d3-4c1d-8e3f-d0793d53155d")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 196.4484 115.57 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
 			)
 		)
 	)
@@ -5244,6 +5280,30 @@
 			)
 		)
 	)
+	(global_label "UART7_TX_F9P_RXD2"
+		(shape input)
+		(at 173.99 118.11 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "62e90bf2-ff24-40de-a49b-75a5f8ac54f5")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 196.4484 118.11 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+	)
 	(global_label "F9P_RTK_STAT"
 		(shape input)
 		(at 72.39 102.87 180)
@@ -5316,7 +5376,7 @@
 			)
 		)
 	)
-	(global_label "F9P_TX"
+	(global_label "UART5_TX_F9P_RXD"
 		(shape input)
 		(at 176.53 74.93 0)
 		(fields_autoplaced yes)
@@ -5328,7 +5388,7 @@
 		)
 		(uuid "c7816d9d-a065-4ae0-a02b-bf1843835361")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 186.228 74.93 0)
+			(at 197.7789 74.93 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
