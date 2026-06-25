@@ -94,27 +94,26 @@ udevadm info /dev/ttyACM0 | grep -E 'SERIAL|VENDOR|MODEL|PRODUCT'
 
 ### Known Devices
 
-| Symlink (TODO) | Serial Number      | Notes              |
-|----------------|--------------------|--------------------|
-| TBD            | 3C:0F:02:E5:46:F4  | First device enumerated |
-| TBD            |                    |                    |
-| TBD            |                    |                    |
-| TBD            |                    |                    |
+| Symlink              | Serial Number      | Notes                 | COM Port | WSL dev    |
+|----------------------|--------------------|-----------------------|----------|------------|
+| `/dev/esp32_base`    | 3C:0F:02:E5:46:F4  | BLE peripheral (base) | COM6     | ttyACM1    |
+| `/dev/esp32_rover`   | 3C:0F:02:E5:50:FC  | BLE central (rover)   | COM12    | ttyACM0    |
+| TBD                  |                    |                       |          |            |
+| TBD                  |                    |                       |          |            |
 
 ---
 
-## TODO: Persistent Symlinks via udev
+## Persistent Symlinks via udev
 
-Once all ESP32-S3 devices have been enumerated (plug in one at a time, run `udevadm info`), create `/etc/udev/rules.d/99-esp32.rules` with one line per device:
+Symlinks are configured in `/etc/udev/rules.d/99-esp32.rules`. Current content:
 
 ```
-SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="<SERIAL>", SYMLINK+="esp32_<name>"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="Espressif_USB_JTAG_serial_debug_unit_3C:0F:02:E5:46:F4", SYMLINK+="esp32_base"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="Espressif_USB_JTAG_serial_debug_unit_3C:0F:02:E5:50:FC", SYMLINK+="esp32_rover"
 ```
 
-Then reload:
+To add a new device: enumerate it with `udevadm info /dev/ttyACMx`, then append a line and reload:
 
 ```bash
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
-
-After this, `/dev/esp32_<name>` will always point to the correct device regardless of enumeration order.
