@@ -96,10 +96,10 @@ udevadm info /dev/ttyACM0 | grep -E 'SERIAL|VENDOR|MODEL|PRODUCT'
 
 | Symlink              | Serial Number      | Notes                 | COM Port | WSL dev    |
 |----------------------|--------------------|-----------------------|----------|------------|
-| `/dev/esp32_base`    | 3C:0F:02:E5:46:F4  | BLE peripheral (base) | COM6     | ttyACM1    |
-| `/dev/esp32_rover`   | 3C:0F:02:E5:50:FC  | BLE central (rover)   | COM12    | ttyACM0    |
-| TBD                  |                    |                       |          |            |
-| TBD                  |                    |                       |          |            |
+| `/dev/esp32_base`     | 3C:0F:02:E5:46:F4  | ESP32-S3 Zero (base)     | COM6  | ttyACM1 |
+| `/dev/esp32_rover`    | 3C:0F:02:E5:50:FC  | ESP32-S3 Zero (rover)    | COM12 | ttyACM0 |
+| `/dev/esp32_handheld` | 5B79023040         | ESP32-S3 4.3" (handheld) | TBD   | ttyACM2 |
+| TBD                   |                    |                          |       |         |
 
 ---
 
@@ -110,7 +110,15 @@ Symlinks are configured in `/etc/udev/rules.d/99-esp32.rules`. Current content:
 ```
 SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="Espressif_USB_JTAG_serial_debug_unit_3C:0F:02:E5:46:F4", SYMLINK+="esp32_base"
 SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{serial}=="Espressif_USB_JTAG_serial_debug_unit_3C:0F:02:E5:50:FC", SYMLINK+="esp32_rover"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3", ATTRS{serial}=="5B79023040", SYMLINK+="esp32_handheld"
 ```
+
+Note: the handheld has two USB-C ports:
+- **UART** — connects to CH343P (VID 1a86, PID 55d3); use this for flashing and console
+- **USB** — native ESP32-S3 USB OTG (GPIO19/20); not enumerated until firmware enables it
+
+Console goes through UART0 → CH343P, so use `CONFIG_ESP_CONSOLE_UART_DEFAULT`
+(not `USB_SERIAL_JTAG`) for handheld firmware. COM13 on Windows.
 
 To add a new device: enumerate it with `udevadm info /dev/ttyACMx`, then append a line and reload:
 
