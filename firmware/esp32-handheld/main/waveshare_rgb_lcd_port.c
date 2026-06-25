@@ -11,18 +11,34 @@ IRAM_ATTR static bool rgb_lcd_on_vsync_event(esp_lcd_panel_handle_t panel, const
 }
 
 #if CONFIG_EXAMPLE_LCD_TOUCH_CONTROLLER_GT911
+static i2c_master_bus_handle_t i2c_bus_handle = NULL;
+
 static esp_err_t i2c_master_init(void)
 {
-    i2c_config_t i2c_conf = {
-        .mode = I2C_MODE_MASTER,
-        .sda_io_num = I2C_MASTER_SDA_IO,
+    i2c_master_bus_config_t bus_cfg = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = I2C_MASTER_NUM,
         .scl_io_num = I2C_MASTER_SCL_IO,
-        .sda_pullup_en = GPIO_PULLUP_ENABLE,
-        .scl_pullup_en = GPIO_PULLUP_ENABLE,
-        .master.clk_speed = I2C_MASTER_FREQ_HZ,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
     };
-    i2c_param_config(I2C_MASTER_NUM, &i2c_conf);
-    return i2c_driver_install(I2C_MASTER_NUM, i2c_conf.mode, 0, 0, 0);
+    return i2c_new_master_bus(&bus_cfg, &i2c_bus_handle);
+}
+
+static esp_err_t i2c_write_byte(uint8_t dev_addr, uint8_t val)
+{
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = dev_addr,
+        .scl_speed_hz = I2C_MASTER_FREQ_HZ,
+    };
+    i2c_master_dev_handle_t dev_handle;
+    esp_err_t ret = i2c_master_bus_add_device(i2c_bus_handle, &dev_cfg, &dev_handle);
+    if (ret != ESP_OK) return ret;
+    ret = i2c_master_transmit(dev_handle, &val, 1, I2C_MASTER_TIMEOUT_MS);
+    i2c_master_bus_rm_device(dev_handle);
+    return ret;
 }
 
 static void gpio_init(void)
@@ -37,16 +53,12 @@ static void gpio_init(void)
 
 static void waveshare_esp32_s3_touch_reset(void)
 {
-    uint8_t write_buf = 0x01;
-    i2c_master_write_to_device(I2C_MASTER_NUM, 0x24, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-
-    write_buf = 0x2C;
-    i2c_master_write_to_device(I2C_MASTER_NUM, 0x38, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    i2c_write_byte(0x24, 0x01);
+    i2c_write_byte(0x38, 0x2C);
     esp_rom_delay_us(100 * 1000);
     gpio_set_level(GPIO_INPUT_IO_4, 0);
     esp_rom_delay_us(100 * 1000);
-    write_buf = 0x2E;
-    i2c_master_write_to_device(I2C_MASTER_NUM, 0x38, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    i2c_write_byte(0x38, 0x2E);
     esp_rom_delay_us(200 * 1000);
 }
 #endif /* CONFIG_EXAMPLE_LCD_TOUCH_CONTROLLER_GT911 */
@@ -72,11 +84,8 @@ esp_err_t waveshare_esp32_s3_rgb_lcd_init(void)
             },
         },
         .data_width = EXAMPLE_RGB_DATA_WIDTH,
-        .bits_per_pixel = EXAMPLE_RGB_BIT_PER_PIXEL,
         .num_fbs = LVGL_PORT_LCD_RGB_BUFFER_NUMS,
         .bounce_buffer_size_px = EXAMPLE_RGB_BOUNCE_BUFFER_SIZE,
-        .sram_trans_align = 4,
-        .psram_trans_align = 64,
         .hsync_gpio_num = EXAMPLE_LCD_IO_RGB_HSYNC,
         .vsync_gpio_num = EXAMPLE_LCD_IO_RGB_VSYNC,
         .de_gpio_num = EXAMPLE_LCD_IO_RGB_DE,
@@ -121,7 +130,7 @@ esp_err_t waveshare_esp32_s3_rgb_lcd_init(void)
 
     esp_lcd_panel_io_handle_t tp_io_handle = NULL;
     const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
-    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c((esp_lcd_i2c_bus_handle_t)I2C_MASTER_NUM, &tp_io_config, &tp_io_handle));
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(i2c_bus_handle, &tp_io_config, &tp_io_handle));
 
     ESP_LOGI(TAG, "Initialize touch controller GT911");
     const esp_lcd_touch_config_t tp_cfg = {
@@ -138,11 +147,7 @@ esp_err_t waveshare_esp32_s3_rgb_lcd_init(void)
     ESP_ERROR_CHECK(lvgl_port_init(panel_handle, tp_handle));
 
     esp_lcd_rgb_panel_event_callbacks_t cbs = {
-#if EXAMPLE_RGB_BOUNCE_BUFFER_SIZE > 0
-        .on_bounce_frame_finish = rgb_lcd_on_vsync_event,
-#else
         .on_vsync = rgb_lcd_on_vsync_event,
-#endif
     };
     ESP_ERROR_CHECK(esp_lcd_rgb_panel_register_event_callbacks(panel_handle, &cbs, NULL));
 
@@ -151,18 +156,14 @@ esp_err_t waveshare_esp32_s3_rgb_lcd_init(void)
 
 esp_err_t wavesahre_rgb_lcd_bl_on(void)
 {
-    uint8_t write_buf = 0x01;
-    i2c_master_write_to_device(I2C_MASTER_NUM, 0x24, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-    write_buf = 0x1E;
-    i2c_master_write_to_device(I2C_MASTER_NUM, 0x38, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    i2c_write_byte(0x24, 0x01);
+    i2c_write_byte(0x38, 0x1E);
     return ESP_OK;
 }
 
 esp_err_t wavesahre_rgb_lcd_bl_off(void)
 {
-    uint8_t write_buf = 0x01;
-    i2c_master_write_to_device(I2C_MASTER_NUM, 0x24, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-    write_buf = 0x1A;
-    i2c_master_write_to_device(I2C_MASTER_NUM, 0x38, &write_buf, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    i2c_write_byte(0x24, 0x01);
+    i2c_write_byte(0x38, 0x1A);
     return ESP_OK;
 }
