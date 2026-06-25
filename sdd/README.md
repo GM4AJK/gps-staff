@@ -194,12 +194,11 @@ The base station has two operating modes -- same hardware and firmware in both:
 - Package: LSM6DSRX LGA-14 (2.5x3x0.83mm), LIS3MDL LGA-12 (2x2x1mm) -- both SMD, hand-solderable with hot air
 - Supply: both chips VDD/VDDIO 1.71-3.6V -- 3.3V rail compatible
 - Current draw: ~1mA combined typical -- well below BNO085's 6.1mA, negligible in power budget
-- Interface: **I2C**, sharing I2C1 with the display and EEPROM
+- Interface: **I2C4** (PD12 SCL, PD13 SDA), shared with the display and EEPROM
   - LSM6DSRX address: 0x6A (SDO/SA0 low) or 0x6B (high) -- same SAD scheme as the LSM6DSOX
   - LIS3MDL address: 0x1C (SDO/SA1 low) or 0x1E (high)
   - No conflicts with SSD1309 display (0x3C/0x3D) or AT24C04 EEPROM (0x50-0x57)
-  - Cooperative single-threaded `app_loop()` architecture -- no bus contention risk from sharing I2C1 with the display/EEPROM
-  - Dedicated I2C bus (STM32F765 has multiple I2C peripherals) remains an option to revisit at PCB schematic stage if it simplifies routing
+  - Cooperative single-threaded `app_loop()` architecture -- no bus contention risk from sharing I2C4 with the display/EEPROM
 - Pin-compatible with the LSM6DSOX (same LGA-14 package/pinout and register map), chosen after the LSM6DSOXTR went out of stock -- only difference of note is WHO_AM_I (0x6B for LSM6DSRX vs 0x6C for LSM6DSOX). The driver should accept either value, since the development breakout below uses the LSM6DSOX chip while the production BOM uses LSM6DSRX
 - Development: Adafruit LSM6DSOX + LIS3MDL breakout (STEMMA QT/Qwiic, product #4517) -- https://www.adafruit.com/product/4517
 - Outputs used:
@@ -289,70 +288,23 @@ The handheld is a separate battery-powered device that connects to the rover ove
 
 ### STM32F765 Backup Domain (VBAT)
 
-- STM32F765 VBAT pin powers the backup domain independently of main VDD
-- Backup domain preserved when main power is off, as long as VBAT has supply
-- **VBAT supply**: 3.3V rail via Schottky diode -- LiPo always installed in enclosure so backup domain always retained
-  ```
-  3.3V ---[Schottky]--- VBAT ---[100nF]--- GND
-  ```
-- Backup domain current: ~1-2uA -- negligible drain on LiPo
-- No coin cell required -- LiPo provides continuous VBAT when installed
+- VBAT wired directly to 3.3V rail — no Schottky, no coin cell
+- Backup domain (RTC, backup registers, backup SRAM) available while system is powered; lost on power-off
+- Persistent config moved to SD card file, so backup domain retention across power cycles is not needed
 
-**Backup Registers:**
-- 32 x 32-bit registers = 128 bytes -- small flags, timestamps, last-known values
+### Configuration Storage -- SD Card
 
-**Backup SRAM: 4KB**
-- Preserved across power cycles as long as LiPo installed
-- Requires: enable backup SRAM clock + disable write protection in firmware
-- Planned usage:
-  - Datum point coordinates (lat, lon, height = ~24 bytes)
-  - Survey session state (points recorded, session timestamp)
-  - LIS3MDL magnetometer calibration state (hard/soft iron coefficients)
-  - Last known GNSS position (aids F9P convergence on next power-on)
-  - Mirror of critical EEPROM config for fast boot access
-
-### Configuration Storage -- I2C EEPROM
-
-- **AT24C04 or M24C04** -- 4Kbit (512 bytes) I2C EEPROM
-- Shares I2C bus with SSD1309 display -- no additional wiring (IMU is on SPI, not I2C)
-- I2C address: 0x50-0x57 (set via A0/A1/A2 pins) -- no conflict with display (0x3C)
-- Supply: 1.8-5.5V -- 3.3V rail compatible
-- Write endurance: ~1,000,000 cycles -- effectively unlimited for config use
-- Byte-level write, no sector erase, no interrupt management required
-- Package: SOT-23-5 or SOIC-8 -- standard hand-solderable SMD
-- Driver: trivial I2C byte read/write, no library dependency
-
-**Config data stored (~50-100 bytes):**
-- Buzzer enable (1 byte)
-- Pole height in mm (4 bytes, float -- feeds lean correction and height subtraction; prompted at every boot)
-- LoRa band preference: ISM or amateur (1 byte)
-- Logging preferences (1 byte)
-- Reserved/future expansion
+- EEPROM removed from design — config defaults stored in a file on the SD card
+- Config data (pole height, LoRa band preference, logging preferences, calibration coefficients) read at boot from SD
+- No additional hardware required — SD card already present for data logging
 
 ### Remote Trigger Input
 
-- External trigger connector for a remote momentary push button mounted on the survey pole
-- Allows surveyor to mark a geo-point without touching the rover controls -- eliminates vibration/movement during measurement
-- **Connector: 3.5mm stereo jack** (panel mount on enclosure)
-  - Standard extension cables universally available and cheap
-  - Surveyor can wire any momentary NO switch to a 3.5mm plug
-  - Weatherproof 3.5mm jack variants available
-  - Tip or ring shorted to sleeve (GND) on button press -- firmware reads either
-- GPIO: STM32 input with internal pull-up -- button press pulls line to GND
-- Hardware debounce: 100nF capacitor + 10K resistor RC filter on GPIO input
-- Firmware debounce: software confirmation in addition to hardware filter
-- Function: identical to the "record geo-point" front panel button -- parallel input
+- Removed from PCB — geo-point marking function moved to handheld data collector over BLE
 
 ### Buzzer
 
-- Passive piezo buzzer -- PWM driven via STM32 TIM channel
-- Chosen over active buzzer: variable frequency allows distinct tones per event
-  - Short pip: geo-point recorded
-  - Double pip: warning (SD full, LoRa link lost, etc.)
-  - Long tone: RTK fix lost
-- Drive circuit: STM32 PWM GPIO -> 1k resistor -> 2N7002 MOSFET gate; buzzer between drain and 3.3V; source to GND
-- Audio feedback on/off: software flag, user-configurable via encoder menu, stored in STM32 flash
-- Outdoor use -- select buzzer rated 80dB+ at 10cm for audibility in wind
+- Removed from PCB — audio feedback moved to handheld data collector
 
 ### Enclosure
 
@@ -466,23 +418,15 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
   - Link open (high) = base station mode; link fitted pulling to GND (low) = rover mode
   - Identical firmware binary flashed to both units -- no separate builds
   - All base/rover code paths compiled in; mode flag gates behaviour at runtime
-- [x] User input: 4 x momentary push buttons (functions TBD) + 1 x quadrature rotary encoder with integrated push button
-  - Encoder: KY-040 module (EC11-type quadrature encoder with knob cap), A/B outputs wired to STM32 TIMx CH1/CH2 in encoder mode (TIM_ENCODERMODE)
-  - Encoder push button (SW): additional GPIO input, treated as a 5th button
-  - Total button inputs: 5 (4 discrete + 1 encoder push)
-  - KY-040 module has onboard 10k pull-ups on CLK, DT, SW -- final PCB using bare EC11 component must add these pull-ups
-  - Button functions undefined at this stage -- to be assigned during firmware development
-- [x] Status LEDs: 3 x LEDs, all driven from STM32 GPIO outputs via current-limiting resistors
-  - Functions TBD during firmware development -- MCU has full control of patterns (solid, blink, combined status)
+- [x] User input: removed from PCB — all user interaction via handheld data collector over BLE (see Handheld Data Collector section)
+- [x] Status LEDs: 4 LEDs total
+  - LD1 (green) + LD2 (red): hardwired to BQ24075 nPGOOD/nCHG via pull-up resistors on power sheet — not MCU-controlled
+  - LD3 (green, PD5) + LD4 (red, PD6): MCU-controlled, open-drain GPIO with pull-up resistors R20/R21
+  - Functions TBD during firmware development -- MCU controls LD3/LD4 patterns (solid, blink, combined status)
   - Independent of display -- visible when display is off or sleeping
-  - BQ24075 status inputs to STM32 GPIO (MCU reads these to decide LED behaviour):
-    - nPGOOD -> STM32 GPIO input + 10K pull-up to 3.3V (open drain, active low = power good)
-    - nCHG -> STM32 GPIO input + 10K pull-up to 3.3V (open drain, active low = charging in progress)
-  - **HARDWARE REQUIREMENT**: all LED GPIO pins must be assigned to PWM-capable pins (TIMx_CHx) on STM32F765 -- verify during KiCad pin assignment
-  - **FIRMWARE NOTE (OpenSpec SDD phase)**: develop a PWM LED driver module abstracting N attached LEDs
-    - Module handles: brightness (PWM duty cycle), blink patterns, fade effects
-    - Caller simply sets LED state -- driver handles timing and PWM independently
-    - Design for N LEDs so adding/removing LEDs requires no driver changes
+  - BQ24075 status inputs to STM32 GPIO (MCU reads these to decide behaviour):
+    - nPGOOD (PD10) -> GPIO input (open drain, active low = power good)
+    - nCHG (PD11) -> GPIO input (open drain, active low = charging in progress)
 - [x] F9P configuration: sent via UART on each boot
   - STM32 sends UBX-CFG messages to F9P over UART at startup before entering normal operation
   - No dependency on F9P internal flash -- config is always authoritative from firmware
@@ -587,18 +531,18 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 1. **GNSS module (ZED-F9P-05B)**: two UARTs to STM32 — F9P UART1 (pins 42/43) to STM32 UART5 for navigation output + UBX config, F9P UART2 (pins 26/27, dedicated corrections port) to STM32 UART7 (PA8 RX ← F9P TXD2, PA15 TX → F9P RXD2) for RTCM correction input from LoRa; D_SEL (pin 47) to PE14 defaulting high (UART/I2C mode); RF_IN to GNSS SMA via 50 ohm controlled-impedance trace, 1PPS to a STM32 GPIO (log timestamping), power + decoupling
 2. **GNSS antenna (ANN-MB-00)**: SMA female through-hole, bias-T 3.3V LNA feed on the RF line
 3. **LoRa module (Core1262-LF / SX1262)**: dedicated SPI bus (not shared with the IMU or SD), BUSY checked low before every transaction, DIO1/IRQ to a STM32 GPIO, NRESET, separate antenna SMA (433/434MHz, not the GNSS SMA)
-4. **MCU (STM32F765VIT6) peripheral pin assignment**: UART (F9P, plus a spare for the future daughter board), 2x dedicated SPI (LoRa, IMU), SDMMC1 4-bit (SD, fixed AF pins PC8-12/PD2), I2C1 (display + EEPROM), USB OTG FS (base build) or OTG HS + ULPI (rover build), ADC (battery divider), TIMx in encoder mode (rotary encoder A/B), PWM-capable TIMx_CHx pins (status LEDs + buzzer), SWD (program/debug) -- plus the many plain GPIOs enumerated below
+4. **MCU (STM32F765VIT6) peripheral pin assignment**: UART (F9P, plus a spare for the future daughter board), 2x dedicated SPI (LoRa, IMU), SDMMC1 4-bit (SD, fixed AF pins PC8-12/PD2), I2C4 (display + EEPROM, PD12/PD13), USB OTG FS (base build) or OTG HS + ULPI (rover build), ADC (battery divider), TIMx in encoder mode (rotary encoder A/B), PWM-capable TIMx_CHx pins (status LEDs + buzzer), SWD (program/debug) -- plus the many plain GPIOs enumerated below
 5. **Power supply chain**: TPS63020 buck-boost regulator with D1/C_SS soft-start network on the FB node, BQ24075 power-path management (EN1/EN2/SYSOFF/nCE control outputs and nPGOOD/nCHG status inputs all to STM32 GPIOs, TS pin tied to a fixed 10K resistor), 2-wire LP103454-PCM-LD battery connector, 100K/100K battery-voltage divider to an ADC pin
-6. **USB-C interfaces**: footprint #1 (base -- D+/D- direct to OTG FS PA11/PA12) and footprint #2 (rover -- via USB3300 ULPI PHY to OTG HS), CC1/CC2 5.1k pull-downs per footprint, USBLC6-2SC6 ESD protection per footprint, VBUS-presence sense divider to a GPIO, and for the rover's USB3300: 24MHz crystal, 12K RBIAS, full decoupling network, GND-flag via array, RESET to a STM32 GPIO
-7. **IMU (LSM6DSRX + LIS3MDL)**: I2C1 (shared with display + EEPROM), addresses 0x6A/0x6B (LSM6DSRX) and 0x1C/0x1E (LIS3MDL) -- no conflicts with display (0x3C/0x3D) or EEPROM (0x50-0x57); revisit dedicated I2C bus at schematic stage if routing benefits
+6. **USB-C interface**: single USB-C connector (J1) for both base and rover builds, routed via USB3300 ULPI PHY (U8) to STM32 OTG HS — both builds are HS capable; CC1/CC2 5.1k pull-downs (R11/R12), USBLC6-2SC6 ESD protection (D2), USB3300 RST (PC1), 24MHz crystal (Y2), 12K RBIAS (R9), full decoupling network
+7. **IMU (LSM6DSOX) + Magnetometer (MMC5603NJ)**: LSM6DSOX (U7) on I2C4 (PD12/PD13), INT1 (PD14), INT2 (PD15); MMC5603NJ on sub-board connected via J11
 8. **SD card**: SDMMC1 4-bit bus on the fixed alternate-function pins, card-detect line to a GPIO, well-decoupled VCC for write-current spikes
-9. **STM32 backup domain (VBAT)**: 3.3V rail -> Schottky diode -> VBAT pin, 100nF VBAT-to-GND
-10. **Configuration EEPROM (AT24C04/M24C04)**: shares I2C1 with the display, A0/A1/A2 address pins set so it doesn't collide with the display's 0x3C/0x3D
-11. **Display (SSD1309 OLED)**: dedicated I2C1 bus, address 0x3C/0x3D -- rover only; base station DNP (base uses status LEDs only; rover is the system UI head for both field and gateway operating modes)
-12. **Remote trigger input**: 3.5mm stereo jack (panel mount), GPIO with internal pull-up, 100nF + 10K RC hardware debounce
-13. **Buzzer**: PWM TIM-channel GPIO -> 1k resistor -> 2N7002 MOSFET gate, piezo between drain and 3.3V, source to GND
-14. **User input**: 4x momentary push buttons plus the KY-040 rotary encoder (A/B to TIMx CH1/CH2 in encoder mode, integrated push button as a 5th input) -- remember the bare EC11 needs pull-ups added on CLK/DT/SW that the KY-040 module provides onboard
-15. **Status LEDs**: 3x LEDs each on a PWM-capable (TIMx_CHx) GPIO with a current-limiting resistor
+9. **STM32 backup domain (VBAT)**: wired directly to 3.3V rail — backup domain available while powered, lost on power-off; persistent config on SD card
+10. **Configuration storage**: removed EEPROM — defaults stored in a file on SD card
+11. **Display (SSD1309 OLED)**: connected via J7 header, I2C4 bus (PD12/PD13), address 0x3C/0x3D -- rover only; base station DNP (base uses status LEDs only; rover is the system UI head for both field and gateway operating modes)
+12. **Remote trigger input**: removed — function moved to handheld data collector over BLE
+13. **Buzzer**: removed — audio feedback moved to handheld data collector
+14. **User input**: removed — all user interaction via handheld data collector over BLE
+15. **Status LEDs**: LD3 (PD5) and LD4 (PD6), open-drain GPIO with pull-up resistors R20/R21; LD1/LD2 hardwired to BQ24075 nPGOOD/nCHG on power sheet
 16. **Mode-selection jumper**: PA0 (BASE_ROVER_MODE_SELECT) GPIO input with internal pull-up, sampled once at boot — high (link open) = base, low (link fitted, pulls to GND) = rover
 17. **BOOT0**: 2-pin jumper header with 10K pull-down to GND, for entering the STM32 DFU bootloader
 18. **ESP32-S3 Mini coprocessor (both builds, identical PCB)**: spare STM32F765 UART to ESP32-S3 UART0; 3.3V power + decoupling; PCB trace or chip antenna for BLE 5.0 / 2.4GHz WiFi; programming header (UART0 + IO0 boot-strapping pin). Base role: WiFi NTRIP gateway (push RTCM to caster). Rover role: BLE 5.0 GATT server to handheld + WiFi NTRIP client (pull corrections). Different ESP32-S3 firmware per role, same PCB footprint.
