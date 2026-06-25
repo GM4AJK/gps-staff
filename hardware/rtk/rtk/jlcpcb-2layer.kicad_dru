@@ -1,0 +1,52 @@
+(version 1)
+
+# JLCPCB Standard 2-Layer PCB Design Rules
+# Based on JLCPCB capabilities: https://jlcpcb.com/capabilities/pcb-capabilities
+# 1oz copper, standard process, FR4 1.6mm
+
+(rule "Min Trace Width"
+   (constraint track_width (min 0.127mm))
+)
+
+(rule "Min Clearance"
+   (constraint clearance (min 0.127mm))
+)
+
+(rule "Min Via Drill"
+   (constraint hole_size (min 0.3mm))
+)
+
+(rule "Min Via Annular Ring"
+   (constraint annular_width (min 0.13mm))
+)
+
+(rule "Min PTH Drill"
+   (constraint hole_size
+      (condition "A.Type == 'pad' && A.Attribute == 'through_hole'")
+      (min 0.3mm)
+   )
+)
+
+(rule "Min Hole to Hole Clearance"
+   (constraint hole_to_hole (min 0.5mm))
+)
+
+(rule "Min Copper to Edge"
+   (constraint edge_clearance (min 0.3mm))
+)
+
+(rule "Min Drill to Copper"
+   (constraint hole_clearance (min 0.254mm))
+)
+
+(rule "Min Silkscreen Text Height"
+   (constraint text_height (min 0.8mm))
+)
+
+(rule "Min Silkscreen Line Width"
+   (constraint text_thickness (min 0.15mm))
+)
+
+(rule "Min Silkscreen Clearance"
+   (constraint silk_clearance (min 0.1mm))
+)
