@@ -103,6 +103,7 @@ The base station has two operating modes -- same hardware and firmware in both:
 - ESP32-S3 handles WiFi credentials, NTRIP protocol, TLS, and reconnect -- nothing of this complexity touches the STM32 firmware
 - WiFi and NTRIP credentials provisioned via an ESP32 captive-portal / BLE config flow (phone or browser) -- no keyboard or monitor needed on the base unit
 - Same ESP32-S3 Mini module fitted on both base and rover PCBs (identical build); firmware differs by role -- base: WiFi NTRIP push; rover: BLE GATT server + WiFi NTRIP client
+- **PCB v1.0 issue**: ESP32-S3 Mini footprint uses castellated pads soldered flat to the PCB — no clearance for a USB-C programming cable. Workaround: mount on tall SIL headers for v1.0. **Fix for v1.1**: mount on SIL pin headers in the footprint, same as the Core1262 LoRa module
 
 **Internet relay -- Raspberry Pi companion (optional, advanced):**
 - STM32 presents a USB CDC virtual serial port (TinyUSB CDC device on the base station's USB-C connector)
