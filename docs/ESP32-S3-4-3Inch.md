@@ -99,14 +99,14 @@ compile cleanly and adjust if any Kconfig keys have changed.
 
 ## Orientation
 
-Factory firmware runs landscape (800×480). Intended use is **portrait (480×800)**.
-LVGL handles this in software — hardware stays landscape, LVGL rotates the canvas:
+Factory firmware runs landscape (800×480). Intended use is **fixed portrait (480×800)**.
+Hardware stays landscape; LVGL is told once at init to treat the canvas as portrait:
 
 ```c
-lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90);  /* or 270 */
+lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90);  /* or 270 — confirm once mounted */
 ```
 
-Confirm which direction (90 vs 270) once the board is mounted in the handheld enclosure.
+No runtime rotation, no performance cost. All UI code then works in 480×800 coordinates.
 
 ## I2C Scan (factory firmware output)
 
