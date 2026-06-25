@@ -21,6 +21,16 @@
 - Component datasheets and other reference documents (e.g. dev board schematics) are stored in `docs/datasheets/`.
 - `docs/README.md` is a catalog of these documents — update its table whenever a document is added, moved, or removed.
 
+## ESP32 builds and flashing
+
+- ESP32 firmware (under `firmware/esp32-*/`) is built and flashed via `idf.py` directly in WSL — Claude owns this.
+- Always source `scripts/idf_env.sh` (project-local, no secrets) instead of `~/esp/esp-idf/export.sh`:
+  ```
+  source /mnt/c/Users/kirkh/github/gps-staff/scripts/idf_env.sh && idf.py build
+  ```
+- Handheld device node: `/dev/esp32_handheld` — flash with `idf.py -p /dev/esp32_handheld flash`.
+- Zero (base/rover) device nodes: `/dev/esp32_base`, `/dev/esp32_rover`.
+
 ## Bench debugging / serial console
 
 - The Nucleo boards log debug output (`app_log()`) over UART, normally viewed by the user via PuTTY on Windows.
