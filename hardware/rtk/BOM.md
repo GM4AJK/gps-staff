@@ -112,7 +112,7 @@ Key:
 | U4 | ZED-F9H-01B | `MOD54_ZED-F9H_UBL` | zed-f9p-05b | ⚠ **Part number: schematic says ZED-F9H-01B, project spec says ZED-F9P-05B** — confirm correct module |
 | U5 | ESP32-S3-ZERO | `MODULE_ESP32-S3-ZERO` | stm32f765vit | BLE bridge module |
 | U6 | CORE1262-868M | `XCVR_CORE1262-868M` | stm32f765vit | LoRa module — note: project uses LF (410-510 MHz) variant, confirm symbol/footprint match |
-| U7 | LSM6DSOX | `PQFN50P250X300X86-14N` | stm32f765vit | IMU (accel + gyro) |
+| U7 | LSM6DSOX | `PQFN50P250X300X86-14N` | stm32f765vit | IMU (accel + gyro) — order LSM6DSRXTR (Last Time Buy); LSM6DSOXTR is pin-compatible fallback when DSR unavailable |
 | U8 | USB3300-EZK | `QFN-32-1EP_5x5mm_P0.5mm_EP3.45x3.45mm` | usb2hs | ULPI USB PHY |
 
 ---
@@ -147,7 +147,6 @@ Key:
 
 | Part | Notes |
 |------|-------|
-| AT24C256 (EEPROM) | Config store — not yet placed in schematic |
 | MMC5603NJ | On MMC560x-B sub-board, connects via J11 — not placed as symbol |
 
 ---
