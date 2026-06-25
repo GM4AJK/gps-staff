@@ -103,7 +103,7 @@ Factory firmware runs landscape (800×480). Intended use is **fixed portrait (48
 Hardware stays landscape; LVGL is told once at init to treat the canvas as portrait:
 
 ```c
-lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90);  /* or 270 — confirm once mounted */
+lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_270);  /* board mounted inverted — bench verified */
 ```
 
 No runtime rotation, no performance cost. All UI code then works in 480×800 coordinates.
