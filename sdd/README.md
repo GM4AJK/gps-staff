@@ -462,8 +462,8 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
 ## Pre-Schematic Decisions Needed
 
 - [x] Mode selection: hardware jumper read at boot
-  - GPIO pin with pull-up/pull-down, sampled once at startup
-  - Jumper fitted = base station mode; jumper absent = rover mode (or vice versa -- to be decided at schematic)
+  - PA0 (BASE_ROVER_MODE_SELECT) GPIO input with internal pull-up, sampled once at startup
+  - Link open (high) = base station mode; link fitted pulling to GND (low) = rover mode
   - Identical firmware binary flashed to both units -- no separate builds
   - All base/rover code paths compiled in; mode flag gates behaviour at runtime
 - [x] User input: 4 x momentary push buttons (functions TBD) + 1 x quadrature rotary encoder with integrated push button
@@ -599,7 +599,7 @@ Consolidated list of every system that needs wiring up when the schematic is dra
 13. **Buzzer**: PWM TIM-channel GPIO -> 1k resistor -> 2N7002 MOSFET gate, piezo between drain and 3.3V, source to GND
 14. **User input**: 4x momentary push buttons plus the KY-040 rotary encoder (A/B to TIMx CH1/CH2 in encoder mode, integrated push button as a 5th input) -- remember the bare EC11 needs pull-ups added on CLK/DT/SW that the KY-040 module provides onboard
 15. **Status LEDs**: 3x LEDs each on a PWM-capable (TIMx_CHx) GPIO with a current-limiting resistor
-16. **Mode-selection jumper**: GPIO with pull-up/pull-down, sampled once at boot to select base vs rover
+16. **Mode-selection jumper**: PA0 (BASE_ROVER_MODE_SELECT) GPIO input with internal pull-up, sampled once at boot — high (link open) = base, low (link fitted, pulls to GND) = rover
 17. **BOOT0**: 2-pin jumper header with 10K pull-down to GND, for entering the STM32 DFU bootloader
 18. **ESP32-S3 Mini coprocessor (both builds, identical PCB)**: spare STM32F765 UART to ESP32-S3 UART0; 3.3V power + decoupling; PCB trace or chip antenna for BLE 5.0 / 2.4GHz WiFi; programming header (UART0 + IO0 boot-strapping pin). Base role: WiFi NTRIP gateway (push RTCM to caster). Rover role: BLE 5.0 GATT server to handheld + WiFi NTRIP client (pull corrections). Different ESP32-S3 firmware per role, same PCB footprint.
 
