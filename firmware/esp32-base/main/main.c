@@ -24,9 +24,9 @@
 #define VALID_TIMEOUT_MS 500
 
 /* UART bridge to Nucleo (adjust pins to suit bench wiring) */
-#define BRIDGE_UART      UART_NUM_1
-#define UART_TX_PIN      43   /* labeled TX on ESP32-S3 Mini header */
-#define UART_RX_PIN      44   /* labeled RX on ESP32-S3 Mini header */
+#define BRIDGE_UART      UART_NUM_0
+#define UART_TX_PIN      43   /* labeled TX on ESP32-S3 Mini header = UART0 TX */
+#define UART_RX_PIN      44   /* labeled RX on ESP32-S3 Mini header = UART0 RX */
 #define UART_BAUD        115200
 #define UART_BUF_SIZE    4096
 
