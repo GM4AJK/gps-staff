@@ -5,6 +5,8 @@
 
 #include "waveshare_rgb_lcd_port.h"
 
+static const char *TAG = "handheld";
+
 IRAM_ATTR static bool rgb_lcd_on_vsync_event(esp_lcd_panel_handle_t panel, const esp_lcd_rgb_panel_event_data_t *edata, void *user_ctx)
 {
     return lvgl_port_notify_rgb_vsync();

@@ -61,8 +61,6 @@
 #define EXAMPLE_PIN_NUM_TOUCH_RST       (-1)
 #define EXAMPLE_PIN_NUM_TOUCH_INT       (-1)
 
-static const char *TAG = "handheld";
-
 esp_err_t waveshare_esp32_s3_rgb_lcd_init(void);
 esp_err_t wavesahre_rgb_lcd_bl_on(void);
 esp_err_t wavesahre_rgb_lcd_bl_off(void);
