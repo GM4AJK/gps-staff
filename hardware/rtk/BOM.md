@@ -80,13 +80,12 @@ Key:
 
 ---
 
-## Inductors / Ferrite Beads
+## Inductors
 
 | Ref | Value | Footprint | Sheet | Notes |
 |-----|-------|-----------|-------|-------|
 | L1 | 1uH | `IND_DFE2016_2X1P6_MUR` | power | TPS63020 switching inductor — verify custom footprint matches DFE201610E-1R0M |
 | L2 | 8n | `L_0402_1005Metric` | zed-f9p-05b | Bias-T RF choke — LQW15AN8N0G8ZD (Murata, 8.0nH ±2%, wire-wound 0402) [DigiKey](https://www.digikey.co.uk/en/products/detail/murata-electronics/LQW15AN8N0G8ZD/6799012) |
-| FB1 | FerriteBead_Small | `C_0805_2012Metric_Pad1.18x1.45mm_HandSolder` | zed-f9p-05b | ZED-F9P VCC_RF ferrite — 0805 cap footprint used for ferrite bead, verify land pattern |
 
 ---
 
