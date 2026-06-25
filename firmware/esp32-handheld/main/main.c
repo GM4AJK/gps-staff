@@ -39,6 +39,13 @@ static void battery_indicator(lv_obj_t *parent)
     lv_obj_set_style_border_width(nub, 0, 0);
     lv_obj_set_style_radius(nub, 2, 0);
 
+    /* Lightning bolt — centred over body, slightly taller */
+    lv_obj_t *bolt = lv_label_create(parent);
+    lv_label_set_text(bolt, LV_SYMBOL_CHARGE);
+    lv_obj_set_style_text_font(bolt, &lv_font_montserrat_32, 0);
+    lv_obj_set_style_text_color(bolt, lv_palette_main(LV_PALETTE_YELLOW), 0);
+    lv_obj_align_to(bolt, body, LV_ALIGN_CENTER, 0, 0);
+
     lv_timer_create(charging_anim_cb, 600, NULL);
 }
 
