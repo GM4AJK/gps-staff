@@ -113,9 +113,12 @@ SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{idProduct}=="1001", ATTRS{seria
 SUBSYSTEM=="tty", ATTRS{idVendor}=="1a86", ATTRS{idProduct}=="55d3", ATTRS{serial}=="5B79023040", SYMLINK+="esp32_handheld"
 ```
 
-Note: the handheld uses a QinHeng CH343P USB-serial chip (VID 1a86, PID 55d3), not the
-built-in USB Serial/JTAG used by the Zeros. Console output goes through UART0 → CH343P,
-so use `CONFIG_ESP_CONSOLE_UART_DEFAULT` (not `USB_SERIAL_JTAG`) for handheld firmware.
+Note: the handheld has two USB-C ports:
+- **UART** — connects to CH343P (VID 1a86, PID 55d3); use this for flashing and console
+- **USB** — native ESP32-S3 USB OTG (GPIO19/20); not enumerated until firmware enables it
+
+Console goes through UART0 → CH343P, so use `CONFIG_ESP_CONSOLE_UART_DEFAULT`
+(not `USB_SERIAL_JTAG`) for handheld firmware. COM13 on Windows.
 
 To add a new device: enumerate it with `udevadm info /dev/ttyACMx`, then append a line and reload:
 
