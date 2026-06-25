@@ -6554,6 +6554,16 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "Base/Rover\nMode Select\nOpen is Base"
+		(exclude_from_sim no)
+		(at 185.928 28.194 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "5325c43a-495b-4d79-8419-653bb40f0745")
+	)
 	(text "STM32 Decouploing capacitors"
 		(exclude_from_sim no)
 		(at 46.482 175.514 0)
@@ -7432,6 +7442,16 @@
 	)
 	(wire
 		(pts
+			(xy 165.1 29.21) (xy 168.91 29.21)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2deaeb9b-e0cc-47a6-ab56-367ea07fca1e")
+	)
+	(wire
+		(pts
 			(xy 57.15 96.52) (xy 63.5 96.52)
 		)
 		(stroke
@@ -7599,6 +7619,16 @@
 			(type default)
 		)
 		(uuid "3f3dc991-9ca4-4870-92cd-88b647107bcf")
+	)
+	(wire
+		(pts
+			(xy 165.1 29.21) (xy 165.1 31.75)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3facf53d-73d8-41f7-8219-547981d8b867")
 	)
 	(wire
 		(pts
@@ -8702,6 +8732,16 @@
 	)
 	(wire
 		(pts
+			(xy 153.67 40.64) (xy 158.75 40.64)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a94626f6-b5ac-4f92-a0c2-431973c201c6")
+	)
+	(wire
+		(pts
 			(xy 16.51 81.28) (xy 21.59 81.28)
 		)
 		(stroke
@@ -8879,6 +8919,16 @@
 			(type default)
 		)
 		(uuid "be8db4ef-cfc2-4625-80c0-616b515a570f")
+	)
+	(wire
+		(pts
+			(xy 158.75 26.67) (xy 168.91 26.67)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "beb731ab-fb03-4ba1-b6e4-53cbd2f7307e")
 	)
 	(wire
 		(pts
@@ -9129,6 +9179,16 @@
 			(type default)
 		)
 		(uuid "d51478f3-fe50-4327-a1e6-990986334f3d")
+	)
+	(wire
+		(pts
+			(xy 158.75 26.67) (xy 158.75 40.64)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d5c3ea41-0bb2-411f-9e44-27c5ad3ddf56")
 	)
 	(wire
 		(pts
@@ -13201,6 +13261,88 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:Conn_01x02_Pin")
+		(at 173.99 29.21 180)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "5176f40e-f761-495d-aeb8-012798c70206")
+		(property "Reference" "J12"
+			(at 175.514 27.94 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Value" "Conn_01x02_Pin"
+			(at 175.26 29.2099 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify right)
+			)
+		)
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
+			(at 173.99 29.21 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 173.99 29.21 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x02, script generated"
+			(at 173.99 29.21 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "cd9c2024-df00-4417-8295-5a806c6a3d11")
+		)
+		(pin "2"
+			(uuid "db36bda2-366b-4de1-a64a-01fc120cbc4d")
+		)
+		(instances
+			(project "rtk"
+				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/f27ee638-88fe-42f5-8480-7c3da399fb44"
+					(reference "J12")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C_Small")
 		(at 21.59 182.88 0)
 		(unit 1)
@@ -15782,6 +15924,83 @@
 			(project "rtk"
 				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/f27ee638-88fe-42f5-8480-7c3da399fb44"
 					(reference "R17")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 165.1 31.75 0)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(uuid "c9e4ad66-488f-4592-a268-af885b700813")
+		(property "Reference" "#PWR043"
+			(at 165.1 38.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GND"
+			(at 168.402 33.782 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 165.1 31.75 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 165.1 31.75 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 165.1 31.75 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "1"
+			(uuid "ac6377ec-432e-4dcb-95c4-272ad733875c")
+		)
+		(instances
+			(project "rtk"
+				(path "/608e0f5f-bf55-4b10-9802-aab1430116aa/f27ee638-88fe-42f5-8480-7c3da399fb44"
+					(reference "#PWR043")
 					(unit 1)
 				)
 			)

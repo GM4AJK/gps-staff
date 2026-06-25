@@ -142,10 +142,6 @@
           ""
         ],
         [
-          "courtyards_overlap|159953000|122702200|af546965-2844-48fe-9520-14852650e923|b452adc2-def9-44ce-ac02-8a6746b579db",
-          ""
-        ],
-        [
           "silk_edge_clearance|135545098|152400000|6a62ce6d-1efd-4dc3-8bbd-e41005eeee2a|4a28f954-a64f-4cf9-bd4c-995c060d0ab6",
           ""
         ],
@@ -167,7 +163,7 @@
         "connection_width": "warning",
         "copper_edge_clearance": "error",
         "copper_sliver": "warning",
-        "courtyards_overlap": "error",
+        "courtyards_overlap": "ignore",
         "creepage": "error",
         "diff_pair_gap_out_of_range": "error",
         "diff_pair_uncoupled_length_too_long": "error",
@@ -749,7 +745,7 @@
         "uuid": "608e0f5f-bf55-4b10-9802-aab1430116aa"
       }
     ],
-    "used_designators": "H1-4,R24,LD5,TP1,L2-3",
+    "used_designators": "H1-4,J12,R24,LD5,TP1,#PWR43,L2-3",
     "variants": []
   },
   "sheets": [

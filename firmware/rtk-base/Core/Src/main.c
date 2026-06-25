@@ -658,6 +658,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(USB3300_RST_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : BASE_ROVER_MODE_SELECT_Pin SX1262_SPI2_BUSY_Pin */
+  GPIO_InitStruct.Pin = BASE_ROVER_MODE_SELECT_Pin|SX1262_SPI2_BUSY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
   /*Configure GPIO pins : F9P_GEOFENCH_STAT_Pin F9P_RTK_STAT_Pin */
   GPIO_InitStruct.Pin = F9P_GEOFENCH_STAT_Pin|F9P_RTK_STAT_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
@@ -701,12 +707,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : SX1262_SPI2_BUSY_Pin */
-  GPIO_InitStruct.Pin = SX1262_SPI2_BUSY_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(SX1262_SPI2_BUSY_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : BQ24975_nCE_Pin BQ24975_EN1_Pin BQ24975_EN2_Pin SYSOFF_Pin */
   GPIO_InitStruct.Pin = BQ24975_nCE_Pin|BQ24975_EN1_Pin|BQ24975_EN2_Pin|SYSOFF_Pin;
