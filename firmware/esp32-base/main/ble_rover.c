@@ -66,7 +66,7 @@ static int chr_cb(uint16_t conn_h, const struct ble_gatt_error *err,
 {
 	if (err->status == BLE_HS_EDONE) {
 		if (s.chr_val_h)
-			ble_gattc_disc_all_dscs(conn_h, s.chr_val_h + 1, s.svc_end,
+			ble_gattc_disc_all_dscs(conn_h, s.chr_val_h, s.svc_end,
 			                        dsc_cb, NULL);
 		return 0;
 	}
