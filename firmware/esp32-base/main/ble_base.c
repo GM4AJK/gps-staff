@@ -11,6 +11,8 @@
 #define RTCM_CHR_UUID  0xAB01
 
 static uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+
+void ble_base_on_sync(void); /* forward declaration */
 static uint16_t s_rtcm_val_handle;
 static uart_port_t s_uart;
 
