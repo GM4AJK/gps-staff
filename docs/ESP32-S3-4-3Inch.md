@@ -97,6 +97,17 @@ CONFIG_EXAMPLE_LVGL_PORT_AVOID_TEAR_ENABLE=y
 Note: Waveshare examples target IDF 5.2 / 5.5. We use IDF 6.2 — verify settings
 compile cleanly and adjust if any Kconfig keys have changed.
 
+## Orientation
+
+Factory firmware runs landscape (800×480). Intended use is **portrait (480×800)**.
+LVGL handles this in software — hardware stays landscape, LVGL rotates the canvas:
+
+```c
+lv_display_set_rotation(disp, LV_DISPLAY_ROTATION_90);  /* or 270 */
+```
+
+Confirm which direction (90 vs 270) once the board is mounted in the handheld enclosure.
+
 ## I2C Scan (factory firmware output)
 
 Devices found on I2C bus at boot:
