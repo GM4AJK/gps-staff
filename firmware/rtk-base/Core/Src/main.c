@@ -572,13 +572,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOE, ESP32_GP1_Pin|ESP32_GP2_Pin|ESP32_GP3_Pin|ESP32_GP4_Pin
-                          |ESP32_GP5_Pin|MAGNETO_SPARE1_Pin|MAGNETO_SPARE2_Pin|F9P_D_SEL_Pin, GPIO_PIN_RESET);
+                          |ESP32_GP5_Pin|MAGNETO_SPARE1_Pin|MAGNETO_SPARE2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOC, USB3300_RST_Pin|F9P_ANT_OFF_Pin|SX1262_RXEN_Pin|SX1262T_XEN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOE, F9P_SAFEBOOT_N_Pin|F9P_RESET_N_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOE, F9P_SAFEBOOT_N_Pin|F9P_RESET_N_Pin|F9P_D_SEL_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(SX1262_SPI2_CS_GPIO_Port, SX1262_SPI2_CS_Pin, GPIO_PIN_SET);
