@@ -11,4 +11,5 @@
 	(lib (name "LSM6DSOX") (type "KiCad") (uri "${KIPRJMOD}/Libs/LSM6DSOX.kicad_sym") (options "") (descr ""))
 	(lib (name "USB3300-EZK-TR") (type "KiCad") (uri "${KIPRJMOD}/Libs/USB3300-EZK-TR.kicad_sym") (options "") (descr ""))
 	(lib (name "ASTX-H11-16.000MHZ-T") (type "KiCad") (uri "${KIPRJMOD}/Libs/ASTX-H11-16.000MHZ-T.kicad_sym") (options "") (descr ""))
+	(lib (name "LQW15AN8N0G8ZD") (type "KiCad") (uri "${KIPRJMOD}/Libs/LQW15AN8N0G8ZD.kicad_sym") (options "") (descr ""))
 )
