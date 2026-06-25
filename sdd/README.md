@@ -584,7 +584,7 @@ This cleanly solves the single-firmware / dual-hardware problem: there is no Cub
 
 Consolidated list of every system that needs wiring up when the schematic is drawn -- a sanity check against the decisions above so nothing gets missed at the design stage.
 
-1. **GNSS module (ZED-F9P-05B)**: UART to STM32 (config out / RTCM-NMEA-UBX in), RF_IN to GNSS SMA via 50 ohm controlled-impedance trace, 1PPS to a STM32 GPIO (log timestamping), power + decoupling
+1. **GNSS module (ZED-F9P-05B)**: two UARTs to STM32 — F9P UART1 (pins 42/43) to STM32 UART5 for navigation output + UBX config, F9P UART2 (pins 26/27, dedicated corrections port) to STM32 UART7 (PA8 RX ← F9P TXD2, PA15 TX → F9P RXD2) for RTCM correction input from LoRa; D_SEL (pin 47) to PE14 defaulting high (UART/I2C mode); RF_IN to GNSS SMA via 50 ohm controlled-impedance trace, 1PPS to a STM32 GPIO (log timestamping), power + decoupling
 2. **GNSS antenna (ANN-MB-00)**: SMA female through-hole, bias-T 3.3V LNA feed on the RF line
 3. **LoRa module (Core1262-LF / SX1262)**: dedicated SPI bus (not shared with the IMU or SD), BUSY checked low before every transaction, DIO1/IRQ to a STM32 GPIO, NRESET, separate antenna SMA (433/434MHz, not the GNSS SMA)
 4. **MCU (STM32F765VIT6) peripheral pin assignment**: UART (F9P, plus a spare for the future daughter board), 2x dedicated SPI (LoRa, IMU), SDMMC1 4-bit (SD, fixed AF pins PC8-12/PD2), I2C1 (display + EEPROM), USB OTG FS (base build) or OTG HS + ULPI (rover build), ADC (battery divider), TIMx in encoder mode (rotary encoder A/B), PWM-capable TIMx_CHx pins (status LEDs + buzzer), SWD (program/debug) -- plus the many plain GPIOs enumerated below
