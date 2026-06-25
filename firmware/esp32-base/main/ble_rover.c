@@ -54,7 +54,7 @@ static int dsc_cb(uint16_t conn_h, const struct ble_gatt_error *err,
 		return 0;
 	}
 	if (ble_uuid_u16(&dsc->uuid.u) == CCCD_UUID16) {
-		uint16_t val = htobs(0x0001);
+		uint16_t val = 0x0001;
 		ble_gattc_write_flat(conn_h, dsc->handle, &val, sizeof(val),
 		                     cccd_write_cb, NULL);
 	}
