@@ -2,9 +2,9 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Phase 1.1 implemented |
+| Status | Phase 1.1 + Phase 2 implemented |
 | Phase 1 PR | #206 (Phase 1.1 — unprovisioned WiFi scan + BLE advertise) |
-| Phase 2 PR | — |
+| Phase 2 PR | #209 (HH BLE client + AP list UI + password entry + credential send) |
 | Phase 3 PR | — |
 
 ---

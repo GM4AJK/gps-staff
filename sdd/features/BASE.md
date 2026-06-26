@@ -12,6 +12,7 @@ Covers both `firmware/esp32-base` (base role) and `firmware/Nucleo-F767ZI-FreeRT
 | BLE serial bridge (base side) | Done PR #187 | Advertises as "GPS-Base", GATT peripheral, notifies rover of UART data |
 | UART0 bridge to STM32 | Done PR #187 | GPIO43/44, pipes data between BLE and STM32 UART |
 | WiFi scan + BLE advertise (unprovisioned) | Done PR #206 | GATT svc 0xAC00 chr 0xAC01 NOTIFY; AP list every 3s sorted by RSSI; empty list when no APs found |
+| Credential receive from HH | Done PR #209 | 0xAC02 WRITE; decodes SSID+password; callback hook ready for Phase 3 |
 
 ## STM32 (firmware/Nucleo-F767ZI-FreeRTOS / rtk-base)
 
