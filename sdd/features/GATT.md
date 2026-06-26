@@ -95,7 +95,13 @@ Mirrors `wifi_auth_mode_t` from ESP-IDF. Defined as `PROV_AUTH_*` in `ble_base_c
 
 ## Planned Services (not yet assigned)
 
-| Proposed service | Peripheral | Central | Notes |
-|-----------------|------------|---------|-------|
-| Rover status stream | ESP32 Rover | Handheld | Position fix, RTCM lock, battery — spec TBD |
-| Config/command channel | TBD | Handheld | Handheld → Base/Rover config; spec TBD |
+| Proposed service | Peripheral | Central | Connection lifetime | Notes |
+|-----------------|------------|---------|---------------------|-------|
+| Rover status + Base health relay | ESP32 Rover | Handheld | Permanent (always in proximity) | Position fix, RTCM lock, rover battery; Base health (WiFi status, fix, battery) piggybacked after arriving over GFSK from Base → Rover STM32 → Rover ESP32 → BLE → HH |
+| Base Config channel | ESP32 Base | Handheld | Temporary — HH connects on entering Base Config UI, drops on exit | WiFi provisioning (0xAC00 already exists), future config commands; user must be in proximity by definition |
+
+### Connection lifetime notes
+
+- **HH ↔ Rover**: permanent connection while HH is powered. Rover is always in the user's hand/pocket.
+- **HH ↔ Base**: temporary, UI-driven. `ble_base_client.c` must suppress auto-rescan outside of Base Config screen — reconnect is always initiated by the user entering that UI section, never automatic.
+- **Base health in the field**: flows Base STM32 → GFSK → Rover STM32 → Rover ESP32 → BLE → HH. No direct HH↔Base BLE needed once provisioning is complete.
