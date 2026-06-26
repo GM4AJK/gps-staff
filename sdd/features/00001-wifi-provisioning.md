@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Draft |
-| Phase 1 PR | — |
+| Status | Phase 1.1 implemented |
+| Phase 1 PR | #206 (Phase 1.1 — unprovisioned WiFi scan + BLE advertise) |
 | Phase 2 PR | — |
 | Phase 3 PR | — |
 
