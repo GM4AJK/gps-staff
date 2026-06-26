@@ -10,17 +10,53 @@
 #define TAG              "wifi_prov"
 #define PROV_SVC_UUID    0xAC00
 #define PROV_CHR_UUID    0xAC01
+#define CRED_CHR_UUID    0xAC02
 #define SCAN_INTERVAL_MS 3000
 #define MAX_APS          20
 
-static uint16_t          s_val_handle;
-static volatile uint16_t s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
-static wifi_ap_record_t  s_aps[MAX_APS];
+static uint16_t             s_val_handle;
+static volatile uint16_t    s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+static wifi_ap_record_t     s_aps[MAX_APS];
+static wifi_prov_cred_cb_t  s_cred_cb;
 
 static int prov_access_cb(uint16_t conn_h, uint16_t attr_h,
                            struct ble_gatt_access_ctxt *ctxt, void *arg)
 {
 	return BLE_ATT_ERR_READ_NOT_PERMITTED;
+}
+
+static int cred_access_cb(uint16_t conn_h, uint16_t attr_h,
+                           struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+	if (ctxt->op != BLE_GATT_ACCESS_OP_WRITE_CHR)
+		return BLE_ATT_ERR_UNLIKELY;
+
+	uint8_t buf[1 + 32 + 1 + 64];
+	uint16_t len = OS_MBUF_PKTLEN(ctxt->om);
+	if (len > sizeof(buf))
+		return BLE_ATT_ERR_INVALID_ATTR_VALUE_LEN;
+	os_mbuf_copydata(ctxt->om, 0, len, buf);
+
+	uint8_t *p = buf;
+	uint8_t slen = *p++;
+	if (slen > 32 || (p + slen + 1) > (buf + len))
+		return BLE_ATT_ERR_UNLIKELY;
+	char ssid[33];
+	memcpy(ssid, p, slen);
+	ssid[slen] = '\0';
+	p += slen;
+	uint8_t plen = *p++;
+	if ((p + plen) > (buf + len))
+		return BLE_ATT_ERR_UNLIKELY;
+	char password[65];
+	memcpy(password, p, plen);
+	password[plen] = '\0';
+
+	ESP_LOGI(TAG, "credentials received: ssid=%s", ssid);
+	if (s_cred_cb)
+		s_cred_cb(ssid, password);
+
+	return 0;
 }
 
 static const struct ble_gatt_svc_def s_svcs[] = {
@@ -33,6 +69,11 @@ static const struct ble_gatt_svc_def s_svcs[] = {
 				.flags      = BLE_GATT_CHR_F_NOTIFY,
 				.val_handle = &s_val_handle,
 				.access_cb  = prov_access_cb,
+			},
+			{
+				.uuid      = BLE_UUID16_DECLARE(CRED_CHR_UUID),
+				.flags     = BLE_GATT_CHR_F_WRITE,
+				.access_cb = cred_access_cb,
 			},
 			{ 0 }
 		},
@@ -113,6 +154,11 @@ static void scan_task(void *arg)
 		else
 			ESP_LOGI(TAG, "notified %d APs (%zu bytes)", ap_count, pkt_len);
 	}
+}
+
+void wifi_prov_set_cred_cb(wifi_prov_cred_cb_t cb)
+{
+	s_cred_cb = cb;
 }
 
 void wifi_prov_start_task(void)
