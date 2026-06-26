@@ -5,6 +5,7 @@
 #include "esp_log.h"
 #include "host/ble_hs.h"
 #include "services/gap/ble_svc_gap.h"
+#include "wifi_prov.h"
 
 #define TAG            "base"
 #define RTCM_SVC_UUID  0xAB00
@@ -45,6 +46,7 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg)
 	case BLE_GAP_EVENT_CONNECT:
 		if (event->connect.status == 0) {
 			s_conn_handle = event->connect.conn_handle;
+			wifi_prov_on_connect(s_conn_handle);
 			ESP_LOGI(TAG, "connected handle=%d", s_conn_handle);
 		} else {
 			ble_base_on_sync();
@@ -52,6 +54,7 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg)
 		break;
 	case BLE_GAP_EVENT_DISCONNECT:
 		s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
+		wifi_prov_on_disconnect();
 		ESP_LOGI(TAG, "disconnected reason=%d", event->disconnect.reason);
 		ble_base_on_sync();
 		break;
@@ -116,4 +119,5 @@ void ble_base_start_tasks(uart_port_t uart)
 {
 	s_uart = uart;
 	xTaskCreate(uart_bridge_task, "uart_bridge", 4096, NULL, 5, NULL);
+	wifi_prov_start_task();
 }
