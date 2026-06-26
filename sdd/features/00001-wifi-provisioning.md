@@ -24,10 +24,11 @@ The Rover is not involved in this flow.
 - Base ESP32 scans for nearby WiFi APs using `espressif/network_provisioning` managed component
 - Advertises the AP list over BLE so the Handheld can retrieve it
 - Continues scanning and updating the list until credentials are received
+- Scan cycle time is hardware-dependent (typically 2–4 seconds across all channels); the BLE advertisement must not update more frequently than once every 3 seconds regardless of scan duration
 
 **Acceptance criteria:**
 - Handheld can connect to Base over BLE and retrieve a list of visible SSIDs with RSSI and auth type
-- List updates on each scan cycle
+- List updates no more frequently than once every 3 seconds
 
 ---
 
