@@ -21,6 +21,7 @@ Covers both `firmware/esp32-base` (base role) and `firmware/Nucleo-F767ZI-FreeRT
 | Capability | Status | Notes |
 |------------|--------|-------|
 | FreeRTOS scaffold | Done | app_init/app_loop/app_1ms hooks, flags.c IRQ bridge |
+| SSD1309 OLED display | Done | Queue-driven task_display.c; clear/string/flush API; I2C1 mutex-protected |
 | SX1262 GFSK TX | Done | Interrupt-driven DIO1, active bench mode |
 | RTCM3 framing + OTA | Done | RTCM3_BUF_COUNT=4; bump to 8 before adding display driver |
 | FatFS SD card | Done | F767ZI bench-proven; FF_FS_NORTC set — needs GPS UTC when F9P arrives |
