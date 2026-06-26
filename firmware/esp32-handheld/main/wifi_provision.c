@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "esp_log.h"
+#include "esp_netif_ip_addr.h"
 #include "lvgl_port.h"
 #include "wifi_provision.h"
 #include "ble_base_client.h"
@@ -132,6 +133,37 @@ void wifi_provision_init(lv_obj_t *parent, wifi_provision_t *w)
 	lv_keyboard_set_textarea(w->pwd_kb, w->pwd_ta);
 	lv_obj_set_size(w->pwd_kb, LV_PCT(100), 300);
 	lv_obj_align(w->pwd_kb, LV_ALIGN_BOTTOM_MID, 0, 0);
+}
+
+void wifi_provision_on_result(wifi_provision_t *w, uint8_t status, const char *ssid,
+                               int8_t rssi, uint32_t ip)
+{
+	if (!lvgl_port_lock(-1))
+		return;
+
+	if (status == PROV_RESULT_OK) {
+		char buf[80];
+		esp_ip4_addr_t addr = { .addr = ip };
+		snprintf(buf, sizeof(buf), LV_SYMBOL_OK " Base: %s  %d dBm  " IPSTR,
+		         ssid, rssi, IP2STR(&addr));
+		lv_label_set_text(w->status, buf);
+		lv_obj_set_style_text_color(w->status, lv_palette_main(LV_PALETTE_GREEN), 0);
+		lv_obj_clean(w->list);
+	} else {
+		const char *reason;
+		switch (status) {
+		case PROV_RESULT_WRONG_PWD: reason = "Wrong password";       break;
+		case PROV_RESULT_NO_AP:     reason = "Network not found";    break;
+		case PROV_RESULT_TIMEOUT:   reason = "Connection timed out"; break;
+		default:                    reason = "Connection failed";     break;
+		}
+		lv_label_set_text(w->status, reason);
+		lv_obj_set_style_text_color(w->status, lv_palette_main(LV_PALETTE_RED), 0);
+	}
+	/* always return to list panel so the user can see the result or retry */
+	show_list(w);
+
+	lvgl_port_unlock();
 }
 
 void wifi_provision_update(wifi_provision_t *w, const prov_ap_t *aps, uint8_t count)

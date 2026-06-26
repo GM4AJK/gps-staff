@@ -14,6 +14,7 @@ Assign new UUIDs here first to avoid collisions.
 | 0xAC00 | WiFi Provisioning Service |
 | 0xAC01 | WiFi Provisioning — AP list characteristic |
 | 0xAC02 | WiFi Provisioning — credential write characteristic |
+| 0xAC03 | WiFi Provisioning — connection result characteristic |
 | 0xAD00 | *reserved — next service block* |
 
 ---
@@ -74,6 +75,24 @@ Byte 0:     ssid_len (uint8_t, 0–32)
 N bytes:    SSID
 Byte:       pwd_len (uint8_t, 0–64)
 M bytes:    password
+```
+
+#### 0xAC03 — Connection Result (Base → Handheld)
+
+Properties: **NOTIFY**
+
+Sent once when a connection attempt completes (success or failure). Re-sent as a 3-second heartbeat while Base remains connected (allows Handheld to detect already-provisioned Base on connect).
+
+```
+Byte 0:     status
+              0 = connected (success)
+              1 = wrong password
+              2 = network not found
+              3 = connection timed out
+              4 = other error
+Bytes 1–33: SSID null-terminated (32 chars max + null; zero-filled if shorter)
+Byte 34:    RSSI of connected AP (int8_t as uint8_t; 0 if status ≠ 0)
+Bytes 35–38: IP address (uint32_t little-endian; 0.0.0.0 if status ≠ 0)
 ```
 
 #### Auth Mode Values
