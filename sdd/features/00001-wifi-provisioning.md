@@ -27,6 +27,7 @@ The Base has two distinct boot states, and advertises different data depending o
 
 - Base scans for nearby WiFi APs using `espressif/network_provisioning` managed component
 - Advertises the AP list over BLE (SSID, RSSI, auth type per entry)
+- If no APs are found, advertises an empty list — the HH must handle this and inform the user that no WiFi networks are available
 - Continues scanning and updating until credentials are received
 - Scan cycle time is hardware-dependent (typically 2–4 seconds across all channels); advertisement must not update more frequently than once every 3 seconds
 
