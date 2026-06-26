@@ -2,6 +2,8 @@
 
 Covers both `firmware/esp32-base` (base role) and `firmware/Nucleo-F767ZI-FreeRTOS` / `firmware/rtk-base` (STM32 base role).
 
+> BLE services: see [GATT.md](GATT.md) for UUIDs, wire formats, and peripheral/central roles.
+
 ---
 
 ## ESP32-S3 Zero (firmware/esp32-base)
