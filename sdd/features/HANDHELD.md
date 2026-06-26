@@ -20,6 +20,7 @@ Covers `firmware/esp32-handheld`.
 | VS Code IntelliSense | Done PR #197 | c_cpp_properties.json → build/compile_commands.json |
 | NimBLE central (BLE client) | Done PR #209 | Scans for GPS-Base, subscribes to 0xAC01 AP list, writes creds to 0xAC02 |
 | WiFi provisioning UI | Done PR #209 | AP list from Base, password entry via LVGL keyboard, credential send; bench-verified |
+| Connection result UI | Done PR #215 | Subscribes to 0xAC03; success shows green SSID+RSSI+IP; failure shows red reason + restores AP list |
 
 ---
 

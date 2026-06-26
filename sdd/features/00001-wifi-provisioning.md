@@ -2,10 +2,10 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Phase 1.1 + Phase 2 implemented |
+| Status | Phase 1.1 + Phase 2 + Phase 3 implemented |
 | Phase 1 PR | #206 (Phase 1.1 — unprovisioned WiFi scan + BLE advertise) |
 | Phase 2 PR | #209 (HH BLE client + AP list UI + password entry + credential send) |
-| Phase 3 PR | — |
+| Phase 3 PR | #215 (Base WiFi connect + NVS storage + 0xAC03 result notify; HH result UI) |
 
 ---
 
@@ -83,7 +83,7 @@ The Base has two distinct boot states, and advertises different data depending o
 - Handheld displays failure reason to user
 
 ### 3.3 — User action on failure
-- TBD — options include: re-enter password, select a different network, cancel
+- Handheld returns to the AP list view; user can select the same or a different network and re-enter credentials
 
 **Acceptance criteria:**
 - Successful connection persists across power cycles without re-provisioning

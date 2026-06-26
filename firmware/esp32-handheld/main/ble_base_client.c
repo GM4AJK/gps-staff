@@ -5,19 +5,22 @@
 #include "host/util/util.h"
 #include "ble_base_client.h"
 
-#define TAG           "ble_client"
-#define TARGET_NAME   "GPS-Base"
-#define PROV_SVC_UUID 0xAC00
-#define AP_LIST_UUID  0xAC01
-#define CRED_UUID     0xAC02
-#define CCCD_UUID16   0x2902
+#define TAG              "ble_client"
+#define TARGET_NAME      "GPS-Base"
+#define PROV_SVC_UUID    0xAC00
+#define AP_LIST_UUID     0xAC01
+#define CRED_UUID        0xAC02
+#define CONN_RESULT_UUID 0xAC03
+#define CCCD_UUID16      0x2902
 
 static struct {
-	uint16_t          conn_handle;
-	uint16_t          svc_start, svc_end;
-	uint16_t          ap_list_val_h;
-	uint16_t          cred_val_h;
-	prov_ap_list_cb_t ap_cb;
+	uint16_t              conn_handle;
+	uint16_t              svc_start, svc_end;
+	uint16_t              ap_list_val_h;
+	uint16_t              cred_val_h;
+	uint16_t              result_val_h;
+	prov_ap_list_cb_t     ap_cb;
+	prov_conn_result_cb_t result_cb;
 } s = { .conn_handle = BLE_HS_CONN_HANDLE_NONE };
 
 static int gap_event_cb(struct ble_gap_event *event, void *arg);
@@ -88,6 +91,8 @@ static int chr_cb(uint16_t conn_h, const struct ble_gatt_error *err,
 		s.ap_list_val_h = chr->val_handle;
 	else if (u == CRED_UUID)
 		s.cred_val_h = chr->val_handle;
+	else if (u == CONN_RESULT_UUID)
+		s.result_val_h = chr->val_handle;
 	return 0;
 }
 
@@ -177,7 +182,7 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg)
 		ESP_LOGI(TAG, "disconnected reason=%d", event->disconnect.reason);
 		s.conn_handle   = BLE_HS_CONN_HANDLE_NONE;
 		s.svc_start     = s.svc_end = 0;
-		s.ap_list_val_h = s.cred_val_h = 0;
+		s.ap_list_val_h = s.cred_val_h = s.result_val_h = 0;
 		start_scan();
 		break;
 
@@ -185,16 +190,35 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg)
 		ESP_LOGI(TAG, "MTU updated to %d", event->mtu.value);
 		break;
 
-	case BLE_GAP_EVENT_NOTIFY_RX:
+	case BLE_GAP_EVENT_NOTIFY_RX: {
+		uint8_t  buf[700];
+		uint16_t len = OS_MBUF_PKTLEN(event->notify_rx.om);
+		if (len > sizeof(buf))
+			len = sizeof(buf);
+		os_mbuf_copydata(event->notify_rx.om, 0, len, buf);
+
 		if (event->notify_rx.attr_handle == s.ap_list_val_h) {
-			uint8_t  buf[700];
-			uint16_t len = OS_MBUF_PKTLEN(event->notify_rx.om);
-			if (len > sizeof(buf))
-				len = sizeof(buf);
-			os_mbuf_copydata(event->notify_rx.om, 0, len, buf);
 			decode_ap_list(buf, len);
+		} else if (event->notify_rx.attr_handle == s.result_val_h
+		           && s.result_cb && len >= 1) {
+			/*
+			 * 0xAC03: [status][ssid 33 bytes][rssi 1][ip 4]
+			 * Total 39 bytes when status=0; shorter on failure.
+			 */
+			char ssid[33] = {0};
+			if (len > 1)
+				strncpy(ssid, (char *)buf + 1, 32);
+			int8_t  rssi = (len >= 35) ? (int8_t)buf[34] : 0;
+			uint32_t ip  = 0;
+			if (len >= 39)
+				ip = (uint32_t)buf[35]        |
+				     ((uint32_t)buf[36] << 8)  |
+				     ((uint32_t)buf[37] << 16) |
+				     ((uint32_t)buf[38] << 24);
+			s.result_cb(buf[0], ssid, rssi, ip);
 		}
 		break;
+	}
 
 	default:
 		break;
@@ -205,6 +229,11 @@ static int gap_event_cb(struct ble_gap_event *event, void *arg)
 void ble_base_client_init(prov_ap_list_cb_t cb)
 {
 	s.ap_cb = cb;
+}
+
+void ble_base_client_set_result_cb(prov_conn_result_cb_t cb)
+{
+	s.result_cb = cb;
 }
 
 void ble_base_client_on_sync(void)

@@ -18,6 +18,11 @@ static void on_ap_list(const prov_ap_t *aps, uint8_t count)
 	wifi_provision_update(&prov, aps, count);
 }
 
+static void on_conn_result(uint8_t status, const char *ssid, int8_t rssi, uint32_t ip)
+{
+	wifi_provision_on_result(&prov, status, ssid, rssi, ip);
+}
+
 static void on_ble_sync(void)
 {
 	ble_base_client_on_sync();
@@ -48,6 +53,7 @@ void app_main(void)
 	}
 
 	ble_base_client_init(on_ap_list);
+	ble_base_client_set_result_cb(on_conn_result);
 	nimble_port_init();
 	ble_svc_gap_device_name_set("GPS-Handheld");
 	ble_svc_gap_init();
