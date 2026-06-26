@@ -5,6 +5,8 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "esp_netif.h"
+#include "esp_event.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
 #include "host/ble_hs.h"
@@ -13,6 +15,7 @@
 #include "services/gatt/ble_svc_gatt.h"
 #include "ble_base.h"
 #include "ble_rover.h"
+#include "wifi_prov.h"
 
 #define TAG              "main"
 
@@ -111,7 +114,11 @@ void app_main(void)
 	ble_svc_gatt_init();
 
 	if (g_role == ROLE_BASE) {
+		esp_netif_init();
+		esp_event_loop_create_default();
 		ble_base_register_svcs();
+		wifi_prov_register_svcs();
+		wifi_prov_init();
 	} else {
 		ble_rover_init(BRIDGE_UART);
 	}
