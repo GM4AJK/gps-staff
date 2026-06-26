@@ -2,6 +2,8 @@
 
 Covers both `firmware/esp32-base` (rover role) and `firmware/rtk-rover` (STM32 rover role).
 
+> BLE services: see [GATT.md](GATT.md) for UUIDs, wire formats, and peripheral/central roles.
+
 ---
 
 ## ESP32-S3 Zero (firmware/esp32-base — rover role)

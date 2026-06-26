@@ -2,6 +2,8 @@
 
 Covers `firmware/esp32-handheld`.
 
+> BLE services: see [GATT.md](GATT.md) for UUIDs, wire formats, and peripheral/central roles.
+
 ---
 
 ## ESP32-S3 4.3" Touch Display (firmware/esp32-handheld)

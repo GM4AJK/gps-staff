@@ -1,0 +1,101 @@
+# GATT Service Registry
+
+All BLE services and characteristics used across the GPS Staff system.
+Assign new UUIDs here first to avoid collisions.
+
+---
+
+## UUID Registry
+
+| UUID   | Assigned to |
+|--------|-------------|
+| 0xAB00 | RTCM Bridge Service |
+| 0xAB01 | RTCM Bridge — data characteristic |
+| 0xAC00 | WiFi Provisioning Service |
+| 0xAC01 | WiFi Provisioning — AP list characteristic |
+| 0xAC02 | WiFi Provisioning — credential write characteristic |
+| 0xAD00 | *reserved — next service block* |
+
+---
+
+## Service Definitions
+
+### 0xAB00 — RTCM Bridge
+
+**Purpose:** Pipes RTCM3 correction data from Base STM32 → Rover STM32 over BLE.
+
+| Role | Device | Firmware |
+|------|--------|----------|
+| Peripheral (GATT server) | ESP32-S3 Zero — base role | `firmware/esp32-base` (base boot) |
+| Central (GATT client) | ESP32-S3 Zero — rover role | `firmware/esp32-base` (rover boot) |
+
+> Refactor note: changes to this service require updates to both `ble_base.c` (peripheral) and `ble_rover.c` (central) in `firmware/esp32-base`.
+
+| Chr UUID | Properties | Direction | Wire format | Rate |
+|----------|------------|-----------|-------------|------|
+| 0xAB01 | NOTIFY | Base → Rover | Raw RTCM3 bytes, up to 500 bytes per notification | As fast as UART data arrives |
+
+---
+
+### 0xAC00 — WiFi Provisioning
+
+**Purpose:** Base advertises visible WiFi APs to the Handheld; Handheld returns selected SSID + password.
+
+| Role | Device | Firmware |
+|------|--------|----------|
+| Peripheral (GATT server) | ESP32-S3 Zero — base role | `firmware/esp32-base` (`wifi_prov.c`) |
+| Central (GATT client) | ESP32-S3 4.3" Handheld | `firmware/esp32-handheld` (`ble_base_client.c`) |
+
+> Refactor note: changes to this service require updates to both `wifi_prov.c` (peripheral) on the base and `ble_base_client.c` + `wifi_provision.c` (central + UI) on the handheld.
+
+#### 0xAC01 — AP List (Base → Handheld)
+
+Properties: **NOTIFY**
+
+Sent every 3 seconds. An AP count of 0 means no networks were found.
+
+```
+Byte 0:     AP count (uint8_t)
+Per AP (repeated count times):
+  Byte:     ssid_len (uint8_t, 0–32)
+  N bytes:  SSID (not null-terminated)
+  Byte:     rssi (int8_t cast to uint8_t)
+  Byte:     auth_mode (uint8_t, see Auth Mode Values below)
+```
+
+#### 0xAC02 — Credentials (Handheld → Base)
+
+Properties: **WRITE** (confirmed)
+
+Sent once when the user taps Connect. Empty password string = open network.
+
+```
+Byte 0:     ssid_len (uint8_t, 0–32)
+N bytes:    SSID
+Byte:       pwd_len (uint8_t, 0–64)
+M bytes:    password
+```
+
+#### Auth Mode Values
+
+Mirrors `wifi_auth_mode_t` from ESP-IDF. Defined as `PROV_AUTH_*` in `ble_base_client.h`.
+
+| Value | Meaning |
+|-------|---------|
+| 0 | Open (no password) |
+| 1 | WEP |
+| 2 | WPA |
+| 3 | WPA2 |
+| 4 | WPA/WPA2 mixed |
+| 5 | Enterprise |
+| 6 | WPA3 |
+| 7 | WPA2/WPA3 mixed |
+
+---
+
+## Planned Services (not yet assigned)
+
+| Proposed service | Peripheral | Central | Notes |
+|-----------------|------------|---------|-------|
+| Rover status stream | ESP32 Rover | Handheld | Position fix, RTCM lock, battery — spec TBD |
+| Config/command channel | TBD | Handheld | Handheld → Base/Rover config; spec TBD |
