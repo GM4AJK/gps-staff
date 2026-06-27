@@ -9,8 +9,8 @@ Assign new UUIDs here first to avoid collisions.
 
 | UUID   | Assigned to |
 |--------|-------------|
-| 0xAB00 | RTCM Bridge Service |
-| 0xAB01 | RTCM Bridge — data characteristic |
+| 0xAB00 | ~~RTCM Bridge Service~~ — retired; RTCM flows over GFSK (SX1262), not BLE |
+| 0xAB01 | ~~RTCM Bridge — data characteristic~~ — retired |
 | 0xAC00 | WiFi Provisioning Service |
 | 0xAC01 | WiFi Provisioning — AP list characteristic |
 | 0xAC02 | WiFi Provisioning — credential write characteristic |
@@ -20,23 +20,6 @@ Assign new UUIDs here first to avoid collisions.
 ---
 
 ## Service Definitions
-
-### 0xAB00 — RTCM Bridge
-
-**Purpose:** Pipes RTCM3 correction data from Base STM32 → Rover STM32 over BLE.
-
-| Role | Device | Firmware |
-|------|--------|----------|
-| Peripheral (GATT server) | ESP32-S3 Zero — base role | `firmware/esp32-base` (base boot) |
-| Central (GATT client) | ESP32-S3 Zero — rover role | `firmware/esp32-base` (rover boot) |
-
-> Refactor note: changes to this service require updates to both `ble_base.c` (peripheral) and `ble_rover.c` (central) in `firmware/esp32-base`.
-
-| Chr UUID | Properties | Direction | Wire format | Rate |
-|----------|------------|-----------|-------------|------|
-| 0xAB01 | NOTIFY | Base → Rover | Raw RTCM3 bytes, up to 500 bytes per notification | As fast as UART data arrives |
-
----
 
 ### 0xAC00 — WiFi Provisioning
 

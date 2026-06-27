@@ -11,8 +11,7 @@ Covers both `firmware/esp32-base` (rover role) and `firmware/rtk-rover` (STM32 r
 | Capability | Status | Notes |
 |------------|--------|-------|
 | Role selection at boot | Done | GP1 GND = rover; same binary as base |
-| BLE serial bridge (rover side) | Done PR #187 | Central role, scans for "GPS-Base", subscribes to notifications, forwards to UART |
-| UART0 bridge to STM32 | Done PR #187 | GPIO43/44, pipes data between BLE and STM32 UART |
+| BLE role | Pending | BLE central to Handheld (status/position stream) — future spec; RTCM bridge over BLE removed, RTCM flows over GFSK |
 
 ## STM32 (firmware/rtk-rover)
 
@@ -31,7 +30,6 @@ Covers both `firmware/esp32-base` (rover role) and `firmware/rtk-rover` (STM32 r
 |---------|------|
 | BLE link to Handheld (position/status stream) | Future spec |
 | BLE link to Handheld (command/config channel) | Future spec |
-| WiFi provisioning relay (Handheld → Rover → Base) | [00001-wifi-provisioning.md](00001-wifi-provisioning.md) |
 | ZED-F9P UART driver + RTCM feed | Awaiting F9P delivery |
 | MMC5603NJ magnetometer driver | Needed (LIS3MDL discontinued) |
 | Tilt fusion / soft-iron calibration | Deferred |
