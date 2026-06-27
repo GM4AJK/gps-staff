@@ -8,6 +8,11 @@
 
 #define TAG "wifi_prov_ui"
 
+#define HEADER_H  56
+#define CONTENT_H (LVGL_PORT_V_RES - HEADER_H)
+#define KBD_H     300
+#define PWD_KBD_CONTENT_H (LVGL_PORT_V_RES - KBD_H)
+
 static const char *auth_str(uint8_t auth)
 {
 	switch (auth) {
@@ -43,7 +48,14 @@ static void show_pwd(wifi_provision_t *w, const char *ssid)
 	lv_obj_clear_flag(w->pwd_panel, LV_OBJ_FLAG_HIDDEN);
 }
 
-static void back_btn_cb(lv_event_t *e)
+static void list_back_cb(lv_event_t *e)
+{
+	wifi_provision_t *w = (wifi_provision_t *)lv_event_get_user_data(e);
+	wifi_provision_hide(w);
+	if (w->back_cb) w->back_cb();
+}
+
+static void pwd_back_cb(lv_event_t *e)
 {
 	show_list((wifi_provision_t *)lv_event_get_user_data(e));
 }
@@ -76,54 +88,86 @@ void wifi_provision_init(lv_obj_t *parent, wifi_provision_t *w)
 {
 	/* ---- List panel ---- */
 	w->list_panel = lv_obj_create(parent);
-	lv_obj_set_size(w->list_panel, LV_PCT(100), 790);
-	lv_obj_align(w->list_panel, LV_ALIGN_BOTTOM_MID, 0, 0);
+	lv_obj_set_size(w->list_panel, LV_PCT(100), LV_PCT(100));
+	lv_obj_align(w->list_panel, LV_ALIGN_TOP_LEFT, 0, 0);
 	lv_obj_set_style_bg_color(w->list_panel, lv_color_black(), 0);
 	lv_obj_set_style_border_width(w->list_panel, 0, 0);
 	lv_obj_set_style_pad_all(w->list_panel, 0, 0);
+	lv_obj_clear_flag(w->list_panel, LV_OBJ_FLAG_SCROLLABLE);
+	lv_obj_add_flag(w->list_panel, LV_OBJ_FLAG_HIDDEN);
 
-	w->status = lv_label_create(w->list_panel);
+	/* Header row: Back button + status label */
+	lv_obj_t *list_hdr = lv_obj_create(w->list_panel);
+	lv_obj_set_size(list_hdr, LV_PCT(100), HEADER_H);
+	lv_obj_align(list_hdr, LV_ALIGN_TOP_LEFT, 0, 0);
+	lv_obj_set_style_bg_color(list_hdr, lv_palette_darken(LV_PALETTE_GREY, 4), 0);
+	lv_obj_set_style_border_width(list_hdr, 0, 0);
+	lv_obj_set_style_pad_all(list_hdr, 0, 0);
+	lv_obj_clear_flag(list_hdr, LV_OBJ_FLAG_SCROLLABLE);
+
+	lv_obj_t *list_back = lv_btn_create(list_hdr);
+	lv_obj_align(list_back, LV_ALIGN_LEFT_MID, 8, 0);
+	lv_obj_set_size(list_back, 90, 40);
+	lv_obj_t *list_back_lbl = lv_label_create(list_back);
+	lv_label_set_text(list_back_lbl, LV_SYMBOL_LEFT " Back");
+	lv_obj_center(list_back_lbl);
+	lv_obj_add_event_cb(list_back, list_back_cb, LV_EVENT_CLICKED, w);
+
+	w->status = lv_label_create(list_hdr);
 	lv_label_set_text(w->status, LV_SYMBOL_BLUETOOTH " Searching for GPS-Base...");
 	lv_obj_set_style_text_color(w->status, lv_palette_main(LV_PALETTE_GREY), 0);
-	lv_obj_align(w->status, LV_ALIGN_TOP_MID, 0, 8);
+	lv_obj_align(w->status, LV_ALIGN_CENTER, 0, 0);
 
 	w->list = lv_list_create(w->list_panel);
-	lv_obj_set_pos(w->list, 0, 46);
-	lv_obj_set_size(w->list, LV_PCT(100), 744);
+	lv_obj_set_pos(w->list, 0, HEADER_H);
+	lv_obj_set_size(w->list, LV_PCT(100), CONTENT_H);
 	lv_obj_set_style_bg_color(w->list, lv_color_black(), 0);
 	lv_obj_set_style_border_width(w->list, 0, 0);
 	lv_obj_set_style_radius(w->list, 0, 0);
 
 	/* ---- Password panel (hidden) ---- */
 	w->pwd_panel = lv_obj_create(parent);
-	lv_obj_set_size(w->pwd_panel, LV_PCT(100), 790);
-	lv_obj_align(w->pwd_panel, LV_ALIGN_BOTTOM_MID, 0, 0);
+	lv_obj_set_size(w->pwd_panel, LV_PCT(100), LV_PCT(100));
+	lv_obj_align(w->pwd_panel, LV_ALIGN_TOP_LEFT, 0, 0);
 	lv_obj_set_style_bg_color(w->pwd_panel, lv_color_black(), 0);
 	lv_obj_set_style_border_width(w->pwd_panel, 0, 0);
 	lv_obj_set_style_pad_all(w->pwd_panel, 0, 0);
+	lv_obj_clear_flag(w->pwd_panel, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_flag(w->pwd_panel, LV_OBJ_FLAG_HIDDEN);
 
-	lv_obj_t *back_btn = lv_btn_create(w->pwd_panel);
-	lv_obj_align(back_btn, LV_ALIGN_TOP_LEFT, 8, 8);
-	lv_obj_t *back_lbl = lv_label_create(back_btn);
-	lv_label_set_text(back_lbl, LV_SYMBOL_LEFT " Back");
-	lv_obj_add_event_cb(back_btn, back_btn_cb, LV_EVENT_CLICKED, w);
+	/* Password panel header */
+	lv_obj_t *pwd_hdr = lv_obj_create(w->pwd_panel);
+	lv_obj_set_size(pwd_hdr, LV_PCT(100), HEADER_H);
+	lv_obj_align(pwd_hdr, LV_ALIGN_TOP_LEFT, 0, 0);
+	lv_obj_set_style_bg_color(pwd_hdr, lv_palette_darken(LV_PALETTE_GREY, 4), 0);
+	lv_obj_set_style_border_width(pwd_hdr, 0, 0);
+	lv_obj_set_style_pad_all(pwd_hdr, 0, 0);
+	lv_obj_clear_flag(pwd_hdr, LV_OBJ_FLAG_SCROLLABLE);
 
-	w->pwd_ssid_label = lv_label_create(w->pwd_panel);
+	lv_obj_t *pwd_back = lv_btn_create(pwd_hdr);
+	lv_obj_align(pwd_back, LV_ALIGN_LEFT_MID, 8, 0);
+	lv_obj_set_size(pwd_back, 90, 40);
+	lv_obj_t *pwd_back_lbl = lv_label_create(pwd_back);
+	lv_label_set_text(pwd_back_lbl, LV_SYMBOL_LEFT " Back");
+	lv_obj_center(pwd_back_lbl);
+	lv_obj_add_event_cb(pwd_back, pwd_back_cb, LV_EVENT_CLICKED, w);
+
+	w->pwd_ssid_label = lv_label_create(pwd_hdr);
 	lv_label_set_text(w->pwd_ssid_label, "");
 	lv_obj_set_style_text_color(w->pwd_ssid_label, lv_color_white(), 0);
-	lv_obj_align(w->pwd_ssid_label, LV_ALIGN_TOP_MID, 0, 65);
+	lv_obj_align(w->pwd_ssid_label, LV_ALIGN_CENTER, 0, 0);
 
+	/* Password content area (above keyboard) */
 	w->pwd_ta = lv_textarea_create(w->pwd_panel);
 	lv_textarea_set_one_line(w->pwd_ta, true);
 	lv_textarea_set_password_mode(w->pwd_ta, true);
 	lv_textarea_set_placeholder_text(w->pwd_ta, "Password");
 	lv_obj_set_width(w->pwd_ta, LV_PCT(90));
-	lv_obj_align(w->pwd_ta, LV_ALIGN_TOP_MID, 0, 110);
+	lv_obj_align(w->pwd_ta, LV_ALIGN_TOP_MID, 0, HEADER_H + 16);
 
 	lv_obj_t *conn_btn = lv_btn_create(w->pwd_panel);
 	lv_obj_set_width(conn_btn, 200);
-	lv_obj_align(conn_btn, LV_ALIGN_TOP_MID, 0, 180);
+	lv_obj_align(conn_btn, LV_ALIGN_TOP_MID, 0, HEADER_H + 80);
 	lv_obj_t *conn_lbl = lv_label_create(conn_btn);
 	lv_label_set_text(conn_lbl, "Connect");
 	lv_obj_center(conn_lbl);
@@ -131,8 +175,19 @@ void wifi_provision_init(lv_obj_t *parent, wifi_provision_t *w)
 
 	w->pwd_kb = lv_keyboard_create(w->pwd_panel);
 	lv_keyboard_set_textarea(w->pwd_kb, w->pwd_ta);
-	lv_obj_set_size(w->pwd_kb, LV_PCT(100), 300);
+	lv_obj_set_size(w->pwd_kb, LV_PCT(100), KBD_H);
 	lv_obj_align(w->pwd_kb, LV_ALIGN_BOTTOM_MID, 0, 0);
+}
+
+void wifi_provision_show(wifi_provision_t *w)
+{
+	show_list(w);
+}
+
+void wifi_provision_hide(wifi_provision_t *w)
+{
+	lv_obj_add_flag(w->list_panel, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_add_flag(w->pwd_panel, LV_OBJ_FLAG_HIDDEN);
 }
 
 void wifi_provision_on_result(wifi_provision_t *w, uint8_t status, const char *ssid,
