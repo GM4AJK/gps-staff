@@ -21,6 +21,9 @@ Covers `firmware/esp32-handheld`.
 | NimBLE central (BLE client) | Done PR #209 | Scans for GPS-Base, subscribes to 0xAC01 AP list, writes creds to 0xAC02 |
 | WiFi provisioning UI | Done PR #209 | AP list from Base, password entry via LVGL keyboard, credential send; bench-verified |
 | Connection result UI | Done PR #215 | Subscribes to 0xAC03; success shows green SSID+RSSI+IP; failure shows red reason + restores AP list |
+| Home screen | Done PR #218 | GPS-Staff logo (400×600 RGB565, centred on white background), "Base" and "Rover" buttons at bottom; permanent start screen |
+| Base Config menu | Done PR #218 | Dark header bar + back-to-home navigation; "WiFi Settings" (active), "Survey-in Settings" and "Fix Selection" (greyed stubs, TBD) |
+| Panel navigation | Done PR #218 | Panel-based: home → base_config → wifi_provision; batt indicator created last, floats above all panels; BLE background callbacks no longer force wifi_provision visible |
 
 ---
 
@@ -30,4 +33,6 @@ Covers `firmware/esp32-handheld`.
 |---------|------|
 | BLE connection to Rover (position/status display) | Future spec |
 | BLE command/config channel to Rover | Future spec |
+| Survey-in Settings screen | Awaiting F9P delivery |
+| Fix Selection screen | Awaiting F9P delivery |
 | Main survey UI screens | Pending UI design |

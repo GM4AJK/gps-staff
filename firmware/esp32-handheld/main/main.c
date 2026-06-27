@@ -7,11 +7,26 @@
 
 #include "waveshare_rgb_lcd_port.h"
 #include "batt_indicator.h"
+#include "home_screen.h"
+#include "base_config.h"
 #include "wifi_provision.h"
 #include "ble_base_client.h"
 
-static batt_indicator_t  batt;
-static wifi_provision_t  prov;
+static batt_indicator_t batt;
+static wifi_provision_t prov;
+
+static void on_base_config_back(void)
+{
+	base_config_hide();
+	home_screen_show();
+}
+
+static void on_home_button(bool is_base)
+{
+	if (!is_base) return;   /* Rover: TBD */
+	home_screen_hide();
+	base_config_show();
+}
 
 static void on_ap_list(const prov_ap_t *aps, uint8_t count)
 {
@@ -47,8 +62,14 @@ void app_main(void)
 	if (lvgl_port_lock(-1)) {
 		lv_obj_t *scr = lv_scr_act();
 		lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
-		batt_indicator_init(scr, &batt);
+
+		/* Create panels deepest-first; batt_indicator last so it floats on top */
+		home_screen_init(scr, on_home_button);
+		base_config_init(scr, &prov, on_base_config_back);
 		wifi_provision_init(scr, &prov);
+		batt_indicator_init(scr, &batt);
+
+		home_screen_show();
 		lvgl_port_unlock();
 	}
 

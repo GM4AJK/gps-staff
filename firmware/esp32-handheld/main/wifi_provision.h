@@ -13,9 +13,12 @@ typedef struct {
 	prov_ap_t aps[20];
 	uint8_t   ap_count;
 	char      selected_ssid[33];
+	void    (*back_cb)(void);
 } wifi_provision_t;
 
 void wifi_provision_init(lv_obj_t *parent, wifi_provision_t *w);
+void wifi_provision_show(wifi_provision_t *w);
+void wifi_provision_hide(wifi_provision_t *w);
 void wifi_provision_update(wifi_provision_t *w, const prov_ap_t *aps, uint8_t count);
 void wifi_provision_on_result(wifi_provision_t *w, uint8_t status, const char *ssid,
                                int8_t rssi, uint32_t ip);
