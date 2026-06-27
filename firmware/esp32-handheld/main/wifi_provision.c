@@ -29,6 +29,12 @@ static const char *auth_str(uint8_t auth)
 
 static void show_list(wifi_provision_t *w)
 {
+	/* Only switch panels if wifi_provision is currently active (at least one
+	 * panel is visible).  Avoids BLE background callbacks revealing the UI
+	 * while the user is on the home or base-config screen. */
+	if (lv_obj_has_flag(w->list_panel, LV_OBJ_FLAG_HIDDEN) &&
+	    lv_obj_has_flag(w->pwd_panel, LV_OBJ_FLAG_HIDDEN))
+		return;
 	lv_obj_clear_flag(w->list_panel, LV_OBJ_FLAG_HIDDEN);
 	lv_obj_add_flag(w->pwd_panel, LV_OBJ_FLAG_HIDDEN);
 	lv_textarea_set_text(w->pwd_ta, "");

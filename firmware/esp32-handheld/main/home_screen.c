@@ -17,32 +17,37 @@ void home_screen_init(lv_obj_t *parent, home_screen_cb_t cb)
 	s_panel = lv_obj_create(parent);
 	lv_obj_set_size(s_panel, LV_PCT(100), LV_PCT(100));
 	lv_obj_align(s_panel, LV_ALIGN_TOP_LEFT, 0, 0);
-	lv_obj_set_style_bg_color(s_panel, lv_color_black(), 0);
+	lv_obj_set_style_bg_color(s_panel, lv_color_white(), 0);
 	lv_obj_set_style_border_width(s_panel, 0, 0);
 	lv_obj_set_style_pad_all(s_panel, 0, 0);
 	lv_obj_clear_flag(s_panel, LV_OBJ_FLAG_SCROLLABLE);
 	lv_obj_add_flag(s_panel, LV_OBJ_FLAG_HIDDEN);
 
-	/* Logo — 250×375, centred, 18px from top */
+	/* Logo — 400×600, centred; clips 60px top/bottom giving full 400px width. */
 	lv_obj_t *img = lv_img_create(s_panel);
 	lv_img_set_src(img, &logo_img);
-	lv_obj_align(img, LV_ALIGN_TOP_MID, 0, 18);
+	lv_obj_align(img, LV_ALIGN_CENTER, 0, 0);
 
-	/* Rover button — greyed out, no action yet */
+	/* Buttons anchored to BOTTOM_MID with ±offset so they sit one each
+	 * side of the vertical centre line regardless of panel padding. */
+	/* Buttons span the same 400px as the logo: 20+160+40+160+20, centred.
+	 * BOTTOM_MID ±100 places each button centre 100px either side of screen
+	 * centre (x=300 and x=500). */
 	lv_obj_t *rover_btn = lv_btn_create(s_panel);
-	lv_obj_set_size(rover_btn, 240, 65);
-	lv_obj_align(rover_btn, LV_ALIGN_BOTTOM_LEFT, 80, -10);
+	lv_obj_set_size(rover_btn, 160, 60);
+	lv_obj_align(rover_btn, LV_ALIGN_BOTTOM_MID, -100, -12);
 	lv_obj_set_style_bg_color(rover_btn, lv_palette_darken(LV_PALETTE_GREY, 3), 0);
+	lv_obj_set_style_pad_all(rover_btn, 0, 0);
 	lv_obj_t *rover_lbl = lv_label_create(rover_btn);
 	lv_label_set_text(rover_lbl, "Rover");
 	lv_obj_set_style_text_font(rover_lbl, &lv_font_montserrat_24, 0);
 	lv_obj_center(rover_lbl);
 
-	/* Base button */
 	lv_obj_t *base_btn = lv_btn_create(s_panel);
-	lv_obj_set_size(base_btn, 240, 65);
-	lv_obj_align(base_btn, LV_ALIGN_BOTTOM_RIGHT, -80, -10);
+	lv_obj_set_size(base_btn, 160, 60);
+	lv_obj_align(base_btn, LV_ALIGN_BOTTOM_MID, 100, -12);
 	lv_obj_set_style_bg_color(base_btn, lv_palette_main(LV_PALETTE_BLUE), 0);
+	lv_obj_set_style_pad_all(base_btn, 0, 0);
 	lv_obj_t *base_lbl = lv_label_create(base_btn);
 	lv_label_set_text(base_lbl, "Base");
 	lv_obj_set_style_text_font(base_lbl, &lv_font_montserrat_24, 0);
