@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Phase 1.1 + Phase 2 + Phase 3 implemented |
+| Status | All phases bench-verified complete |
 | Phase 1 PR | #206 (Phase 1.1 — unprovisioned WiFi scan + BLE advertise) |
 | Phase 2 PR | #209 (HH BLE client + AP list UI + password entry + credential send) |
 | Phase 3 PR | #215 (Base WiFi connect + NVS storage + 0xAC03 result notify; HH result UI) |
@@ -93,6 +93,7 @@ The Base has two distinct boot states, and advertises different data depending o
 
 ## Notes
 
-- `espressif/network_provisioning` (v^1.0.5) is the IDF 6.2 replacement for the removed `wifi_provisioning` built-in component. Add to `firmware/esp32-base/main/idf_component.yml`.
+- WiFi connection uses raw `esp_wifi` STA APIs — no managed provisioning component needed.
+- NVS namespace `wifi_prov`, keys `ssid` and `pwd`. Credentials survive power cycles and OTA updates (NVS partition is separate from app partition).
+- RTCM BLE bridge (0xAB00/0xAB01) was removed in PR #216 — RTCM flows over GFSK only. The rover ESP32 no longer connects to GPS-Base, so there is no longer a connection-stealing race between rover and Handheld.
 - NTRIP streaming (using the WiFi connection established here) is out of scope for this spec — see future feature spec.
-- The BLE link used for provisioning is the same NimBLE stack already in `firmware/esp32-base` (PR #187). Provisioning reuses this transport rather than adding a second BLE stack.
