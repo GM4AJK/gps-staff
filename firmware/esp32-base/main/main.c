@@ -1,8 +1,6 @@
-#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/gpio.h"
-#include "driver/uart.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
 #include "esp_netif.h"
@@ -14,10 +12,9 @@
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
 #include "ble_base.h"
-#include "ble_rover.h"
 #include "wifi_prov.h"
 
-#define TAG              "main"
+#define TAG "main"
 
 /* Mode select pins (GP1/GP2 on ESP32-S3 Mini, driven by F765 PE2/PE3 on PCB).
  * Bench: GP1 hardwired — link open = base (pull-up), link to GND = rover.
@@ -25,13 +22,6 @@
 #define PIN_MODE         GPIO_NUM_1
 #define PIN_MODE_VALID   GPIO_NUM_2
 #define VALID_TIMEOUT_MS 500
-
-/* UART bridge to Nucleo (adjust pins to suit bench wiring) */
-#define BRIDGE_UART      UART_NUM_0
-#define UART_TX_PIN      43   /* labeled TX on ESP32-S3 Mini header = UART0 TX */
-#define UART_RX_PIN      44   /* labeled RX on ESP32-S3 Mini header = UART0 RX */
-#define UART_BAUD        115200
-#define UART_BUF_SIZE    4096
 
 typedef enum { ROLE_BASE, ROLE_ROVER } role_t;
 
@@ -76,8 +66,7 @@ static void on_ble_sync(void)
 	ble_hs_util_ensure_addr(0);
 	if (g_role == ROLE_BASE)
 		ble_base_on_sync();
-	else
-		ble_rover_on_sync();
+	/* rover: BLE role TBD — RTCM flows over GFSK, not BLE */
 }
 
 static void ble_host_task(void *arg)
@@ -96,18 +85,6 @@ void app_main(void)
 
 	g_role = detect_role();
 
-	uart_config_t ucfg = {
-		.baud_rate  = UART_BAUD,
-		.data_bits  = UART_DATA_8_BITS,
-		.parity     = UART_PARITY_DISABLE,
-		.stop_bits  = UART_STOP_BITS_1,
-		.flow_ctrl  = UART_HW_FLOWCTRL_DISABLE,
-	};
-	uart_driver_install(BRIDGE_UART, UART_BUF_SIZE, 0, 0, NULL, 0);
-	uart_param_config(BRIDGE_UART, &ucfg);
-	uart_set_pin(BRIDGE_UART, UART_TX_PIN, UART_RX_PIN,
-	             UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-
 	nimble_port_init();
 	ble_svc_gap_device_name_set(g_role == ROLE_BASE ? "GPS-Base" : "GPS-Rover");
 	ble_svc_gap_init();
@@ -116,18 +93,15 @@ void app_main(void)
 	if (g_role == ROLE_BASE) {
 		esp_netif_init();
 		esp_event_loop_create_default();
-		ble_base_register_svcs();
 		wifi_prov_register_svcs();
 		wifi_prov_init();
-	} else {
-		ble_rover_init(BRIDGE_UART);
 	}
 
 	ble_hs_cfg.sync_cb = on_ble_sync;
 	nimble_port_freertos_init(ble_host_task);
 
 	if (g_role == ROLE_BASE)
-		ble_base_start_tasks(BRIDGE_UART);
+		wifi_prov_start_task();
 
 	ESP_LOGI(TAG, "init complete");
 }

@@ -11,8 +11,7 @@ Covers both `firmware/esp32-base` (base role) and `firmware/Nucleo-F767ZI-FreeRT
 | Capability | Status | Notes |
 |------------|--------|-------|
 | Role selection at boot | Done | GP1 open = base, GP1 GND = rover; 500ms timeout then direct GPIO read |
-| BLE serial bridge (base side) | Done PR #187 | Advertises as "GPS-Base", GATT peripheral, notifies rover of UART data |
-| UART0 bridge to STM32 | Done PR #187 | GPIO43/44, pipes data between BLE and STM32 UART |
+| BLE peripheral (GPS-Base) | Done | Advertises "GPS-Base"; GAP connect/disconnect hooks wifi_prov; RTCM bridge removed — RTCM flows over GFSK |
 | WiFi scan + BLE advertise (unprovisioned) | Done PR #206 | GATT svc 0xAC00 chr 0xAC01 NOTIFY; AP list every 3s sorted by RSSI; empty list when no APs found |
 | Credential receive from HH | Done PR #209 | 0xAC02 WRITE; decodes SSID+password |
 | WiFi connect + NVS storage | Done PR #215 | State machine: SCANNING→CONNECTING→CONNECTED; credentials in NVS namespace wifi_prov; reconnects on boot |
