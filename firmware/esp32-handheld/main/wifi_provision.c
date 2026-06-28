@@ -187,7 +187,22 @@ void wifi_provision_init(lv_obj_t *parent, wifi_provision_t *w)
 
 void wifi_provision_show(wifi_provision_t *w)
 {
-	show_list(w);
+	/* Apply any cached connection result so the user sees the current Base
+	 * state immediately without waiting for the next 3s heartbeat. */
+	if (w->result_valid) {
+		if (w->result_status == PROV_RESULT_OK) {
+			char buf[80];
+			esp_ip4_addr_t addr = { .addr = w->result_ip };
+			snprintf(buf, sizeof(buf), LV_SYMBOL_OK " Base: %s  %d dBm  " IPSTR,
+			         w->result_ssid, w->result_rssi, IP2STR(&addr));
+			lv_label_set_text(w->status, buf);
+			lv_obj_set_style_text_color(w->status, lv_palette_main(LV_PALETTE_GREEN), 0);
+			lv_obj_clean(w->list);
+		}
+	}
+	lv_obj_clear_flag(w->list_panel, LV_OBJ_FLAG_HIDDEN);
+	lv_obj_add_flag(w->pwd_panel, LV_OBJ_FLAG_HIDDEN);
+	lv_textarea_set_text(w->pwd_ta, "");
 }
 
 void wifi_provision_hide(wifi_provision_t *w)
@@ -201,6 +216,14 @@ void wifi_provision_on_result(wifi_provision_t *w, uint8_t status, const char *s
 {
 	if (!lvgl_port_lock(-1))
 		return;
+
+	/* Cache the result so wifi_provision_show() can apply it immediately. */
+	w->result_valid  = true;
+	w->result_status = status;
+	strncpy(w->result_ssid, ssid ? ssid : "", 32);
+	w->result_ssid[32] = '\0';
+	w->result_rssi   = rssi;
+	w->result_ip     = ip;
 
 	if (status == PROV_RESULT_OK) {
 		char buf[80];
@@ -237,22 +260,38 @@ void wifi_provision_update(wifi_provision_t *w, const prov_ap_t *aps, uint8_t co
 
 	lv_obj_clean(w->list);
 
+	bool connected = w->result_valid && w->result_status == PROV_RESULT_OK;
+
 	if (count == 0) {
 		lv_label_set_text(w->status, LV_SYMBOL_WARNING " No WiFi networks found");
 	} else {
 		char buf[64];
 		for (int i = 0; i < count; i++) {
+			bool is_configured = connected &&
+			                     strncmp(aps[i].ssid, w->result_ssid, 32) == 0;
 			snprintf(buf, sizeof(buf), "%-20.20s  %4d dBm  %s",
 			         aps[i].ssid, aps[i].rssi, auth_str(aps[i].auth));
-			lv_obj_t *btn = lv_list_add_btn(w->list, LV_SYMBOL_WIFI, buf);
+			const char *icon = is_configured ? LV_SYMBOL_OK : LV_SYMBOL_WIFI;
+			lv_obj_t *btn = lv_list_add_btn(w->list, icon, buf);
 			lv_obj_set_style_bg_color(btn, lv_color_black(), 0);
-			lv_obj_set_style_text_color(btn, lv_color_white(), 0);
+			lv_obj_set_style_text_color(btn,
+			    is_configured ? lv_palette_main(LV_PALETTE_GREEN) : lv_color_white(), 0);
 			lv_obj_set_user_data(btn, (void *)(uintptr_t)i);
 			lv_obj_add_event_cb(btn, ap_btn_cb, LV_EVENT_CLICKED, w);
 		}
-		snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI " %d network%s",
-		         count, count == 1 ? "" : "s");
-		lv_label_set_text(w->status, buf);
+		if (connected) {
+			char buf2[80];
+			esp_ip4_addr_t addr = { .addr = w->result_ip };
+			snprintf(buf2, sizeof(buf2), LV_SYMBOL_OK " Base: %s  %d dBm  " IPSTR,
+			         w->result_ssid, w->result_rssi, IP2STR(&addr));
+			lv_label_set_text(w->status, buf2);
+			lv_obj_set_style_text_color(w->status, lv_palette_main(LV_PALETTE_GREEN), 0);
+		} else {
+			snprintf(buf, sizeof(buf), LV_SYMBOL_WIFI " %d network%s",
+			         count, count == 1 ? "" : "s");
+			lv_label_set_text(w->status, buf);
+			lv_obj_set_style_text_color(w->status, lv_palette_main(LV_PALETTE_GREY), 0);
+		}
 	}
 
 	lvgl_port_unlock();

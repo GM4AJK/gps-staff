@@ -14,6 +14,12 @@ typedef struct {
 	uint8_t   ap_count;
 	char      selected_ssid[33];
 	void    (*back_cb)(void);
+	/* cached last connection result — applied immediately on show() */
+	bool     result_valid;
+	uint8_t  result_status;
+	char     result_ssid[33];
+	int8_t   result_rssi;
+	uint32_t result_ip;
 } wifi_provision_t;
 
 void wifi_provision_init(lv_obj_t *parent, wifi_provision_t *w);
