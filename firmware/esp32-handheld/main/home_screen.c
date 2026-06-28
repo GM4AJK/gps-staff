@@ -40,7 +40,7 @@ void home_screen_init(lv_obj_t *parent, home_screen_cb_t cb)
 	lv_obj_set_style_pad_all(rover_btn, 0, 0);
 	lv_obj_t *rover_lbl = lv_label_create(rover_btn);
 	lv_label_set_text(rover_lbl, "Rover");
-	lv_obj_set_style_text_font(rover_lbl, &lv_font_montserrat_24, 0);
+	lv_obj_set_style_text_font(rover_lbl, &lv_font_montserrat_32, 0);
 	lv_obj_center(rover_lbl);
 
 	lv_obj_t *base_btn = lv_btn_create(s_panel);
@@ -50,7 +50,7 @@ void home_screen_init(lv_obj_t *parent, home_screen_cb_t cb)
 	lv_obj_set_style_pad_all(base_btn, 0, 0);
 	lv_obj_t *base_lbl = lv_label_create(base_btn);
 	lv_label_set_text(base_lbl, "Base");
-	lv_obj_set_style_text_font(base_lbl, &lv_font_montserrat_24, 0);
+	lv_obj_set_style_text_font(base_lbl, &lv_font_montserrat_32, 0);
 	lv_obj_center(base_lbl);
 	lv_obj_add_event_cb(base_btn, base_btn_cb, LV_EVENT_CLICKED, NULL);
 }
