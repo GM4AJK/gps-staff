@@ -13,20 +13,40 @@
 #include "ble_base_client.h"
 
 static batt_indicator_t batt;
+static home_screen_t    home;
+static base_config_t    base_cfg;
 static wifi_provision_t prov;
 
-static void on_base_config_back(void)
+/* ---- Navigation ---- */
+
+static void on_home_button(void *arg)
 {
-	base_config_hide();
-	home_screen_show();
+	(void)arg;
+	home_screen_hide(&home);
+	base_config_show(&base_cfg);
 }
 
-static void on_home_button(bool is_base)
+static void on_base_config_back(void *arg)
 {
-	if (!is_base) return;   /* Rover: TBD */
-	home_screen_hide();
-	base_config_show();
+	(void)arg;
+	base_config_hide(&base_cfg);
+	home_screen_show(&home);
 }
+
+static void on_wifi_settings(void *arg)
+{
+	(void)arg;
+	base_config_hide(&base_cfg);
+	wifi_provision_show(&prov);
+}
+
+static void on_wifi_back(void)
+{
+	wifi_provision_hide(&prov);
+	base_config_show(&base_cfg);
+}
+
+/* ---- BLE callbacks ---- */
 
 static void on_ap_list(const prov_ap_t *aps, uint8_t count)
 {
@@ -49,6 +69,8 @@ static void ble_host_task(void *arg)
 	nimble_port_freertos_deinit();
 }
 
+/* ---- Entry point ---- */
+
 void app_main(void)
 {
 	esp_err_t ret = nvs_flash_init();
@@ -64,12 +86,19 @@ void app_main(void)
 		lv_obj_set_style_bg_color(scr, lv_color_black(), 0);
 
 		/* Create panels deepest-first; batt_indicator last so it floats on top */
-		home_screen_init(scr, on_home_button);
-		base_config_init(scr, &prov, on_base_config_back);
+		home_screen_init(scr, &home);
+		home.user_cb_base = on_home_button;
+
+		base_config_init(scr, &base_cfg);
+		base_cfg.user_cb_back = on_base_config_back;
+		base_cfg.user_cb_wifi = on_wifi_settings;
+
 		wifi_provision_init(scr, &prov);
+		prov.back_cb = on_wifi_back;
+
 		batt_indicator_init(scr, &batt);
 
-		home_screen_show();
+		home_screen_show(&home);
 		lvgl_port_unlock();
 	}
 
