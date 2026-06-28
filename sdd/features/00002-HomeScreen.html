@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: Main System (tablet 7ich)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Home Screen 
+- bg_color: 0xffffff
+- bg_image: images/gps-staff-logo-900x600.png
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Tablet Flexbox UI Mockup</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #888;
+    }
+    .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 landscape — flexbox layout</div>
+
+  <!--
+    ============================================================
+    ROOT SCREEN
+    ============================================================
+    flex-direction: column   → children stack top-to-bottom
+    height: 800px            → fixed, matches display
+    overflow: hidden         → clip anything that escapes
+
+    LVGL equivalent:
+      lv_obj_set_layout(screen, LV_LAYOUT_FLEX);
+      lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_COLUMN);
+      lv_obj_set_size(screen, 600, 1024);
+  -->
+  <div style="
+    width: 1024px;
+    height: 600px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+  ">
+
+    <!--
+      ============================================================
+      BATTERY BAR  (row, pinned to top)
+      ============================================================
+      flex-direction: row          → children sit side by side
+      justify-content: flex-end    → push content to the right
+      align-items: center          → vertically centre the text
+      flex-shrink: 0               → do not shrink when logo grows
+
+      LVGL equivalent:
+        lv_obj_set_layout(batt_bar, LV_LAYOUT_FLEX);
+        lv_obj_set_flex_flow(batt_bar, LV_FLEX_FLOW_ROW);
+        lv_obj_set_flex_align(batt_bar,
+            LV_FLEX_ALIGN_END,    // main axis  → right
+            LV_FLEX_ALIGN_CENTER, // cross axis → centre
+            LV_FLEX_ALIGN_START);
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      flex-shrink: 0;
+      height: 28px;
+      padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!--
+      ============================================================
+      LOGO AREA  Image is 900px wide by 600px high
+      ============================================================
+	  This is a "background image" for the home screen
+      display: flex                → become a flex container itself
+      justify-content: center      → centre child horizontally
+      align-items: center          → centre child vertically
+    -->
+    <!--
+      Logo area fills remaining height. Position:relative so the
+      button bar can be absolutely centred on top of the image.
+    -->
+    <div style="
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    ">
+      <!-- Logo fills the area -->
+      <img src="images/gps-staff-logo-900x600.png" style="
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        object-fit: cover;
+        display: block;
+      ">
+
+      <!--
+        BUTTON BAR — overlaid, vertically centred, Rover left / Base right.
+        justify-content: space-between  → pins each button to its side
+        padding: 0 60px                 → keep buttons away from screen edge
+        position: absolute + top/transform → centres the bar vertically
+      -->
+      <div style="
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        left: 0; right: 0;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 60px;
+        box-sizing: border-box;
+      ">
+
+        <!-- BASE — left, blue, navigates to Base Config -->
+        <button style="
+          width: 220px;
+          height: 90px;
+          background: #2196F3;
+          border: none;
+          border-radius: 8px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          cursor: pointer;
+        ">
+          <span style="font-family: 'Montserrat', sans-serif; font-size: 40px; font-weight: 700; color: white;">Base</span>
+        </button>
+
+        <!-- ROVER — right, dark grey, no action -->
+        <button style="
+          width: 220px;
+          height: 90px;
+          background: #424242;
+          border: none;
+          border-radius: 8px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          cursor: default;
+        ">
+          <span style="font-family: 'Montserrat', sans-serif; font-size: 40px; font-weight: 700; color: white;">Rover</span>
+        </button>
+
+      </div><!-- end button bar -->
+
+    </div><!-- end logo area -->
+
+  </div><!-- end root screen -->
+
+  <!--
+    ============================================================
+    KEY FLEXBOX CONCEPTS USED HERE
+    ============================================================
+
+    flex-direction: column/row
+      Controls whether children stack vertically (column) or
+      sit side by side (row).  The default is row.
+
+    flex: 1  (on a child)
+      That child expands to fill all leftover space along the
+      main axis.  If two siblings both have flex:1 they share
+      equally.  Think of it as "take what's left".
+
+    justify-content  (main axis — the direction of flex-direction)
+      center        → pack children at the centre
+      flex-end      → pack children at the end
+      space-between → first child at start, last at end, rest evenly spaced
+      space-around  → equal space around each child
+
+    align-items  (cross axis — perpendicular to flex-direction)
+      center        → centre children across the cross axis
+      flex-start    → align to the start
+      stretch       → stretch children to fill (default)
+
+    gap
+      Space between children.  Cleaner than margin hacks.
+      In LVGL: pad_column (row flow) or pad_row (column flow).
+
+    flex-shrink: 0
+      Prevents a child from being squashed when the container
+      is too small.  Use it on bars/headers you want to keep
+      at their stated height.
+
+    ============================================================
+    WHY FLEXBOX OVER ABSOLUTE POSITIONING
+    ============================================================
+    In example.html the button positions were calculated:
+      left: calc(50% - 100px - 80px)  ← fragile, breaks if width changes
+
+    Here the button bar is flex: row + justify:center + gap:40px.
+    Change the screen width to 1024px for the tablet and the
+    buttons still centre correctly — no recalculation needed.
+    That's the payoff.
+    ============================================================
+  -->
+
+</body>
+</html>
