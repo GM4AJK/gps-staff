@@ -304,12 +304,15 @@
         <button class="key">m</button>
         <button class="key key-wide key-action">. @ - _</button>
       </div>
-      <!-- Row 5: space + connect -->
+      <!-- Row 5: space + connect
+           ← Cancel navigates back to State 1 (discards password entry entirely) —
+           same action as the form-level Cancel button, not just keyboard dismiss.
+           Connect ✓ sends SSID + password to Base via BLE and transitions to State 3. -->
       <div class="kbd-row">
         <button class="key key-wide key-action">?123</button>
         <button class="key key-space">space</button>
         <button class="key key-wide key-action"
-                onclick="hideKbd()">Cancel</button>
+                onclick="hideKbd()">← Cancel</button>
         <button class="key key-connect"
                 onclick="hideKbd()">Connect ✓</button>
       </div>
