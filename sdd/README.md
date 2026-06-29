@@ -23,6 +23,7 @@ Numbered feature specifications and UI screen specs.
 | Document | Contents |
 |---|---|
 | [features/00001-wifi-provisioning.md](features/00001-wifi-provisioning.md) | WiFi provisioning — all phases bench-verified |
+| [features/00006-OperatingMode.html](features/00006-OperatingMode.html) | Operating Mode selector — 5 modes: Local RF, Rover NTRIP, Base via relay caster, Dual NTRIP, Direct TCP; RF sub-selector (GFSK/LoRa) for Mode 1 |
 | [features/00002-HomeScreen.html](features/00002-HomeScreen.html) | Home screen spec (1024×600 landscape) |
 | [features/00003-BaseConfig-0.html](features/00003-BaseConfig-0.html) | Base Config — State 0: top-level mode selector (Survey-in / RTCM Streaming / Satellite View / config strip) |
 | [features/00003-BaseConfig-1.html](features/00003-BaseConfig-1.html) | Base Config — State 1: normal view, network table |
@@ -38,3 +39,4 @@ Numbered feature specifications and UI screen specs.
 | [features/00003-BaseConfig-FixedPos.html](features/00003-BaseConfig-FixedPos.html) | Base Config — Fixed Position entry (monument/benchmark, OSGB36/WGS84) |
 | [features/00004-BaseSatelliteView-1.html](features/00004-BaseSatelliteView-1.html) | Base Satellite View — sky plot (az/el, GPS+GLONASS), CN0 bar chart, fix status |
 | [features/00005-AboutScreen-1.html](features/00005-AboutScreen-1.html) | About screen — product identity, firmware/hardware versions, the Wizard |
+| [features/00007-RoverConfig-Mode1.html](features/00007-RoverConfig-Mode1.html) | Rover Config (Mode 1 — Local RF Link) — pole height entry, live RF link status (RSSI/SNR/frame count), F9P fix type; two dev states: Waiting / Receiving |

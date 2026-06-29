@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff — Rover Config (Mode 1: Local RF Link)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Entry: Home Screen — Rover Config (only shown when Operating Mode = Mode 1)
+
+## Purpose
+Rover-side configuration and live status for Mode 1 (Local RF Link).
+The Rover is passive in this mode — it receives RTCM from the Base over
+GFSK or LoRa and passes corrections to the F9P. User configures pole height
+here; all RF parameters are read-only (set at the system level in 00006).
+
+## Two display states (automatic, driven by RTCM receive activity)
+- **Waiting:** No RTCM received yet. Status panel shows idle indicators.
+  User can still set pole height before deployment.
+- **Receiving:** RTCM frames arriving from Base. Status panel shows live
+  signal quality (RSSI, SNR) and F9P fix type.
+State switches automatically when RTCM frames start/stop arriving.
+
+## Pole height
+- Distance from ground mark to Rover antenna phase centre, in metres.
+- Decimal input, e.g. "1.80" → stored as float, displayed as "1.80 m".
+- Tap field → numeric vkbd with decimal key enabled (same pattern as
+  FixedPos lat/lon entry in 00003-BaseConfig-FixedPos.html).
+- Applied to F9P height output; logged to SD card header.
+
+## RF mode indicator
+- Read-only. Reflects the system-level RF mode set in 00006-OperatingMode.html.
+- Shown as a chip in the header — cannot be changed from this screen.
+- LVGL: lv_label in a styled lv_obj; value read from NVS RF_MODE key.
+
+## RTCM receive status
+- Frame counter: increments each time a complete RTCM3 frame is reassembled
+  from the OTA RX module and passed to the F9P UART.
+- RSSI / SNR: polled from SX1262 GetPacketStatus after each RxDone IRQ.
+- F9P fix type: parsed from UBX-NAV-PVT carrSoln field:
+    0 = No RTK, 1 = RTK Float, 2 = RTK Fix.
+- Accuracy: UBX-NAV-PVT hAcc / vAcc (mm → display as cm or m).
+
+## LVGL implementation notes
+- Left panel: lv_obj, bg = lv_color_hex(0xF5F5F5), fixed width 420px.
+- RF mode chip: lv_label in lv_obj, updated from NVS on screen load.
+- Status indicator dot: lv_obj, radius 50% — toggle bg between #E0E0E0
+  (waiting) and #43A047 (receiving) on RTCM_FRAME_RX event.
+- RSSI/SNR labels: lv_label, updated on each RxDone via event queue.
+- Frame counter: lv_label, increment on each reassembled frame.
+- Fix type badge: lv_obj + lv_label, colour changes on UBX-NAV-PVT parse:
+    No fix → grey, Float → amber (#FF8F00), RTK Fix → green (#2E7D32).
+- Pole height field: lv_textarea (single line), tap opens lv_keyboard
+  in decimal mode. On confirm, write value to NVS and log SD header.
+MD_COMMENT -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Rover Config (Mode 1)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #111;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .screen-label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #888;
+    }
+
+    /* Dev state toggle */
+    .dev-toggle {
+      margin-bottom: 12px; display: flex; gap: 0;
+      border: 1px solid #333; border-radius: 6px; overflow: hidden;
+    }
+    .dev-btn {
+      font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700;
+      padding: 6px 16px; border: none; cursor: pointer; background: #1a1a1a;
+      color: #555; letter-spacing: 0.05em;
+    }
+    .dev-btn.active { background: #1565C0; color: #fff; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #999; margin: 0 0 10px 0;
+    }
+
+    /* Pole height field */
+    .pole-field {
+      background: #fff; border: 2px solid #e0e0e0; border-radius: 6px;
+      padding: 10px 14px; display: flex; justify-content: space-between;
+      align-items: center; cursor: pointer; transition: border-color 0.15s;
+    }
+    .pole-field:hover { border-color: #2196F3; }
+    .pole-val  { font-size: 22px; font-weight: 700; color: #333; }
+    .pole-edit { font-size: 16px; color: #bbb; }
+
+    /* Fix type badge */
+    .fix-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 12px;
+      font-size: 12px; font-weight: 700;
+    }
+    .fix-none  { background: #ECEFF1; color: #607D8B; }
+    .fix-float { background: #FFF3E0; color: #E65100; }
+    .fix-rtk   { background: #E8F5E9; color: #1B5E20; }
+
+    /* Info row in status panel */
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 6px 0; border-bottom: 1px solid #f0f0f0;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-key { font-size: 13px; color: #888; }
+    .stat-val { font-size: 14px; font-weight: 700; color: #333; }
+
+    /* Constellation chip (read-only) */
+    .ro-field {
+      background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 6px;
+      padding: 10px 14px; display: flex; justify-content: space-between;
+      align-items: center;
+    }
+    .ro-key { font-size: 13px; color: #888; }
+    .ro-val { font-size: 14px; font-weight: 700; color: #555; }
+
+    .btn-save {
+      width: 100%; height: 48px; border: none; border-radius: 8px;
+      background: #1565C0; color: white; cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 15px; font-weight: 700;
+    }
+    .btn-save:hover { background: #1976D2; }
+  </style>
+</head>
+<body>
+
+  <div class="screen-label">Handheld Tablet — 1024 × 600 — Rover Config (Mode 1: Local RF Link)</div>
+
+  <!-- Dev state toggle -->
+  <div class="dev-toggle">
+    <button class="dev-btn active" onclick="setState('waiting')">⏳ Waiting for Base</button>
+    <button class="dev-btn"       onclick="setState('receiving')">📡 Receiving RTCM</button>
+  </div>
+
+  <div style="
+    width: 1024px; height: 600px; background: white;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #444; position: relative;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="display:flex; justify-content:flex-end; align-items:center;
+      flex-shrink:0; height:28px; padding:0 10px; background:#111;">
+      <span style="font-family:monospace; font-size:12px; color:#0f0;">▐███░▌ 92%</span>
+    </div>
+
+    <!-- HEADER -->
+    <div style="display:flex; align-items:center; flex-shrink:0;
+      height:52px; padding:0 16px; background:#222; gap:16px;">
+      <button style="background:none; border:none; color:white;
+        font-family:'Montserrat',sans-serif; font-size:24px; cursor:pointer;
+        padding:0; line-height:1;">←</button>
+      <span style="font-size:20px; font-weight:700; color:white; flex:1;">Rover Config</span>
+      <!--
+        RF mode chip — read-only, reflects NVS RF_MODE.
+        Cannot be changed here; tap does nothing (or shows "Change in Operating Mode").
+      -->
+      <div style="
+        font-size:11px; font-weight:700; font-family:monospace;
+        background:#1A2640; color:#64B5F6;
+        border:1px solid #1565C0; border-radius:4px; padding:3px 10px;
+      ">RF: GFSK</div>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex:1; display:flex; overflow:hidden;">
+
+      <!--
+        ## LEFT PANEL — Live RF and F9P status
+        Updates driven by events: RTCM_FRAME_RX, SX1262 RxDone, UBX-NAV-PVT.
+        In Waiting state: indicators idle/grey.
+        In Receiving state: indicators live/green.
+      -->
+      <div style="
+        flex-shrink:0; width:420px; background:#f8f9fa;
+        border-right:1px solid #e0e0e0;
+        padding:20px 20px; box-sizing:border-box;
+        display:flex; flex-direction:column; gap:18px;
+      ">
+
+        <!-- RF Link status -->
+        <div>
+          <p class="section-label">RF Link</p>
+          <div style="
+            background:white; border:1px solid #e0e0e0; border-radius:8px;
+            padding:14px 16px; display:flex; flex-direction:column; gap:10px;
+          ">
+            <!-- Status indicator row -->
+            <div style="display:flex; align-items:center; gap:12px;">
+              <!--
+                Status dot: grey (#E0E0E0) when waiting, green (#43A047) when receiving.
+                LVGL: lv_obj circle, toggle bg colour on RTCM_FRAME_RX event.
+              -->
+              <div id="status-dot" style="
+                width:14px; height:14px; border-radius:50%;
+                background:#E0E0E0; flex-shrink:0;
+              "></div>
+              <div>
+                <div id="status-text" style="font-size:14px; font-weight:700; color:#bbb;">
+                  Waiting for Base…
+                </div>
+                <div id="frame-count" style="font-size:11px; color:#ccc; margin-top:2px;">
+                  0 frames received
+                </div>
+              </div>
+            </div>
+
+            <!-- RSSI / SNR — hidden when waiting -->
+            <div id="signal-rows" style="display:none;">
+              <div class="stat-row">
+                <span class="stat-key">RSSI</span>
+                <span class="stat-val" id="rssi-val">−82 dBm</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-key">SNR</span>
+                <span class="stat-val" id="snr-val">+8.5 dB</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- F9P status -->
+        <div>
+          <p class="section-label">F9P Status</p>
+          <div style="
+            background:white; border:1px solid #e0e0e0; border-radius:8px;
+            padding:14px 16px; display:flex; flex-direction:column; gap:10px;
+          ">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:13px; color:#888;">Fix type</span>
+              <!--
+                Fix badge colour:
+                  No RTK  → fix-none  (grey)
+                  Float   → fix-float (amber)
+                  RTK Fix → fix-rtk   (green)
+                LVGL: lv_obj + lv_label, recolour on UBX-NAV-PVT carrSoln update.
+              -->
+              <span class="fix-badge fix-none" id="fix-badge">No RTK</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-key">Horiz. accuracy</span>
+              <span class="stat-val" id="hacc-val" style="color:#ccc;">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-key">RTCM applied</span>
+              <span class="stat-val" id="rtcm-applied" style="color:#ccc;">—</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end left panel -->
+
+      <!--
+        ## RIGHT PANEL — Rover configuration
+        Settings the operator enters before or during deployment.
+        Pole height is the primary field for Mode 1.
+      -->
+      <div style="
+        flex:1; padding:20px 24px; box-sizing:border-box;
+        display:flex; flex-direction:column; gap:18px;
+      ">
+
+        <!--
+          Pole height — tap to edit, opens numeric vkbd with decimal key enabled.
+          Stored as float metres in NVS (ROVER_POLE_HEIGHT).
+          Applied to: F9P height offset output; SD card log file header.
+          Range: 0.00–9.99 m. Default: 0.00 m.
+        -->
+        <div>
+          <p class="section-label">Pole Height</p>
+          <div class="pole-field">
+            <div>
+              <div style="font-size:12px; color:#aaa; margin-bottom:4px;">
+                Ground mark → antenna phase centre
+              </div>
+              <span class="pole-val">1.80 m</span>
+            </div>
+            <span class="pole-edit">✎</span>
+          </div>
+        </div>
+
+        <!--
+          Constellation — read-only in Mode 1.
+          Set by Base F9P config (GPS + GLONASS).
+          Rover F9P auto-accepts whichever RTCM message types it receives.
+        -->
+        <div>
+          <p class="section-label">Constellation</p>
+          <div class="ro-field">
+            <span class="ro-key">RTCM constellation</span>
+            <span class="ro-val">GPS + GLONASS</span>
+          </div>
+          <div style="font-size:11px; color:#bbb; margin-top:5px; padding-left:2px;">
+            Follows Base config — Rover F9P accepts all received RTCM types
+          </div>
+        </div>
+
+        <!--
+          Operating mode reminder — read-only summary of system config.
+          Tapping navigates back to 00006-OperatingMode.html to change.
+        -->
+        <div>
+          <p class="section-label">System Mode</p>
+          <div class="ro-field" style="cursor:pointer;" title="Tap to change in Operating Mode">
+            <span class="ro-key">Mode 1 — Local RF Link</span>
+            <span style="font-size:11px; color:#bbb;">Change ›</span>
+          </div>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <button class="btn-save">Save Settings</button>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+  <script>
+    /*
+      Dev toggle: simulates the two live states the screen can be in.
+      LVGL equivalent: state driven by RTCM_FRAME_RX and UBX-NAV-PVT events.
+    */
+    function setState(state) {
+      document.querySelectorAll('.dev-btn').forEach((b, i) => {
+        b.classList.toggle('active', (i === 0 && state === 'waiting') ||
+                                     (i === 1 && state === 'receiving'));
+      });
+
+      const waiting = state === 'waiting';
+
+      // Status dot + text
+      document.getElementById('status-dot').style.background  = waiting ? '#E0E0E0' : '#43A047';
+      document.getElementById('status-text').style.color      = waiting ? '#bbb'     : '#2E7D32';
+      document.getElementById('status-text').textContent      = waiting ? 'Waiting for Base…' : 'Receiving RTCM';
+      document.getElementById('frame-count').style.color      = waiting ? '#ccc'     : '#888';
+      document.getElementById('frame-count').textContent      = waiting ? '0 frames received' : '1,247 frames received';
+
+      // Signal rows (RSSI / SNR)
+      document.getElementById('signal-rows').style.display    = waiting ? 'none'     : 'block';
+
+      // F9P status
+      const badge = document.getElementById('fix-badge');
+      badge.className = 'fix-badge ' + (waiting ? 'fix-none' : 'fix-rtk');
+      badge.textContent = waiting ? 'No RTK' : 'RTK Fix';
+
+      document.getElementById('hacc-val').style.color         = waiting ? '#ccc'     : '#333';
+      document.getElementById('hacc-val').textContent         = waiting ? '—'        : '± 0.9 cm';
+
+      document.getElementById('rtcm-applied').style.color     = waiting ? '#ccc'     : '#333';
+      document.getElementById('rtcm-applied').textContent     = waiting ? '—'        : '1,247 messages';
+    }
+  </script>
+
+</body>
+</html>
