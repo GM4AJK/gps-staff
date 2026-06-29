@@ -15,7 +15,14 @@ Assign new UUIDs here first to avoid collisions.
 | 0xAC01 | WiFi Provisioning — AP list characteristic |
 | 0xAC02 | WiFi Provisioning — credential write characteristic |
 | 0xAC03 | WiFi Provisioning — connection result characteristic |
-| 0xAD00 | *reserved — next service block* |
+| 0xAD00 | Base Telemetry Service |
+| 0xAD01 | Base Telemetry — BASE_OPERATING_MODE characteristic |
+| 0xAD02 | Base Telemetry — SURVEY_IN_STATUS characteristic |
+| 0xAD03 | Base Telemetry — SURVEY_IN_COMMAND characteristic |
+| 0xAD04 | Base Telemetry — SET_SURVEY_PARAMS characteristic |
+| 0xAD05 | Base Telemetry — GNSS_SAT_DATA characteristic |
+| 0xAD06 | Base Telemetry — GNSS_FIX_STATUS characteristic |
+| 0xAE00 | *reserved — next service block* |
 
 ---
 
@@ -92,6 +99,153 @@ Mirrors `wifi_auth_mode_t` from ESP-IDF. Defined as `PROV_AUTH_*` in `ble_base_c
 | 5 | Enterprise |
 | 6 | WPA3 |
 | 7 | WPA2/WPA3 mixed |
+
+---
+
+---
+
+## 0xAD00 — Base Telemetry Service
+
+**Purpose:** Exposes live Base operating state, GNSS telemetry, and survey-in
+control to the Handheld. All readable characteristics must be polled on every
+fresh BLE connection (see Reconnect / State Discovery below).
+
+| Role | Device | Firmware |
+|------|--------|----------|
+| Peripheral (GATT server) | ESP32-S3 Zero — base role | `firmware/esp32-base` |
+| Central (GATT client) | ESP32-S3 Tablet / Handheld | `firmware/esp32-tablet` / `esp32-handheld` |
+
+---
+
+### Reconnect / State Discovery
+
+The HH ↔ Base BLE connection is **temporary and UI-driven** — it is established
+when the user opens Base Config and dropped on exit. The tablet may also have been
+powered off entirely. Either way, the tablet has no knowledge of what the Base has
+been doing since the connection was last open.
+
+**On every fresh connection, the tablet must:**
+1. Read `BASE_OPERATING_MODE` (0xAD01) — single byte, immediate.
+2. Navigate to the appropriate screen based on the value (see table below).
+3. Subscribe to notifications for whichever characteristics the current screen needs.
+4. Read those characteristics immediately after subscribing to get current values
+   (do not wait for the first notify; it may take up to 1 s).
+
+This sequence handles tablet power cycles, normal UI re-entry, and long gaps between
+Base Config visits identically — no special "reconnect" code path is needed.
+
+**Do NOT** infer Base state by combining multiple characteristics and applying logic.
+`BASE_OPERATING_MODE` is the single source of truth; the Base STM32/ESP32 owns it.
+
+---
+
+### 0xAD01 — BASE_OPERATING_MODE
+
+Properties: **READ + NOTIFY** (notify on mode transition)
+
+Single byte. Updated by the Base STM32 whenever operating mode changes; forwarded
+to GATT characteristic by Base ESP32 on UART message from STM32.
+
+```
+0x00  Idle            No active mode, no valid position held.
+                      → BaseConfig-0: all cards enabled, position banner = None
+0x01  Survey-in active  F9P SVIN running.
+                      → Navigate to BaseConfig-SurveyIn.html, State B (in progress)
+                      → BaseConfig-0: RTCM Data card disabled
+0x02  Survey-in complete  Valid surveyed position held (SVIN valid=1).
+                      → Navigate to BaseConfig-SurveyIn.html, State C (complete)
+                      → BaseConfig-0: position banner = Survey-in, RTCM Data enabled
+0x03  Fixed position set  Monument/benchmark coordinates stored.
+                      → BaseConfig-0: position banner = Monument, RTCM Data enabled
+0x04  RTCM streaming active  Base is broadcasting corrections over LoRa.
+                      → BaseConfig-0: RTCM Data card highlighted / active
+0xFF  Initialising    STM32 not yet reported mode (ESP32 just booted).
+                      → Show spinner; retry read after 2 s
+```
+
+---
+
+### 0xAD02 — SURVEY_IN_STATUS
+
+Properties: **READ + NOTIFY** (1 Hz while active; last value readable at any time)
+
+```
+Byte  0     active   uint8   1 = survey-in currently running on F9P
+Byte  1     valid    uint8   1 = survey-in complete (both conditions met)
+Bytes 2–5   dur      uint32  elapsed duration, seconds (little-endian)
+Bytes 6–9   obs      uint32  position observations accumulated
+Bytes 10–13 meanAcc  uint32  current mean position accuracy, mm
+Bytes 14–15 minDur   uint16  configured target duration, seconds
+Bytes 16–19 minAcc   uint32  configured target accuracy, mm
+```
+
+**minDur and minAcc must be included** so a freshly-connected tablet can display
+the correct targets without a separate parameter read. The STM32 echoes the values
+it last wrote to the F9P via UBX-CFG-VALSET.
+
+Source: UBX-NAV-SVIN from Base F9P, parsed by Base STM32, forwarded over UART to ESP32.
+
+---
+
+### 0xAD03 — SURVEY_IN_COMMAND
+
+Properties: **WRITE NO RESPONSE**
+
+```
+0x01  Start   Begin survey-in with parameters from SET_SURVEY_PARAMS (0xAD04).
+              STM32 writes UBX-CFG-VALSET to F9P then enables TMODE3.
+              Ignored if active=1 already.
+0x02  Cancel  Stop survey-in. STM32 sends UBX-CFG-TMODE3 mode=0 to F9P.
+              BASE_OPERATING_MODE transitions to 0x00 (Idle) or 0x02 if valid.
+```
+
+---
+
+### 0xAD04 — SET_SURVEY_PARAMS
+
+Properties: **WRITE NO RESPONSE** (send before SURVEY_IN_COMMAND 0x01)
+
+```
+Bytes 0–1   minDur   uint16  target duration, seconds (180–600 recommended)
+Bytes 2–5   minAcc   uint32  target accuracy, mm (e.g. 3000 = 3.0 m)
+```
+
+---
+
+### 0xAD05 — GNSS_SAT_DATA
+
+Properties: **NOTIFY** (1 Hz; not readable — too large, always from latest notify)
+
+One record per tracked satellite (up to 20). Each record is 7 bytes:
+
+```
+Byte 0   gnssId    uint8   0=GPS, 6=GLONASS
+Byte 1   svId      uint8   satellite number within constellation
+Byte 2   elev      uint8   elevation, degrees (0–90)
+Bytes 3–4 azim     uint16  azimuth, degrees (0–359, little-endian)
+Byte 5   cno       uint8   carrier-to-noise, dBHz (0–50 typical)
+Byte 6   flags     uint8   bit 0 = usedInFix
+```
+
+Source: UBX-NAV-SAT from Base F9P. F9P must have NAV-SAT enabled at 1 Hz.
+
+---
+
+### 0xAD06 — GNSS_FIX_STATUS
+
+Properties: **READ + NOTIFY** (1 Hz)
+
+```
+Byte  0     fixType   uint8   0=no fix, 3=3D, 4=GNSS+DR, 5=Time only
+Byte  1     carrSoln  uint8   0=none, 1=RTK float, 2=RTK fixed
+Byte  2     numSV     uint8   satellites used in fix
+Bytes 3–4   pDOP      uint16  pDOP × 100 (little-endian)
+Bytes 5–6   hDOP      uint16  hDOP × 100
+Bytes 7–10  iTOW      uint32  GPS time of week, ms
+```
+
+RTK float = fixType≥3 + carrSoln=1. RTK fixed = fixType≥3 + carrSoln=2.
+Source: UBX-NAV-PVT from Base F9P.
 
 ---
 

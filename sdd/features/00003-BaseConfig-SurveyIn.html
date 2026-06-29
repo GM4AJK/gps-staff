@@ -30,11 +30,22 @@
   On open, read SURVEY_IN_STATUS immediately (request/response or cached notify value)
   and branch to the appropriate state before the user sees any flash of wrong content.
 
-### "Navigate away and return" behaviour
+### "Navigate away and return" / tablet power-cycle behaviour
   Survey-in runs entirely on the Base F9P — it continues with no interaction from the UI.
-  The Base STM32 polls UBX-NAV-SVIN and forwards the result via the SURVEY_IN_STATUS
-  BLE characteristic at 1 Hz. When the user returns to this screen from anywhere, the
-  screen opens into whichever state the live BLE data describes.
+  The HH ↔ Base BLE connection is temporary and UI-driven; it may have been dropped
+  (user left Base Config) or the tablet may have been powered off entirely.
+
+  On EVERY fresh BLE connection the tablet performs a state-discovery sequence:
+    1. Read BASE_OPERATING_MODE (0xAD01, GATT.md §0xAD00).
+    2. If 0x01 → connect here at State B (in progress).
+       If 0x02 → connect here at State C (complete).
+       Any other value → go to BaseConfig-0; this screen is not shown.
+    3. Subscribe to SURVEY_IN_STATUS notify, then immediately READ it for current values.
+       Do not wait for the first notification (up to 1 s delay).
+
+  This means the tablet never needs to remember what screen it was on — it always
+  derives the correct screen from live Base state. Handles power cycles, app restarts,
+  and long gaps between sessions identically.
 
   Important: the ← back button on this screen returns to BaseConfig-0 WITHOUT
   cancelling the survey-in. The user may leave and come back freely.
