@@ -237,6 +237,12 @@
       - Survey-in card: button → 00003-BaseConfig-SurveyIn.html (ToDo)
       - RTCM Data card: button → 00003-BaseConfig-Streaming.html (ToDo)
       - Satellite View card: button → 00003-BaseConfig-SatView.html (ToDo)
+      ### LVGL note
+      - LVGL has no flexbox equivalent. Do NOT rely on text flow to position the button at
+        the bottom of each card — use lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -12) on
+        each card container so all three buttons sit at the same Y regardless of description
+        text length. The HTML alignment issues seen during spec work are a preview of exactly
+        this problem.
     -->
     <div style="
       flex: 1;
