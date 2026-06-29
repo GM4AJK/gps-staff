@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff (tablet 7inch)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config — RTCM Data screen
+- Entry from: 00003-BaseConfig-0.html (RTCM Data card → "View RTCM Data →")
+- Shows live RTCM broadcast stats and rover connection status
+- Left panel:  RTCM message activity + broadcast statistics
+- Right panel: Rover connection cards + LoRa link quality
+- bg_color: 0xffffff
+
+### Two display states (same screen URL, driven by BLE data on open)
+
+  STATE A — Streaming, rover responding (shown in this file):
+    Left panel live with packet rates and RTCM message activity.
+    Right panel shows rover card with RSSI, SNR, RTK fix confirmation.
+    Stop Streaming button available.
+
+  STATE B — Streaming, no rover seen yet:
+    Left panel identical — broadcast stats show RTCM going out.
+    Right panel shows "Waiting for rover…" placeholder instead of a rover card.
+    Stop Streaming button available.
+
+  STATE C — Not streaming (no valid base position, or streaming manually stopped):
+    Both panels show idle/grey state.
+    Left panel: "No active position — survey-in required" message.
+    Stop Streaming button replaced by "Start Streaming →" (if position is held).
+    This state should not normally be reachable from BaseConfig-0 (RTCM Data card
+    is only enabled when BASE_OPERATING_MODE ≥ 0x02), but handle it gracefully.
+
+  Streaming is automatic once survey-in completes (BASE_OPERATING_MODE = 0x02 or 0x04).
+  The user cannot start streaming from this screen — that happens automatically.
+  "Stop Streaming" is a manual override that sets BASE_OPERATING_MODE back to 0x02.
+
+  On open, read RTCM_STREAM_STATUS (0xAD07) + ROVER_LINK_STATUS (0xAD08) immediately
+  and render the correct state before the user sees stale content.
+
+### "Navigate away and return" / tablet power-cycle behaviour
+  The Base continues broadcasting RTCM regardless of tablet connection.
+  On EVERY fresh BLE connection the tablet performs the state-discovery sequence
+  (see GATT.md §0xAD00). If BASE_OPERATING_MODE = 0x04 (RTCM streaming active)
+  the tablet navigates here. Subscribe to both characteristics then immediately READ
+  them — do not wait for the first notification.
+
+### RTCM message types broadcast (GPS + GLONASS only)
+  1005  Base station ARP (antenna reference point)    0.2 Hz   every 5 s
+  1074  GPS MSM4 (pseudorange + carrier phase)        1 Hz     every 1 s
+  1084  GLONASS MSM4                                  1 Hz     every 1 s
+  These three are the minimum set for RTK. Approximate combined rate: 255–325 bytes/s.
+  RTCM source: F9P UART2, parsed and forwarded by Base STM32 → SX1262 LoRa TX.
+
+### BLE data requirements — NEW characteristics in GATT.md §0xAD00
+
+1. RTCM_STREAM_STATUS (0xAD07)  READ + NOTIFY (1 Hz while streaming)
+   Payload (12 bytes):
+     streaming   uint8    1 = actively broadcasting over LoRa
+     msg_mask    uint8    bit field: bit 0 = 1005, bit 1 = 1074, bit 2 = 1084
+                          set when that message type was seen in the last 2 s
+     byte_rate   uint16   bytes per second forwarded to LoRa (last 5 s average)
+     pkt_rate    uint8    RTCM packets per second (last 5 s average)
+     _pad        uint8    reserved, 0
+     total_pkts  uint32   total RTCM packets forwarded this session (since Base boot)
+     total_bytes uint32   total RTCM bytes forwarded this session
+   Source: Base STM32 counters, forwarded to ESP32 over UART, exposed via GATT.
+
+2. ROVER_LINK_STATUS (0xAD08)  NOTIFY (on change + 1 Hz while streaming)
+   One record per known rover (max 4). Each record is 8 bytes:
+     rover_id    uint8    arbitrary rover ID assigned by STM32 on first packet seen
+     rssi_rx     int8     RSSI of last packet received from rover, dBm (base RX side)
+     snr_rx      int8     SNR of last packet received from rover, dB × 4 (±32 dB range)
+     fix_status  uint8    RTK fix status reported back by rover via GFSK back-channel:
+                            0x00 = no report yet  0x01 = no fix  0x02 = 3D fix
+                            0x03 = RTK float      0x04 = RTK fixed
+     last_seen   uint16   seconds since last packet received from this rover (0 = <1 s)
+     _pad        uint8    reserved, 0
+     _pad2       uint8    reserved, 0
+   Source: Base STM32 SX1262 RX side, RSSI/SNR from SX1262 GetPacketStatus(),
+   fix_status from rover back-channel GFSK packet, forwarded to ESP32.
+   If no rovers have been seen, a single record with rover_id=0xFF is sent.
+
+3. RTCM_STREAM_COMMAND (0xAD09)  WRITE NO RESPONSE
+   0x01  Stop streaming  (BASE_OPERATING_MODE → 0x02; survey-in result still held)
+   0x02  Resume streaming  (BASE_OPERATING_MODE → 0x04; valid only if 0x02 already held)
+
+### LVGL implementation notes
+- Screen is two lv_obj panels in a row container, fixed widths, full height below header.
+- Left panel stats (byte rate, packet rate, total counts): lv_label objects, updated on
+  each RTCM_STREAM_STATUS notification.
+- RTCM message chips (1005, 1074, 1084): lv_obj with rounded border.
+  On RTCM_STREAM_STATUS notify, flash to bright green if the corresponding msg_mask bit
+  is set; fade back to grey after 1.5 s using lv_anim_t (color fade on bg_color style).
+- Rover card: one lv_obj per rover record in ROVER_LINK_STATUS.
+  If rover_id == 0xFF, show placeholder text "Waiting for rover…" instead.
+- RSSI bar: lv_bar or manual lv_obj rectangle. Map range -120 dBm (empty) to -60 dBm (full).
+  Use lv_obj_set_size() + lv_obj_set_pos() — not flex layout.
+- Fix status badge: lv_label with bg_color set by fix_status value (grey/amber/green).
+- Stop Streaming button: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
+MD_COMMENT -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1024">
+<title>00003-BaseConfig-Streaming — GPS Staff Tablet Spec</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1024px; height: 600px; overflow: hidden;
+    background: #fff; font-family: 'Segoe UI', sans-serif;
+    font-size: 14px; color: #212121;
+  }
+
+  /* ── Header bar ─────────────────────────────────────────────── */
+  .header {
+    height: 52px; background: #263238; display: flex;
+    align-items: center; padding: 0 16px; gap: 16px;
+    flex-shrink: 0;
+  }
+  .header-back {
+    color: #90A4AE; font-size: 22px; cursor: pointer;
+    padding: 4px 8px; border-radius: 4px;
+    text-decoration: none; line-height: 1;
+  }
+  .header-back:hover { background: #37474F; color: #fff; }
+  .header-title {
+    color: #fff; font-size: 18px; font-weight: 600; flex: 1;
+  }
+  .header-badge {
+    padding: 4px 12px; border-radius: 12px; font-size: 13px;
+    font-weight: 600;
+  }
+  .badge-streaming { background: #E8F5E9; color: #2E7D32; }
+  .badge-idle      { background: #ECEFF1; color: #607D8B; }
+
+  /* ── Main layout ─────────────────────────────────────────────── */
+  .content {
+    height: 548px; display: flex; gap: 0;
+  }
+  .panel-left {
+    width: 430px; border-right: 1px solid #E0E0E0;
+    padding: 16px; display: flex; flex-direction: column; gap: 14px;
+    overflow: hidden;
+  }
+  .panel-right {
+    flex: 1; padding: 16px; display: flex;
+    flex-direction: column; gap: 14px; overflow: hidden;
+  }
+
+  /* ── Section headings ────────────────────────────────────────── */
+  .section-label {
+    font-size: 11px; font-weight: 700; color: #90A4AE;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+
+  /* ── Broadcast rate row ──────────────────────────────────────── */
+  .rate-row {
+    display: flex; gap: 10px;
+  }
+  .rate-box {
+    flex: 1; background: #F5F5F5; border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .rate-value {
+    font-size: 28px; font-weight: 700; color: #1B5E20;
+    line-height: 1.1;
+  }
+  .rate-unit {
+    font-size: 12px; color: #757575; margin-top: 2px;
+  }
+
+  /* ── RTCM message chips ──────────────────────────────────────── */
+  .msg-row {
+    display: flex; gap: 10px;
+  }
+  .msg-chip {
+    flex: 1; border-radius: 8px; padding: 10px 12px;
+    border: 2px solid;
+  }
+  .msg-chip.active {
+    background: #E8F5E9; border-color: #43A047;
+  }
+  .msg-chip.inactive {
+    background: #F5F5F5; border-color: #BDBDBD;
+  }
+  .msg-id {
+    font-size: 20px; font-weight: 700; color: #1B5E20;
+  }
+  .msg-chip.inactive .msg-id { color: #9E9E9E; }
+  .msg-desc {
+    font-size: 11px; color: #757575; margin-top: 2px;
+  }
+  .msg-rate {
+    font-size: 11px; font-weight: 600; color: #43A047; margin-top: 4px;
+  }
+  .msg-chip.inactive .msg-rate { color: #BDBDBD; }
+
+  /* ── Session totals ──────────────────────────────────────────── */
+  .totals-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .total-box {
+    background: #F5F5F5; border-radius: 6px; padding: 8px 12px;
+  }
+  .total-value {
+    font-size: 18px; font-weight: 700; color: #37474F;
+  }
+  .total-label {
+    font-size: 11px; color: #9E9E9E; margin-top: 1px;
+  }
+
+  /* ── Rover card ──────────────────────────────────────────────── */
+  .rover-card {
+    background: #F5F5F5; border-radius: 10px; padding: 14px 16px;
+    border-left: 4px solid #43A047;
+  }
+  .rover-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 12px;
+  }
+  .rover-icon {
+    width: 36px; height: 36px; background: #43A047; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; color: #fff; flex-shrink: 0;
+  }
+  .rover-name {
+    font-size: 16px; font-weight: 700; color: #212121;
+  }
+  .rover-lastseen {
+    font-size: 12px; color: #9E9E9E; margin-top: 2px;
+  }
+  .fix-badge {
+    margin-left: auto; padding: 4px 10px; border-radius: 10px;
+    font-size: 12px; font-weight: 700;
+  }
+  .fix-rtk-fixed { background: #E8F5E9; color: #2E7D32; }
+  .fix-rtk-float { background: #FFF8E1; color: #E65100; }
+  .fix-no-fix    { background: #ECEFF1; color: #607D8B; }
+
+  .rover-stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;
+  }
+  .rover-stat-box {
+    background: #fff; border-radius: 6px; padding: 8px 10px;
+    border: 1px solid #E0E0E0;
+  }
+  .rover-stat-value {
+    font-size: 18px; font-weight: 700; color: #37474F;
+  }
+  .rover-stat-label {
+    font-size: 11px; color: #9E9E9E; margin-top: 2px;
+  }
+
+  /* ── RSSI bar ────────────────────────────────────────────────── */
+  .rssi-bar-track {
+    height: 8px; background: #E0E0E0; border-radius: 4px;
+    margin-top: 6px; overflow: hidden;
+  }
+  .rssi-bar-fill {
+    height: 100%; background: #43A047; border-radius: 4px;
+  }
+
+  /* ── No rover placeholder ────────────────────────────────────── */
+  .no-rover {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: #BDBDBD; gap: 10px;
+  }
+  .no-rover-icon { font-size: 48px; }
+  .no-rover-text { font-size: 16px; font-weight: 600; }
+  .no-rover-sub  { font-size: 13px; }
+
+  /* ── Link quality section ────────────────────────────────────── */
+  .link-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  }
+  .link-box {
+    background: #F5F5F5; border-radius: 6px; padding: 8px 12px;
+  }
+  .link-value {
+    font-size: 20px; font-weight: 700;
+  }
+  .link-value.good   { color: #2E7D32; }
+  .link-value.fair   { color: #E65100; }
+  .link-value.poor   { color: #B71C1C; }
+  .link-label {
+    font-size: 11px; color: #9E9E9E; margin-top: 2px;
+  }
+
+  /* ── Stop streaming button ───────────────────────────────────── */
+  .btn-stop {
+    margin-top: auto;
+    width: 100%; height: 52px; background: #B71C1C; color: #fff;
+    border: none; border-radius: 8px; font-size: 16px;
+    font-weight: 700; cursor: pointer; letter-spacing: 0.03em;
+  }
+  .btn-stop:hover { background: #C62828; }
+
+  /* ── Functional notes (hidden in browser, shown in code review) ── */
+  .fn-note {
+    display: none;
+  }
+</style>
+</head>
+<body>
+
+<div style="width:1024px; height:600px; overflow:hidden; position:relative;">
+
+  <!-- ══ Header ══════════════════════════════════════════════════ -->
+  <div class="header">
+    <a class="header-back" href="00003-BaseConfig-0.html">←</a>
+    <span class="header-title">RTCM Data</span>
+    <span class="header-badge badge-streaming">● Streaming</span>
+  </div>
+
+  <!-- ══ Content ══════════════════════════════════════════════════ -->
+  <div class="content">
+
+    <!-- ── Left panel: broadcast stats ─────────────────────────── -->
+    <div class="panel-left">
+
+      <div>
+        <div class="section-label">Broadcast rate</div>
+        <div class="rate-row">
+          <div class="rate-box">
+            <div class="rate-value">47</div>
+            <div class="rate-unit">packets / sec</div>
+          </div>
+          <div class="rate-box">
+            <div class="rate-value">4.2</div>
+            <div class="rate-unit">KB / sec</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">RTCM messages</div>
+        <div class="msg-row">
+          <div class="msg-chip active">
+            <div class="msg-id">1005</div>
+            <div class="msg-desc">Base ARP</div>
+            <div class="msg-rate">0.2 Hz</div>
+          </div>
+          <div class="msg-chip active">
+            <div class="msg-id">1074</div>
+            <div class="msg-desc">GPS MSM4</div>
+            <div class="msg-rate">1 Hz</div>
+          </div>
+          <div class="msg-chip active">
+            <div class="msg-id">1084</div>
+            <div class="msg-desc">GLO MSM4</div>
+            <div class="msg-rate">1 Hz</div>
+          </div>
+        </div>
+        <!-- Functional note: chips flash bright green when msg_mask bit toggles,
+             fade back to steady green after 1.5 s. See LVGL note in header. -->
+      </div>
+
+      <div>
+        <div class="section-label">Session totals</div>
+        <div class="totals-grid">
+          <div class="total-box">
+            <div class="total-value">12,847</div>
+            <div class="total-label">Packets sent</div>
+          </div>
+          <div class="total-box">
+            <div class="total-value">1.08 MB</div>
+            <div class="total-label">Bytes forwarded</div>
+          </div>
+        </div>
+        <!-- Functional note: session = since Base boot. Not persisted across power cycles. -->
+      </div>
+
+    </div>
+
+    <!-- ── Right panel: rover status ────────────────────────────── -->
+    <div class="panel-right">
+
+      <div>
+        <div class="section-label">Rover connection</div>
+        <div class="rover-card">
+          <div class="rover-header">
+            <div class="rover-icon">⊛</div>
+            <div>
+              <div class="rover-name">Rover #1</div>
+              <div class="rover-lastseen">Last packet: 0.6 s ago</div>
+            </div>
+            <div class="fix-badge fix-rtk-fixed">RTK Fixed</div>
+          </div>
+          <div class="rover-stats">
+            <div class="rover-stat-box">
+              <div class="rover-stat-value">−82</div>
+              <div class="rover-stat-label">RSSI (dBm)</div>
+              <div class="rssi-bar-track">
+                <!-- −82 dBm maps to ~63% fill: (−82−(−120))/(−60−(−120)) = 38/60 ≈ 63% -->
+                <div class="rssi-bar-fill" style="width:63%"></div>
+              </div>
+            </div>
+            <div class="rover-stat-box">
+              <div class="rover-stat-value">+9.2</div>
+              <div class="rover-stat-label">SNR (dB)</div>
+            </div>
+            <div class="rover-stat-box">
+              <div class="rover-stat-value">847</div>
+              <div class="rover-stat-label">Pkts rcvd</div>
+            </div>
+          </div>
+        </div>
+        <!-- Functional note: one rover-card div per record in ROVER_LINK_STATUS (0xAD08).
+             If rover_id == 0xFF (no rover seen), replace with no-rover placeholder below.
+             Max 4 rover cards stacked vertically; each 130 px tall. -->
+      </div>
+
+      <div>
+        <div class="section-label">LoRa link quality (base RX)</div>
+        <div class="link-grid">
+          <div class="link-box">
+            <div class="link-value good">−82 dBm</div>
+            <div class="link-label">Rover uplink RSSI</div>
+          </div>
+          <div class="link-box">
+            <div class="link-value good">+9.2 dB</div>
+            <div class="link-label">Rover uplink SNR</div>
+          </div>
+        </div>
+        <!-- Functional note: colour thresholds:
+             RSSI good  > −95 dBm  → #2E7D32 green
+             RSSI fair  −95 to −110 dBm → #E65100 amber
+             RSSI poor  < −110 dBm → #B71C1C red
+             SNR  good  > 0 dB, fair −5 to 0 dB, poor < −5 dB (same colour map) -->
+      </div>
+
+      <!-- LVGL note: lv_obj_align(btn_stop, LV_ALIGN_BOTTOM_MID, 0, -16) -->
+      <button class="btn-stop">Stop Streaming</button>
+
+    </div>
+
+  </div><!-- end content -->
+
+</div><!-- end screen -->
+
+</body>
+</html>

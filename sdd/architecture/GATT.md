@@ -22,6 +22,9 @@ Assign new UUIDs here first to avoid collisions.
 | 0xAD04 | Base Telemetry — SET_SURVEY_PARAMS characteristic |
 | 0xAD05 | Base Telemetry — GNSS_SAT_DATA characteristic |
 | 0xAD06 | Base Telemetry — GNSS_FIX_STATUS characteristic |
+| 0xAD07 | Base Telemetry — RTCM_STREAM_STATUS characteristic |
+| 0xAD08 | Base Telemetry — ROVER_LINK_STATUS characteristic |
+| 0xAD09 | Base Telemetry — RTCM_STREAM_COMMAND characteristic |
 | 0xAE00 | *reserved — next service block* |
 
 ---
@@ -265,6 +268,75 @@ Bytes 7–10  iTOW      uint32  GPS time of week, ms
 
 RTK float = fixType≥3 + carrSoln=1. RTK fixed = fixType≥3 + carrSoln=2.
 Source: UBX-NAV-PVT from Base F9P.
+
+---
+
+### 0xAD07 — RTCM_STREAM_STATUS
+
+Properties: **READ + NOTIFY** (1 Hz while streaming; single READ returns current snapshot)
+
+```
+Byte  0     streaming   uint8   1 = actively broadcasting over LoRa; 0 = idle
+Byte  1     msg_mask    uint8   bit 0 = RTCM 1005 seen in last 2 s
+                                bit 1 = RTCM 1074 seen in last 2 s
+                                bit 2 = RTCM 1084 seen in last 2 s
+Bytes 2–3   byte_rate   uint16  bytes/sec forwarded to LoRa (5 s rolling average)
+Byte  4     pkt_rate    uint8   RTCM packets/sec (5 s rolling average)
+Byte  5     _pad        uint8   reserved, 0
+Bytes 6–9   total_pkts  uint32  total packets forwarded since Base boot (little-endian)
+Bytes 10–13 total_bytes uint32  total bytes forwarded since Base boot (little-endian)
+```
+
+Source: Base STM32 counters (RTCM framer / LoRa TX path), forwarded to ESP32 over UART.
+Session counters reset on power cycle (not persisted).
+
+---
+
+### 0xAD08 — ROVER_LINK_STATUS
+
+Properties: **NOTIFY** (on change + 1 Hz heartbeat while streaming)
+
+One 8-byte record per known rover, up to 4 rovers. Total max payload = 32 bytes.
+
+```
+Per record (8 bytes, repeated):
+  Byte 0    rover_id    uint8   ID assigned by STM32 on first packet seen (1–4)
+                                0xFF = placeholder when no rovers seen at all
+  Byte 1    rssi_rx     int8    RSSI of last uplink packet from rover, dBm
+  Byte 2    snr_rx      int8    SNR of last uplink packet, dB × 4 (divide by 4 to display)
+  Byte 3    fix_status  uint8   RTK fix reported by rover via GFSK back-channel:
+                                  0x00 = no report received yet
+                                  0x01 = no fix
+                                  0x02 = 3D fix
+                                  0x03 = RTK float
+                                  0x04 = RTK fixed
+  Bytes 4–5 last_seen   uint16  seconds since last uplink packet from this rover
+  Byte 6    _pad        uint8   reserved, 0
+  Byte 7    _pad2       uint8   reserved, 0
+```
+
+RSSI/SNR source: SX1262 `GetPacketStatus()` on Base STM32 after each received uplink.
+fix_status source: rover GFSK back-channel packet, forwarded Base STM32 → ESP32 over UART.
+
+Signal quality colour thresholds (tablet rendering):
+```
+RSSI > −95 dBm  and SNR > 0 dB   → green  #2E7D32
+RSSI −95 to −110 dBm  or SNR −5 to 0 dB  → amber  #E65100
+RSSI < −110 dBm or SNR < −5 dB   → red    #B71C1C
+```
+
+---
+
+### 0xAD09 — RTCM_STREAM_COMMAND
+
+Properties: **WRITE NO RESPONSE**
+
+```
+0x01  Stop streaming    BASE_OPERATING_MODE → 0x02 (position held, not streaming).
+                        STM32 stops forwarding RTCM packets to LoRa TX.
+0x02  Resume streaming  BASE_OPERATING_MODE → 0x04. Valid only if mode was 0x02.
+                        Ignored if no valid position is held.
+```
 
 ---
 
