@@ -15,8 +15,9 @@
 - Duration:  integer **minutes** (1–99999).  Stored as seconds (×60) for F9P CFG-TMODE-SVIN_MIN_DUR.
              Max 5 digits. Secondary hint converts to hours when ≥ 60 min.
              24-hour survey-in = 1440 min — a realistic upper input.
-- Accuracy:  decimal **metres** to 1 d.p. (e.g. 3.0).  Stored as mm (×1000) for CFG-TMODE-SVIN_ACC_LIMIT.
-             Max 4 chars (e.g. "10.0"). Decimal point key enabled for this field only.
+- Accuracy:  integer **centimetres** (e.g. 300 = 3.0 m).  Stored as cm; firmware converts ×10 to
+             0.1mm units for F9P CFG-TMODE-SVIN_ACC_LIMIT.  Max 3 digits (999 cm = 9.99 m).
+             Both fields are integers — decimal key is permanently disabled.
 
 ### Keyboard layout
   [ 1 ][ 2 ][ 3 ]
@@ -262,9 +263,9 @@ MD_COMMENT -->
             <div>
               <div class="setting-key">Absolute accuracy target</div>
               <div class="setting-val" id="acc-display">
-                <span id="acc-value">3.0</span>&nbsp;<span style="font-size:13px;color:#888;">m</span>
+                <span id="acc-value">300</span>&nbsp;<span style="font-size:13px;color:#888;">cm</span>
                 <span class="cursor" id="acc-cursor" style="display:none;"></span>
-                <span id="acc-hint" style="font-size:12px; color:#aaa; margin-left:8px;">(3000 mm)</span>
+                <span id="acc-hint" style="font-size:12px; color:#aaa; margin-left:8px;">(3.0 m)</span>
               </div>
             </div>
             <span class="setting-edit" id="acc-edit-icon">✎</span>
@@ -302,8 +303,8 @@ MD_COMMENT -->
             <button class="kbd-key">7</button>
             <button class="kbd-key">8</button>
             <button class="kbd-key">9</button>
-            <!-- Decimal: disabled for duration, active for accuracy -->
-            <button class="kbd-key kbd-key-decimal-disabled" id="kbd-decimal">.</button>
+            <!-- Decimal: permanently disabled — both fields are integers (minutes / centimetres) -->
+            <button class="kbd-key kbd-key-decimal-disabled" id="kbd-decimal" disabled>.</button>
             <button class="kbd-key kbd-key-zero">0</button>
             <button class="kbd-key kbd-key-backspace">⌫</button>
           </div>
@@ -355,13 +356,11 @@ MD_COMMENT -->
       document.getElementById('settings-sublabel').textContent =
         isDur ? 'Editing duration' : 'Editing accuracy';
 
-      /* Decimal key */
-      const dec = document.getElementById('kbd-decimal');
-      dec.className = 'kbd-key ' + (isDur ? 'kbd-key-decimal-disabled' : 'kbd-key-decimal-active');
+      /* Decimal key — permanently disabled, both fields are integers */
 
       /* Keyboard preview strip */
-      document.getElementById('kbd-preview-val').textContent  = isDur ? '1440 min'         : '3.0 m';
-      document.getElementById('kbd-preview-hint').textContent = isDur ? '24 hr · tap Confirm to apply' : '3000 mm · tap Confirm to apply';
+      document.getElementById('kbd-preview-val').textContent  = isDur ? '1440 min'  : '300 cm';
+      document.getElementById('kbd-preview-hint').textContent = isDur ? '24 hr · tap Confirm to apply' : '3.0 m · tap Confirm to apply';
     }
 
     /* Initialise to duration state */
