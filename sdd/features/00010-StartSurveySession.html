@@ -7,7 +7,7 @@
 - Next: 00011-RoverWorking.html (on Start Session)
 
 ## Purpose
-Pre-session setup screen. Creates a new log file on the Rover SD card and
+Pre-session setup screen. Creates a new log file on the Tablet's SD card and
 records the session metadata (title, description) in the file header before
 any positions are captured.
 
@@ -36,9 +36,10 @@ any positions are captured.
 - Greyed placeholder text when empty.
 
 ## SD card status
-- Left panel shows SD card presence (detected via STM32 card-detect pin).
+- Left panel shows SD card presence on the Tablet itself (card-detect via ESP32-S3 GPIO).
 - If card absent: Start Session button is disabled; warning shown.
 - Available space and existing session count shown when card is present.
+- No UART to STM32 required — the Tablet reads its own SD directly.
 
 ## Log file header format
 Written to the first lines of the .log file before any position records:
@@ -57,47 +58,20 @@ Written to the first lines of the .log file before any position records:
 # Easting,Northing,Elevation_m,hAcc_mm,vAcc_mm,Fix,Satellites,Timestamp
 ```
 
-## Data path — SD card is on the STM32F765
+## Data path — log is written by the Tablet directly
 
-The SD card (SDMMC) is physically attached to the Rover STM32F765, NOT the ESP32.
-All logging commands originate on the Tablet (user action), transit BLE to the
-Rover ESP32, then transit UART from ESP32 to STM32, where FatFS writes to the card.
+The Tablet (ESP32-S3) has its own SD card slot. Position data arrives at the
+Tablet via BLE from the Rover ESP32 — the Tablet already holds every fix by
+the time it reaches the working screen. It can write directly to its own SD
+card with no involvement from the Rover STM32 or any UART protocol extension.
 
 ```
-Tablet ──BLE──▶ Rover ESP32 ──UART──▶ Rover STM32F765 ──SDMMC──▶ SD card
+Rover STM32F765 ──UART──▶ Rover ESP32 ──BLE──▶ Tablet ESP32-S3 ──SPI──▶ Tablet SD card
 ```
 
-SD card status (present / free space / session count) travels the reverse path:
-STM32 holds this state; ESP32 queries it on screen open and forwards to Tablet via BLE.
-
-## UART protocol additions required (Rover ESP32 ↔ STM32)
-
-This screen introduces four new UART commands. These extend the existing
-ESP32↔STM32 UART protocol (see sdd/architecture/SYSTEM.md) but are NOT yet
-defined there — they must be added when implementing this feature.
-
-### Commands (ESP32 → STM32)
-
-| Command | Payload | Description |
-|---------|---------|-------------|
-| `LOG_STATUS` | — | Query SD card state. STM32 responds with `LOG_STATUS_RESP`. |
-| `LOG_OPEN`   | `<filename>\t<title>\t<description>` | Create log file, write header. STM32 responds `LOG_OK` or `LOG_ERR <reason>`. Session counter in NVS incremented by ESP32 on `LOG_OK`. |
-| `LOG_RECORD` | CSV position row (see log header for column order) | Append one position record to the open log file. Fire-and-forget; no response. |
-| `LOG_CLOSE`  | — | Flush and close the log file. STM32 responds `LOG_OK`. |
-
-### Responses (STM32 → ESP32)
-
-| Response | Payload | Description |
-|----------|---------|-------------|
-| `LOG_STATUS_RESP` | `<present:0\|1> <free_mb> <session_count>` | Sent in reply to `LOG_STATUS`. `present=0` if no card or mount failed. |
-| `LOG_OK`          | — | Command accepted and completed. |
-| `LOG_ERR`         | `<reason_string>` | Command failed. Reason forwarded to Tablet for display. |
-
-### Framing
-Commands and responses are newline-terminated ASCII strings over the existing
-UART link (same physical channel as the OLED display protocol). The command
-keyword is the first token; tab-separated fields follow.
-Filename field is sanitised by ESP32 before sending (FAT-safe chars only).
+This removes the need for any LOG_* UART commands. The Rover STM32 SD card
+(SDMMC on the PCB) remains available for independent raw logging (e.g. direct
+UBX/NMEA capture from F9P) but is not used for survey session files.
 
 ## LVGL implementation notes
 - Filename field: lv_textarea, single line, tap opens lv_keyboard.
@@ -105,10 +79,10 @@ Filename field is sanitised by ESP32 before sending (FAT-safe chars only).
 - Title field: lv_textarea, single line.
 - Description field: lv_textarea, multi-line (4 rows tall), lv_label placeholder.
 - Start Session: lv_btn, green, disabled (LV_STATE_DISABLED) if SD absent or
-  filename/title empty. On press: send `LOG_OPEN` over UART, await `LOG_OK`,
+  filename/title empty. On press: create file on Tablet SD, write header,
   increment NVS session counter, navigate to 00011-RoverWorking.html.
-- SD status: populated by sending `LOG_STATUS` on screen open; left panel updated
-  on response. Dot colour and Start button state set from `present` field.
+- SD status: read directly from Tablet SD card on screen open (esp_vfs_fat /
+  sdmmc_host). Dot colour and Start button state set from mount result.
 MD_COMMENT -->
 <html lang="en">
 <head>
