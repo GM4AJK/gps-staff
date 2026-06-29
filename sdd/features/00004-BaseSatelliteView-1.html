@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff (tablet 7inch)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Satellite View — State 1: Live sky plot and signal strength
+- Entry from: 00003-BaseConfig-0.html (Satellite View card)
+- Shows live GNSS satellite sky plot + signal strength from the Base F9P receiver
+- Left panel: polar sky plot (North-up), azimuth/elevation, coloured by constellation
+- Right panel: fix status summary + signal strength bar chart (CN0, dBHz)
+- bg_color: 0xffffff
+
+### BLE data requirements — NEW characteristics required in GATT.md
+
+1. GNSS_SAT_DATA (notify, 1 Hz)
+   Payload: array of satellite records, one per SV tracked.
+   Per record (7 bytes):
+     gnssId   uint8   0=GPS, 6=GLONASS
+     svId     uint8   satellite number within constellation (1-32 GPS, 1-24 GLONASS)
+     elev     uint8   elevation, degrees (0-90)
+     azim_lo  uint8   azimuth low byte, degrees (0-359)
+     azim_hi  uint8   azimuth high byte
+     cno      uint8   carrier-to-noise, dBHz (0-50 typical)
+     flags    uint8   bit 0 = usedInFix
+   Max ~20 satellites = 140 bytes; fits in one BLE notification (MTU 247).
+   Source: UBX-NAV-SAT from Base F9P UART, parsed by Base STM32.
+   The F9P must have NAV-SAT enabled at 1 Hz on the config UART.
+
+2. GNSS_FIX_STATUS (notify, 1 Hz)
+   Payload (10 bytes):
+     fixType  uint8   0=no fix, 3=3D, 4=GNSS+DR, 5=Time only
+                      RTK float = 4 with carrSoln=1, RTK fixed = 4 with carrSoln=2
+                      (pass carrSoln in a second nibble or separate byte)
+     carrSoln uint8   0=none, 1=float, 2=fixed
+     numSV    uint8   satellites used in fix
+     pDOP     uint16  pDOP × 100 (little-endian)
+     hDOP     uint16  hDOP × 100
+     iTOW     uint32  GPS time of week, ms
+   Source: UBX-NAV-PVT from Base F9P.
+   Note: fixType + carrSoln together give the four display states:
+     No fix:    fixType < 3
+     3D fix:    fixType = 3
+     RTK Float: fixType = 3 or 4, carrSoln = 1
+     RTK Fixed: fixType = 3 or 4, carrSoln = 2
+
+### LVGL implementation notes
+
+Sky plot:
+- Use lv_canvas (LVGL software-rendered bitmap) sized to fill the left panel.
+- Draw the static grid (three rings, four cardinal lines, N/E/S/W labels,
+  elevation angle labels) once at screen creation — store as a base image or
+  redraw only on resize.
+- On each GNSS_SAT_DATA notification: clear the satellite layer (blit the
+  static grid back), then draw each satellite dot using lv_canvas_draw_arc()
+  or lv_draw_circle(). Dot fill = solid for usedInFix, outline-only for not used.
+- Polar-to-canvas coordinate transform:
+    dist   = canvas_radius * (90 - elev_deg) / 90.0f
+    px     = cx + dist * sinf(azim_deg * DEG2RAD)
+    py     = cy - dist * cosf(azim_deg * DEG2RAD)
+- Do NOT use CSS position:absolute on LVGL — pin all labels at fixed coords
+  relative to the canvas origin. N/E/S/W labels are static text objects
+  outside the canvas, aligned to its edges.
+- Dot radius = 9 px. PRN label: lv_label positioned at (px, py + 13),
+  font size 10, centred. Check for label collisions by sorting by elevation
+  (high-elevation sats less likely to collide) and nudging if overlap detected.
+
+Signal bars:
+- Do NOT rely on flexbox height to position bars — LVGL has no CSS flexbox.
+- Use a fixed-height parent container (230 px). For each satellite, create an
+  lv_obj bar rectangle positioned at:
+    bar_x  = bar_area_left + sv_index * (bar_width + bar_gap)
+    bar_h  = (cno / 50.0f) * bar_area_height
+    bar_y  = bar_area_bottom - bar_h
+  Use lv_obj_set_pos() + lv_obj_set_size().
+- Threshold line: lv_line at y = bar_area_bottom - (35.0f/50.0f * bar_area_height),
+  dashed red (#EF5350), drawn over bars.
+- PRN labels: lv_label below each bar, centred on bar_x + bar_width/2.
+- Update: on GNSS_SAT_DATA notification, update each bar height and colour;
+  grey out (opacity 80) bars where usedInFix = 0.
+
+Fix status grid:
+- Six lv_label pairs (label + value) arranged in a 3×2 grid using lv_obj_set_pos().
+  No CSS grid — compute x positions explicitly: col0_x, col1_x, col2_x, col3_x.
+- Fix badge: lv_label with background rect coloured by fixType + carrSoln.
+  Recolour on each GNSS_FIX_STATUS notification.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Base: Satellite View</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #888;
+    }
+    /* Fix quality badge */
+    .fix-badge {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .fix-nofix  { background: #ffebee; color: #c62828; }
+    .fix-3d     { background: #fff8e1; color: #f57f17; }
+    .fix-float  { background: #fff3e0; color: #e65100; }
+    .fix-fixed  { background: #e8f5e9; color: #1b5e20; }
+    /* Status summary grid */
+    .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat-value {
+      font-size: 17px;
+      font-weight: 700;
+      color: #222;
+    }
+    .stat-sub {
+      font-size: 13px;
+      font-weight: 400;
+      color: #999;
+    }
+    /* Section label above bar chart */
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888;
+      margin: 0 0 6px 0;
+    }
+    /* Legend */
+    .legend-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 16px;
+      font-size: 12px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 — Base: Satellite View</div>
+
+  <div style="
+    width: 1024px;
+    height: 600px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+    position: relative;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="
+      display: flex; flex-direction: row;
+      justify-content: flex-end; align-items: center;
+      flex-shrink: 0; height: 28px; padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!--
+      ## HEADER BAR
+      ### Functional
+      - ← back returns to 00003-BaseConfig-0.html
+    -->
+    <div style="
+      display: flex; flex-direction: row; align-items: center;
+      flex-shrink: 0; height: 52px; padding: 0 16px;
+      background: #222; gap: 16px;
+    ">
+      <button style="
+        background: none; border: none; color: white;
+        font-family: 'Montserrat', sans-serif; font-size: 24px;
+        cursor: pointer; padding: 0; line-height: 1;
+      ">←</button>
+      <span style="font-size: 20px; font-weight: 700; color: white;">Satellite View</span>
+    </div>
+
+    <!-- MAIN AREA — sky plot left, status + bars right -->
+    <div style="flex: 1; display: flex; flex-direction: row; overflow: hidden;">
+
+      <!--
+        ## LEFT PANEL — Sky plot
+        ### Functional
+        - Polar plot, North-up. Outer ring = horizon (0° elevation).
+          Middle ring = 30° elevation. Inner ring = 60° elevation.
+        - GPS satellites: solid blue fill (used) or blue outline (not used in fix).
+        - GLONASS satellites: solid red fill (used) or red outline (not used).
+        - Dot size fixed at 9 px radius. PRN label below each dot (font 10).
+        - Refreshes on each GNSS_SAT_DATA BLE notification (~1 Hz).
+        - LVGL: lv_canvas; see implementation notes in file header.
+        - Satellite coordinates below are realistic for a UK horizon
+          (GPS + GLONASS only — this system does not use Galileo/BeiDou).
+      -->
+      <div style="
+        flex-shrink: 0; width: 480px;
+        background: white;
+        border-right: 1px solid #e0e0e0;
+        display: flex; align-items: center; justify-content: center;
+      ">
+        <svg width="460" height="500" viewBox="0 0 460 500"
+             style="font-family: 'Montserrat', sans-serif;">
+          <defs>
+            <clipPath id="sky-clip">
+              <circle cx="230" cy="255" r="220"/>
+            </clipPath>
+          </defs>
+
+          <!-- Sky background -->
+          <circle cx="230" cy="255" r="220" fill="#f5f7fa" stroke="#ccc" stroke-width="1.5"/>
+
+          <!-- Elevation rings — dashed — 30° and 60° -->
+          <circle cx="230" cy="255" r="147" fill="none" stroke="#ddd" stroke-width="1"
+                  stroke-dasharray="5,5"/>
+          <circle cx="230" cy="255" r="73"  fill="none" stroke="#ddd" stroke-width="1"
+                  stroke-dasharray="5,5"/>
+
+          <!-- Cardinal azimuth lines — dashed -->
+          <line x1="230" y1="35" x2="230" y2="475" stroke="#ddd" stroke-width="1"
+                stroke-dasharray="5,5"/>
+          <line x1="10" y1="255" x2="450" y2="255" stroke="#ddd" stroke-width="1"
+                stroke-dasharray="5,5"/>
+
+          <!-- Cardinal direction labels -->
+          <text x="230" y="24"  text-anchor="middle" font-size="14" font-weight="700"
+                fill="#555">N</text>
+          <text x="230" y="494" text-anchor="middle" font-size="14" font-weight="700"
+                fill="#555">S</text>
+          <text x="455" y="260" text-anchor="end"    font-size="14" font-weight="700"
+                fill="#555">E</text>
+          <text x="5"   y="260" text-anchor="start"  font-size="14" font-weight="700"
+                fill="#555">W</text>
+
+          <!-- Elevation ring labels (East side, inside ring) -->
+          <text x="370" y="259" text-anchor="middle" font-size="10" fill="#bbb">30°</text>
+          <text x="296" y="259" text-anchor="middle" font-size="10" fill="#bbb">60°</text>
+
+          <!-- ── SATELLITES ── all clipped to sky circle
+               Dot: solid fill = used in fix, outline only = not used.
+               GPS=blue #2196F3, GLONASS=red #E53935.
+
+               Coordinate derivation (r=220, cx=230, cy=255):
+                 dist = 220 × (90 - elev) / 90
+                 px   = 230 + dist × sin(azim_rad)
+                 py   = 255 − dist × cos(azim_rad)
+
+               Satellites and their az/el (UK representative values):
+                 G01  az=045 el=35  cno=38  used
+                 G03  az=120 el=55  cno=44  used
+                 G06  az=200 el=25  cno=34  NOT used (below threshold, geometry filled)
+                 G09  az=310 el=42  cno=41  used
+                 G11  az=165 el=70  cno=47  used
+                 G14  az=240 el=18  cno=29  NOT used
+                 G17  az=080 el=48  cno=43  used
+                 G19  az=350 el=32  cno=37  used
+                 G22  az=140 el=62  cno=45  used
+                 R02  az=270 el=38  cno=36  used
+                 R07  az=060 el=28  cno=33  used
+                 R11  az=190 el=52  cno=42  used
+                 R15  az=330 el=44  cno=40  used
+                 R20  az=100 el=20  cno=31  used
+          -->
+          <g clip-path="url(#sky-clip)">
+
+            <!-- GPS used (solid blue) -->
+            <!-- G01 az=45 el=35 → dist=134 → px=325 py=160 -->
+            <circle cx="325" cy="160" r="9" fill="#2196F3"/>
+            <text x="325" y="175" text-anchor="middle" font-size="9" fill="#1565C0"
+                  font-weight="700">G01</text>
+
+            <!-- G03 az=120 el=55 → dist=81 → px=300 py=296 -->
+            <circle cx="300" cy="296" r="9" fill="#2196F3"/>
+            <text x="300" y="311" text-anchor="middle" font-size="9" fill="#1565C0"
+                  font-weight="700">G03</text>
+
+            <!-- G09 az=310 el=42 → dist=117 → px=140 py=180 -->
+            <circle cx="140" cy="180" r="9" fill="#2196F3"/>
+            <text x="140" y="195" text-anchor="middle" font-size="9" fill="#1565C0"
+                  font-weight="700">G09</text>
+
+            <!-- G11 az=165 el=70 → dist=49 → px=243 py=302 -->
+            <circle cx="243" cy="302" r="9" fill="#2196F3"/>
+            <text x="243" y="317" text-anchor="middle" font-size="9" fill="#1565C0"
+                  font-weight="700">G11</text>
+
+            <!-- G17 az=80 el=48 → dist=98 → px=327 py=238 -->
+            <circle cx="327" cy="238" r="9" fill="#2196F3"/>
+            <text x="327" y="253" text-anchor="middle" font-size="9" fill="#1565C0"
+                  font-weight="700">G17</text>
+
+            <!-- G19 az=350 el=32 → dist=141 → px=206 py=116 -->
+            <circle cx="206" cy="116" r="9" fill="#2196F3"/>
+            <text x="206" y="131" text-anchor="middle" font-size="9" fill="#1565C0"
+                  font-weight="700">G19</text>
+
+            <!-- G22 az=140 el=62 → dist=66 → px=272 py=306 -->
+            <circle cx="272" cy="306" r="9" fill="#2196F3"/>
+            <text x="272" y="321" text-anchor="middle" font-size="9" fill="#1565C0"
+                  font-weight="700">G22</text>
+
+            <!-- GPS not used (outline only) -->
+            <!-- G06 az=200 el=25 → dist=158 → px=176 py=404 -->
+            <circle cx="176" cy="404" r="9" fill="white" stroke="#2196F3" stroke-width="2"/>
+            <text x="176" y="419" text-anchor="middle" font-size="9" fill="#90CAF9"
+                  font-weight="700">G06</text>
+
+            <!-- G14 az=240 el=18 → dist=176 → px=78 py=343 -->
+            <circle cx="78"  cy="343" r="9" fill="white" stroke="#2196F3" stroke-width="2"/>
+            <text x="78"  y="358" text-anchor="middle" font-size="9" fill="#90CAF9"
+                  font-weight="700">G14</text>
+
+            <!-- GLONASS used (solid red) -->
+            <!-- R02 az=270 el=38 → dist=126 → px=104 py=255 -->
+            <circle cx="104" cy="255" r="9" fill="#E53935"/>
+            <text x="104" y="270" text-anchor="middle" font-size="9" fill="#B71C1C"
+                  font-weight="700">R02</text>
+
+            <!-- R07 az=60 el=28 → dist=151 → px=361 py=180 -->
+            <circle cx="361" cy="180" r="9" fill="#E53935"/>
+            <text x="361" y="195" text-anchor="middle" font-size="9" fill="#B71C1C"
+                  font-weight="700">R07</text>
+
+            <!-- R11 az=190 el=52 → dist=88 → px=215 py=342 -->
+            <circle cx="215" cy="342" r="9" fill="#E53935"/>
+            <text x="215" y="357" text-anchor="middle" font-size="9" fill="#B71C1C"
+                  font-weight="700">R11</text>
+
+            <!-- R15 az=330 el=44 → dist=110 → px=175 py=160 -->
+            <circle cx="175" cy="160" r="9" fill="#E53935"/>
+            <text x="175" y="175" text-anchor="middle" font-size="9" fill="#B71C1C"
+                  font-weight="700">R15</text>
+
+            <!-- R20 az=100 el=20 → dist=170 → px=398 py=285 -->
+            <circle cx="398" cy="285" r="9" fill="#E53935"/>
+            <text x="398" y="300" text-anchor="middle" font-size="9" fill="#B71C1C"
+                  font-weight="700">R20</text>
+
+          </g><!-- end clip -->
+        </svg>
+      </div>
+
+      <!--
+        ## RIGHT PANEL — Fix status + signal bar chart
+        ### Functional
+        - All data sourced from GNSS_FIX_STATUS and GNSS_SAT_DATA BLE notifications.
+        - Refreshes at ~1 Hz.
+        - Fix badge colour driven by fixType + carrSoln (see header BLE notes).
+        - Bar chart: one bar per tracked satellite, ordered GPS then GLONASS by svId.
+          Bar height proportional to CN0 (0–50 dBHz). Max bar height = full chart area.
+          Dashed red threshold line at CN0 = 35 dBHz (minimum for reliable RTK).
+          Bars below threshold and not-used-in-fix shown at reduced opacity.
+      -->
+      <div style="
+        flex: 1;
+        background: white;
+        padding: 16px 16px 12px 16px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      ">
+
+        <!-- Status summary block -->
+        <div style="
+          background: #f8f9fa;
+          border: 1px solid #e0e0e0;
+          border-radius: 8px;
+          padding: 12px 16px;
+          display: grid;
+          grid-template-columns: auto 1fr auto 1fr;
+          gap: 8px 20px;
+          align-items: center;
+          flex-shrink: 0;
+        ">
+          <span class="stat-label">Fix</span>
+          <!-- Show one badge depending on fix state: -->
+          <!-- <span class="fix-badge fix-nofix">No Fix</span> -->
+          <!-- <span class="fix-badge fix-3d">3D Fix</span> -->
+          <!-- <span class="fix-badge fix-float">RTK Float</span> -->
+          <span class="fix-badge fix-fixed">RTK Fixed</span>
+
+          <span class="stat-label">Sats used</span>
+          <span class="stat-value">12 <span class="stat-sub">/ 14 tracked</span></span>
+
+          <span class="stat-label">PDOP</span>
+          <span class="stat-value">1.2</span>
+
+          <span class="stat-label">HDOP</span>
+          <span class="stat-value">0.8</span>
+
+          <span class="stat-label">Age</span>
+          <span class="stat-value">0.8 <span class="stat-sub">s</span></span>
+
+          <span class="stat-label">Time</span>
+          <span class="stat-value" style="font-size: 14px;">10:42:31 <span class="stat-sub">UTC</span></span>
+        </div>
+
+        <!-- Signal strength section -->
+        <p class="section-label" style="margin-top: 14px;">Signal Strength (CN0 dBHz)</p>
+
+        <!--
+          Bar chart area — 220px tall.
+          Threshold line position from bottom: round(35/50 × 220) = 154 px.
+          Bar heights: H = round(cno / 50 × 220).
+            G01=38→167  G03=44→194  G06=34→150(dim)  G09=41→180  G11=47→207
+            G14=29→128(dim)  G17=43→189  G19=37→163  G22=45→198
+            R02=36→158  R07=33→145  R11=42→185  R15=40→176  R20=31→137
+          Not-used bars (G06, G14): opacity 0.30, no fill on sky-plot dot.
+          Bar width: 28px. Gap: 5px. Total: 14×28 + 13×5 = 457px (fits 508px available).
+        -->
+        <div style="position: relative; height: 220px; flex-shrink: 0;">
+
+          <!-- Threshold line at CN0=35 (154px from bottom) -->
+          <div style="
+            position: absolute; left: 0; right: 0; bottom: 154px;
+            border-top: 1px dashed #EF5350;
+            z-index: 2;
+          "></div>
+          <span style="
+            position: absolute; right: 2px; bottom: 157px;
+            font-size: 9px; color: #EF5350; font-weight: 700;
+          ">35 dBHz</span>
+
+          <!-- Bars — flexbox row, align-items:flex-end floats each bar to bottom -->
+          <div style="
+            position: absolute; bottom: 0; left: 0; right: 0;
+            display: flex; flex-direction: row; align-items: flex-end; gap: 5px;
+          ">
+            <!-- GPS bars (blue) — used: solid, not used: 30% opacity -->
+            <div style="width:28px; height:167px; background:#2196F3; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:194px; background:#2196F3; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:150px; background:#2196F3; border-radius:3px 3px 0 0; opacity:0.30;"></div><!-- G06 not used -->
+            <div style="width:28px; height:180px; background:#2196F3; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:207px; background:#2196F3; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:128px; background:#2196F3; border-radius:3px 3px 0 0; opacity:0.30;"></div><!-- G14 not used -->
+            <div style="width:28px; height:189px; background:#2196F3; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:163px; background:#2196F3; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:198px; background:#2196F3; border-radius:3px 3px 0 0;"></div>
+            <!-- GLONASS bars (red) — all used -->
+            <div style="width:28px; height:158px; background:#E53935; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:145px; background:#E53935; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:185px; background:#E53935; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:176px; background:#E53935; border-radius:3px 3px 0 0;"></div>
+            <div style="width:28px; height:137px; background:#E53935; border-radius:3px 3px 0 0;"></div>
+          </div>
+        </div>
+
+        <!-- PRN labels below bars -->
+        <div style="
+          display: flex; flex-direction: row; gap: 5px;
+          margin-top: 3px; flex-shrink: 0;
+        ">
+          <div style="width:28px; text-align:center; font-size:9px; color:#1565C0; font-weight:700;">G01</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#1565C0; font-weight:700;">G03</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#90CAF9;">G06</div><!-- dim = not used -->
+          <div style="width:28px; text-align:center; font-size:9px; color:#1565C0; font-weight:700;">G09</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#1565C0; font-weight:700;">G11</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#90CAF9;">G14</div><!-- dim -->
+          <div style="width:28px; text-align:center; font-size:9px; color:#1565C0; font-weight:700;">G17</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#1565C0; font-weight:700;">G19</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#1565C0; font-weight:700;">G22</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#B71C1C; font-weight:700;">R02</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#B71C1C; font-weight:700;">R07</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#B71C1C; font-weight:700;">R11</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#B71C1C; font-weight:700;">R15</div>
+          <div style="width:28px; text-align:center; font-size:9px; color:#B71C1C; font-weight:700;">R20</div>
+        </div>
+
+        <!-- Legend -->
+        <div style="margin-top: 10px; flex-shrink: 0;">
+          <span class="legend-item">
+            <span class="legend-dot" style="background:#2196F3;"></span>GPS (used)
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot" style="background:white; border:2px solid #2196F3; box-sizing:border-box;"></span>GPS (not used)
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot" style="background:#E53935;"></span>GLONASS (used)
+          </span>
+          <span class="legend-item" style="color:#EF5350;">
+            <span style="display:inline-block;width:20px;height:1px;border-top:2px dashed #EF5350;margin-right:4px;vertical-align:middle;"></span>35 dBHz threshold
+          </span>
+        </div>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+</body>
+</html>
