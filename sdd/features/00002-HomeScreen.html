@@ -10,6 +10,16 @@
 - bg_color: 0x141E2B  (dark navy — home screen uses dark theme; all other screens use white)
 - Entry: power-on or back-navigation from Base/Rover screens
 
+### Status bar (present on every screen)
+The 28px strip at the very top of every screen shows three battery indicators:
+- **Left — Base battery:** percentage received from Base ESP32 via BLE/WiFi.
+  Grey / "—" when Base is not connected.
+- **Left — Rover battery:** percentage received from Rover ESP32 via BLE/WiFi.
+  Grey / "—" when Rover is not connected.
+- **Right — Tablet battery:** local ESP32-S3 ADC reading of its own LiPo cell.
+This spec file is the canonical example of the strip. All other screen specs omit
+it for brevity but must implement it identically.
+
 ### Functional
 - Tapping Base card navigates to 00003-BaseConfig-0.html.
 - Rover card is present but disabled (coming soon); tap shows no action.
@@ -62,10 +72,15 @@ MD_COMMENT -->
 
     <!-- BATTERY BAR -->
     <div style="
-      display: flex; justify-content: flex-end; align-items: center;
+      display: flex; justify-content:space-between; align-items: center;
       flex-shrink: 0; height: 28px; padding: 0 14px;
       background: #0D1520;
     ">
+      <div style="display:flex; gap:18px; align-items:center;">
+        <span style="font-family:monospace; font-size:12px;"><span style="color:#546E7A;">Base </span><span style="color:#0f0;">▐████▌ 91%</span></span>
+        <span style="font-family:monospace; font-size:12px;"><span style="color:#546E7A;">Rover </span><span style="color:#0f0;">▐███░▌ 72%</span></span>
+      </div>
+
       <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
     </div>
 
