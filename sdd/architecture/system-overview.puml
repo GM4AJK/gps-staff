@@ -1,0 +1,41 @@
+@startuml
+!theme silver
+skinparam roundcorner 10
+skinparam ranksep 50
+skinparam nodesep 100
+!include <archimate/Archimate>
+Group(grp_base, "Base") {
+	Technology_SystemSoftware(BaseF9P, "F9P")
+	Business_Actor(BaseDisplay, "OLED Display\nIMU")
+	Technology_SystemSoftware(BaseF765, "STM32F765VIT")
+	Technology_SystemSoftware(BaseGFSK, "LoRa/GFSK")
+	Technology_SystemSoftware(BaseESP32, "ESP32-S3-Zero")
+	BaseF9P <-down-> BaseF765 : UART
+	BaseF765 <-down-> BaseESP32 : UART
+	BaseGFSK -left[hidden]-> BaseF9P
+	BaseGFSK <-down-> BaseF765 : SPI
+	BaseF9P -down[hidden]-> BaseDisplay
+	BaseDisplay <-right-> BaseF765 : I2C
+}  
+Group(grp_rover, "Rover") {
+	Technology_SystemSoftware(RoverF9P, "F9P")
+	Business_Actor(RoverDisplay, "OLED Display\nIMU")
+	Technology_SystemSoftware(RoverF765, "STM32F765VIT")
+	Technology_SystemSoftware(RoverGFSK, "LoRa/GFSK")
+	Technology_SystemSoftware(RoverESP32, "ESP32-S3-Zero")
+	RoverF9P <-down-> RoverF765 : UART
+	RoverF765 <-down-> RoverESP32 : UART
+	RoverGFSK -right[hidden]-> RoverF9P
+	RoverGFSK <-down-> RoverF765 : " SPI"
+	RoverF9P -down[hidden]-> RoverDisplay
+	RoverDisplay <-left-> RoverF765 : I2C
+}  
+BaseGFSK <-right-> RoverGFSK : "OTA\nGFSK\nRTCM3\nPackets      "
+Group(grp_tablet, "Tablet") {
+	Technology_SystemSoftware(TabletESP32, "ESP32-S3-Zero")
+	Business_Actor(TabletDisplay, "7inch\nDisplay\nLVGL")
+	TabletESP32 -down-> TabletDisplay
+}  
+BaseESP32 <-down-> TabletESP32 : OTA\nBLE
+RoverESP32 <-down-> TabletESP32 : OTA\nBLE
+@enduml
