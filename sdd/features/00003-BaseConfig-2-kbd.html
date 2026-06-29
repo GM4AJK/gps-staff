@@ -175,7 +175,31 @@
       <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
     </div>
 
-    <!-- MAIN PANELS — keyboard will overlay the bottom ~280px of this -->
+    <!--
+      ## HEADER BAR
+      ### Functional
+      - ← back button returns to State 1 (00003-BaseConfig-1.html), discarding password entry.
+      - Always visible above the keyboard — the primary Cancel route even when the keyboard is up.
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+      height: 52px;
+      padding: 0 16px;
+      background: #222;
+      gap: 16px;
+    ">
+      <button style="
+        background: none; border: none; color: white;
+        font-family: 'Montserrat', sans-serif; font-size: 24px;
+        cursor: pointer; padding: 0; line-height: 1;
+      ">←</button>
+      <span style="font-size: 20px; font-weight: 700; color: white;">Enter Password</span>
+    </div>
+
+    <!-- MAIN PANELS — keyboard will overlay the bottom portion of this -->
     <div style="
       flex: 1;
       display: flex;
@@ -312,7 +336,7 @@
         <button class="key key-wide key-action">?123</button>
         <button class="key key-space">space</button>
         <button class="key key-wide key-action"
-                onclick="hideKbd()">← Cancel</button>
+                onclick="hideKbd()">Cancel</button>
         <button class="key key-connect"
                 onclick="hideKbd()">Connect ✓</button>
       </div>
