@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: Main System (tablet 7inch)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config Screen — State 0: Top-level mode selector
+- Entry point from the Home screen "Base" button
+- Keeps "run" (operating modes) separate from "config" (settings)
+- Operating mode cards are the primary content — large, prominent
+- Config access is a secondary strip at the bottom
+- Next states:
+  - Survey-in card → 00003-BaseConfig-SurveyIn.html (ToDo)
+  - RTCM Streaming card → 00003-BaseConfig-Streaming.html (ToDo)
+  - WiFi Settings → 00003-BaseConfig-1.html (existing WiFi config flow)
+- bg_color: 0xffffff
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Base Config: Mode Select</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #888;
+    }
+    /* Mode card */
+    .mode-card {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+      box-sizing: border-box;
+      border-radius: 8px;
+      border: 2px solid #e0e0e0;
+      margin: 0 8px;
+    }
+    .mode-card-title {
+      font-size: 32px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+    }
+    .mode-card-desc {
+      font-size: 16px;
+      color: #666;
+      margin: 0 0 16px 0;
+      flex: 1;
+    }
+    .mode-card-status {
+      font-size: 14px;
+      color: #888;
+      margin: 0 0 20px 0;
+      padding: 10px 12px;
+      background: #f5f5f5;
+      border-radius: 6px;
+    }
+    .mode-card-status span {
+      font-weight: 700;
+    }
+    .btn-mode {
+      height: 56px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-blue  { background: #2196F3; color: white; }
+    .btn-green { background: #43A047; color: white; }
+    /* Config strip button */
+    .config-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      height: 100%;
+      background: #f5f5f5;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: #444;
+      cursor: pointer;
+      margin: 0 6px;
+      padding: 8px;
+    }
+    .config-btn-icon {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: Mode Select</div>
+
+  <div style="
+    width: 1024px;
+    height: 600px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+  ">
+
+    <!--
+      ## BATTERY BAR
+      ### Functional
+      - Tablet battery indicator — same as all screens
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      flex-shrink: 0;
+      height: 28px;
+      padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!--
+      ## HEADER BAR
+      ### Functional
+      - Back arrow returns to Home screen (00002-HomeScreen.html)
+      - Title identifies the current context
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+      height: 52px;
+      padding: 0 16px;
+      background: #222;
+      gap: 16px;
+    ">
+      <button style="
+        background: none;
+        border: none;
+        color: white;
+        font-family: 'Montserrat', sans-serif;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+      ">←</button>
+      <span style="font-size: 20px; font-weight: 700; color: white;">Base Configuration</span>
+    </div>
+
+    <!--
+      ## MODE CARDS — primary content, fills available space
+      ### Functional
+      - Two cards side by side: Survey-in (left) and RTCM Streaming (right)
+      - Each card shows a brief description and the last known status from BLE
+      - Pressing the card button enters that operating mode
+      - Status is fetched once via BLE when this screen opens (same req/resp as Base Config State 1)
+      - Survey-in card: button → 00003-BaseConfig-SurveyIn.html (ToDo)
+      - RTCM Streaming card: button → 00003-BaseConfig-Streaming.html (ToDo)
+    -->
+    <div style="
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      padding: 16px 8px 8px 8px;
+      gap: 0;
+      overflow: hidden;
+    ">
+
+      <!-- Survey-in card -->
+      <div class="mode-card">
+        <div>
+          <p class="mode-card-title" style="color: #1565C0;">⊕ Survey-in</p>
+          <p class="mode-card-desc">
+            The Base unit surveys its own position by averaging GNSS measurements
+            over time. When the target accuracy is reached it locks its position
+            and begins streaming RTCM corrections.
+          </p>
+          <!--
+            ### Functional
+            - Status values: "Never completed", "In progress (nn min, ±n.n m)", "Complete (±0.8 m, 2026-06-25)"
+            - Fetched once on screen open via BLE; not live-updated on this screen
+          -->
+          <div class="mode-card-status">
+            Last survey: <span>Complete</span> &nbsp;·&nbsp;
+            Accuracy: <span style="color: #43A047;">±0.8 m</span> &nbsp;·&nbsp;
+            2026-06-25
+          </div>
+        </div>
+        <button class="btn-mode btn-blue">Start Survey-in →</button>
+      </div>
+
+      <!-- Divider -->
+      <div style="width: 2px; background: #e0e0e0; margin: 0 0; flex-shrink: 0;"></div>
+
+      <!-- RTCM Streaming card -->
+      <div class="mode-card">
+        <div>
+          <p class="mode-card-title" style="color: #2E7D32;">⊙ RTCM Streaming</p>
+          <p class="mode-card-desc">
+            The Base unit broadcasts RTCM correction data to the Rover over the
+            LoRa radio link. Requires a completed survey-in or a known fixed position.
+            Monitor link quality and connected rovers here.
+          </p>
+          <!--
+            ### Functional
+            - Status values: "Not streaming (no survey)", "Streaming — n rover(s) connected",
+              "Streaming — no rovers seen"
+            - Fetched once on screen open; live status available on the streaming screen itself
+          -->
+          <div class="mode-card-status">
+            Status: <span style="color: #43A047;">Streaming</span> &nbsp;·&nbsp;
+            Rovers: <span>1 connected</span> &nbsp;·&nbsp;
+            Signal: <span>-78 dBm</span>
+          </div>
+        </div>
+        <button class="btn-mode btn-green">View Streaming →</button>
+      </div>
+
+    </div>
+
+    <!--
+      ## CONFIG STRIP — secondary, fixed height at bottom
+      ### Functional
+      - Provides access to configuration sub-screens
+      - Deliberately smaller than the mode cards to reinforce "run vs config" separation
+      - WiFi Settings → 00003-BaseConfig-1.html (existing WiFi config flow)
+      - LoRa Settings → ToDo (future spec)
+      - Fixed Position → ToDo (manual base position entry, future spec)
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      flex-shrink: 0;
+      height: 72px;
+      padding: 6px 14px;
+      background: #fafafa;
+      border-top: 1px solid #e0e0e0;
+      align-items: stretch;
+    ">
+      <button class="config-btn">
+        <span class="config-btn-icon">📶</span>WiFi Settings
+      </button>
+      <button class="config-btn">
+        <span class="config-btn-icon">📡</span>LoRa Settings
+        <span style="font-size: 11px; color: #aaa; font-weight: 400;">(ToDo)</span>
+      </button>
+      <button class="config-btn">
+        <span class="config-btn-icon">📍</span>Fixed Position
+        <span style="font-size: 11px; color: #aaa; font-weight: 400;">(ToDo)</span>
+      </button>
+    </div>
+
+  </div>
+
+</body>
+</html>
