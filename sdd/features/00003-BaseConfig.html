@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: Main System (tablet 7ich)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config Screen
+- bg_color: 0xffffff
+- bg_image: none
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Tablet Flexbox UI Mockup : Base Config</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #888;
+    }
+    /* Panel headings — 24px is a permitted LVGL size */
+    .panel-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      color: #222;
+    }
+    /* Config label/value table — no borders, label column fixed width */
+    .config-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 16px;
+    }
+    .config-table td {
+      padding: 6px 8px 6px 0;
+      vertical-align: top;
+    }
+    .config-table td:first-child {
+      font-weight: 700;
+      width: 200px;
+      color: #555;
+    }
+    /* Network list table — full width, collapsed borders, touch-friendly rows */
+    .network-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 16px;
+    }
+    .network-table th {
+      background: #333;
+      color: white;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 8px 10px;
+      text-align: left;
+    }
+    .network-table td {
+      padding: 10px 10px;
+      border-bottom: 1px solid #e0e0e0;
+      color: #333;
+    }
+    /* Currently connected network — grey, italic, non-interactive */
+    .network-table tr.connected td {
+      color: #aaa;
+      font-style: italic;
+      cursor: default;
+    }
+    /* Connect button in each unconnected row */
+    .connect-btn {
+      background: #2196F3;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .connect-btn:hover {
+      background: #1976D2;
+    }
+    /* Disconnect button on the currently connected row */
+    .disconnect-btn {
+      background: #e53935;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .disconnect-btn:hover {
+      background: #b71c1c;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 landscape — flexbox layout</div>
+
+  <!--
+    ## Base Config Screen
+    - flex-direction: column  → children stack top-to-bottom
+  -->
+  <div style="
+    width: 1024px;
+    height: 600px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+  ">
+
+    <!--
+      ## BATTERY BAR (row, pinned to top)
+      - flex-direction: row       → children sit side by side
+      - justify-content: flex-end → push content to the right
+      - align-items: center       → vertically centre the text
+      - flex-shrink: 0            → do not shrink when content grows
+
+      ### Functional
+      - This battery indicator shows the state of the battery ON THIS DEVICE (esp32_tablet)
+      - For details on the operation of this widget see Spec Doc XXX (ToDo)
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      flex-shrink: 0;
+      height: 28px;
+      padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!--
+      ## Main Display Panel
+      - flex: 1             → fills all remaining height below the battery bar
+      - flex-direction: row → left and right panels sit side by side
+    -->
+    <div id="main-display-panel" style="
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+    ">
+
+      <!--
+        ## Left Panel — Current Config
+        - flex: 1      → takes half the available width
+        - overflow-y   → scrollable if content grows
+
+        ### Functional
+        - The data in this panel will by supplied by the Base unit via BLE req/resp model (ToDo).
+		- Only one request is made wen the screen is opened or redisplayed, it is not continuously updated.
+      -->
+      <div id="left-panel" style="
+        flex: 1;
+        background: #f5f5f5;
+        padding: 20px;
+        box-sizing: border-box;
+        border-right: 1px solid #ccc;
+        overflow-y: auto;
+      ">
+        <p class="panel-title">Current Config</p>
+        <table class="config-table">
+          <tr>
+            <td>Network SSID:</td>
+            <td>SKYxxxx</td>
+          </tr>
+		  <tr>
+            <td>SSID Channel:</td>
+            <td>6</td>
+          </tr>
+          <tr>
+            <td>Status:</td>
+            <td style="color: #4caf50; font-weight: 700;">Connected</td>
+          </tr>
+          <tr>
+            <td>IP Address:</td>
+            <td>192.168.1.42</td>
+          </tr>
+          <tr>
+            <td>Signal:</td>
+            <td>-65 dBm</td>
+          </tr>
+        </table>
+      </div>
+
+      <!--
+        ## Right Panel — Available Networks
+        - flex: 1      → takes the other half
+        - overflow-y   → scrollable when network list is long
+
+        ### Functional
+        - This data comes from the Base unit via BLE subscription and is refreshed each time
+          a subscription message is received.
+        - Each unconnected row has a "Connect" button; pressing it changes the Right Panel to
+          a password entry screen for that SSID/Channel (ToDo).
+        - The currently connected SSID row is greyed out and italic; it has a red "Disconnect"
+          button. Pressing Disconnect instructs the Base to drop the WiFi connection (ToDo).
+        - If the user enters a password the Left Panel goes to a "waiting" state with contents
+          removed. A loading spinner may be shown while waiting for the Base to confirm connection.
+        - See password entry panel: ToDo.
+      -->
+      <div id="right-panel" style="
+        flex: 1;
+        background: white;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+      ">
+        <p class="panel-title">Available Networks</p>
+        <table class="network-table">
+          <thead>
+            <tr>
+              <th>SSID</th>
+              <th>Channel</th>
+              <th>Signal</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- connected row: greyed out, italic, Disconnect button -->
+            <tr class="connected">
+              <td>SKYxxxx</td>
+              <td>6</td>
+              <td>-65 dBm</td>
+              <td><button class="disconnect-btn">Disconnect</button></td>
+            </tr>
+            <tr>
+              <td>SKYxxxx1</td>
+              <td>12</td>
+              <td>-79 dBm</td>
+              <td><button class="connect-btn">Connect</button></td>
+            </tr>
+            <tr>
+              <td>SKYxxxx2</td>
+              <td>2</td>
+              <td>-89 dBm</td>
+              <td><button class="connect-btn">Connect</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div><!-- end main display panel -->
+
+  </div><!-- end base config screen -->
+
+</body>
+</html>
