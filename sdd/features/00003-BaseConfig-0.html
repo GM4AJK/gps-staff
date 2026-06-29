@@ -87,8 +87,9 @@
       cursor: pointer;
       width: 100%;
     }
-    .btn-blue  { background: #2196F3; color: white; }
-    .btn-green { background: #43A047; color: white; }
+    .btn-blue   { background: #2196F3; color: white; }
+    .btn-green  { background: #43A047; color: white; }
+    .btn-purple { background: #8E24AA; color: white; }
     /* Config strip button */
     .config-btn {
       display: flex;
@@ -228,12 +229,14 @@
     <!--
       ## MODE CARDS — primary content, fills available space
       ### Functional
-      - Two cards side by side: Survey-in (left) and RTCM Streaming (right)
+      - Three cards side by side: Survey-in / RTCM Streaming / Satellite View
       - Each card shows a brief description and the last known status from BLE
-      - Pressing the card button enters that operating mode
+      - Pressing Survey-in or Streaming card buttons enters that operating mode
+      - Satellite View is read-only diagnostic — opens sky plot, does not change operating mode
       - Status is fetched once via BLE when this screen opens (same req/resp as Base Config State 1)
       - Survey-in card: button → 00003-BaseConfig-SurveyIn.html (ToDo)
       - RTCM Streaming card: button → 00003-BaseConfig-Streaming.html (ToDo)
+      - Satellite View card: button → 00003-BaseConfig-SatView.html (ToDo)
     -->
     <div style="
       flex: 1;
@@ -292,6 +295,40 @@
           </div>
         </div>
         <button class="btn-mode btn-green">View Streaming →</button>
+      </div>
+
+      <!-- Divider -->
+      <div style="width: 2px; background: #e0e0e0; margin: 0; flex-shrink: 0;"></div>
+
+      <!--
+        ## Satellite View card
+        ### Functional
+        - Read-only diagnostic view — does not start or stop any operation
+        - Data fetched once via BLE on screen open from Base F9P UBX-NAV-SAT / UBX-NAV-PVT
+        - Shows satellite sky plot, per-satellite CN0, fix type, PDOP
+        - Useful to check sky visibility before committing to a survey-in
+        - Navigates to 00003-BaseConfig-SatView.html (ToDo)
+        - Status values:
+            No fix:     "n sats tracked · No fix · PDOP: —"
+            3D fix:     "n sats tracked · 3D fix · PDOP: n.n"
+            RTK Float:  "n sats tracked · RTK Float · PDOP: n.n"
+            RTK Fixed:  "n sats tracked · RTK Fixed · PDOP: n.n"
+      -->
+      <div class="mode-card">
+        <div>
+          <p class="mode-card-title" style="color: #6A1B9A;">◎ Satellite View</p>
+          <p class="mode-card-desc">
+            Live sky plot from the Base GNSS receiver — satellite positions,
+            signal strength and fix quality. Use this to verify sky visibility
+            and signal health before starting a survey-in.
+          </p>
+          <div class="mode-card-status">
+            Sats: <span>14 (GPS&thinsp;9 · GLO&thinsp;5)</span> &nbsp;·&nbsp;
+            Fix: <span style="color: #43A047;">RTK Fixed</span> &nbsp;·&nbsp;
+            PDOP: <span>1.2</span>
+          </div>
+        </div>
+        <button class="btn-mode btn-purple">View Satellites →</button>
       </div>
 
     </div>
