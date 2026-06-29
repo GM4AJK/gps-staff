@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: Main System (tablet 7ich)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config Screen — State 2 with keyboard visible (Option A mockup)
+- Same state as 00003-BaseConfig-2.html but with virtual keyboard overlaid
+- bg_color: 0xffffff
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Base Config: Password + Keyboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #888;
+    }
+    .panel-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      color: #222;
+    }
+    .panel-subtitle {
+      font-size: 16px;
+      color: #666;
+      margin: 0 0 12px 0;
+    }
+    .pwd-input {
+      width: 100%;
+      height: 48px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border: 2px solid #2196F3;
+      border-radius: 8px;
+      outline: none;
+    }
+    /* Keyboard container — full width, overlaid at bottom of screen */
+    .keyboard {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #d0d3d8;
+      padding: 8px 6px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      /* Start off-screen below, transition up when .visible is added */
+      transform: translateY(100%);
+      transition: transform 0.25s ease-out;
+    }
+    .keyboard.visible {
+      transform: translateY(0);
+    }
+    .kbd-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 6px;
+    }
+    /* Standard key */
+    .key {
+      height: 52px;
+      min-width: 52px;
+      flex: 1;
+      max-width: 80px;
+      background: white;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #222;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #aaa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    /* Wide keys: Shift, Backspace, Enter, Space */
+    .key-wide {
+      max-width: 120px;
+      font-size: 14px;
+      flex: 1.8;
+    }
+    .key-space {
+      max-width: 400px;
+      flex: 5;
+    }
+    /* Action keys — dark background */
+    .key-action {
+      background: #adb5bd;
+      color: #111;
+    }
+    /* Connect key — blue */
+    .key-connect {
+      background: #2196F3;
+      color: white;
+      max-width: 140px;
+      flex: 2;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: Password entry with keyboard</div>
+
+  <!-- Root screen: position:relative so keyboard can absolute-position inside it -->
+  <div style="
+    width: 1024px;
+    height: 600px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+    position: relative;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      flex-shrink: 0;
+      height: 28px;
+      padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!-- MAIN PANELS — keyboard will overlay the bottom ~280px of this -->
+    <div style="
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+    ">
+
+      <!-- LEFT PANEL — waiting state, partially obscured by keyboard -->
+      <div style="
+        flex: 1;
+        background: #f5f5f5;
+        padding: 20px;
+        box-sizing: border-box;
+        border-right: 1px solid #ccc;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      ">
+        <p style="font-size: 20px; font-weight: 700; color: #555; margin: 0 0 8px 0;">Connecting...</p>
+        <p style="font-size: 16px; color: #888; margin: 0;">Waiting for Base to confirm</p>
+      </div>
+
+      <!-- RIGHT PANEL — password entry, keyboard sits below the input -->
+      <div style="
+        flex: 1;
+        background: white;
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+      ">
+        <p class="panel-title">Enter Password</p>
+        <p class="panel-subtitle">Network: <strong>SKYxxxx1</strong> &nbsp;·&nbsp; Channel: 12</p>
+
+        <label style="font-size: 16px; font-weight: 700; color: #555; margin-bottom: 8px; display: block;">
+          WiFi Password
+        </label>
+        <div style="display: flex; flex-direction: row; align-items: center;">
+          <input type="text" class="pwd-input" value="mypassword1" style="flex: 1;"
+                 onclick="document.getElementById('kbd').classList.add('visible')">
+          <button style="
+            margin-left: 10px;
+            height: 48px;
+            padding: 0 20px;
+            background: #eee;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            flex-shrink: 0;
+          ">Hide</button>
+        </div>
+      </div>
+
+    </div><!-- end panels -->
+
+    <!--
+      ## VIRTUAL KEYBOARD — full width overlay, anchored to bottom
+      ### Functional
+      - Appears when the password input field is tapped.
+      - Anchored to the bottom of the screen, spans full 1024px width.
+      - Overlays the lower portion of both panels — content above remains visible.
+      - LVGL: lv_keyboard_create(), lv_keyboard_set_textarea(kb, pwd_ta).
+      - Hidden by default, off-screen below. Slides up (0.25s ease-out) when the password
+          field is tapped. Slides back down when Connect or Cancel is pressed.
+      - LVGL: lv_anim_t on lv_obj_set_y() to achieve the slide; triggered by
+          LV_EVENT_FOCUSED on the textarea.
+      - Last row contains a Connect key (blue) as an alternative to the button above.
+    -->
+    <div class="keyboard" id="kbd">
+      <!-- Row 1: numbers -->
+      <div class="kbd-row">
+        <button class="key">1</button>
+        <button class="key">2</button>
+        <button class="key">3</button>
+        <button class="key">4</button>
+        <button class="key">5</button>
+        <button class="key">6</button>
+        <button class="key">7</button>
+        <button class="key">8</button>
+        <button class="key">9</button>
+        <button class="key">0</button>
+        <button class="key key-wide key-action">⌫ Del</button>
+      </div>
+      <!-- Row 2: qwerty -->
+      <div class="kbd-row">
+        <button class="key">q</button>
+        <button class="key">w</button>
+        <button class="key">e</button>
+        <button class="key">r</button>
+        <button class="key">t</button>
+        <button class="key">y</button>
+        <button class="key">u</button>
+        <button class="key">i</button>
+        <button class="key">o</button>
+        <button class="key">p</button>
+      </div>
+      <!-- Row 3: asdf -->
+      <div class="kbd-row">
+        <button class="key">a</button>
+        <button class="key">s</button>
+        <button class="key">d</button>
+        <button class="key">f</button>
+        <button class="key">g</button>
+        <button class="key">h</button>
+        <button class="key">j</button>
+        <button class="key">k</button>
+        <button class="key">l</button>
+      </div>
+      <!-- Row 4: zxcv + shift -->
+      <div class="kbd-row">
+        <button class="key key-wide key-action">⇧ Shift</button>
+        <button class="key">z</button>
+        <button class="key">x</button>
+        <button class="key">c</button>
+        <button class="key">v</button>
+        <button class="key">b</button>
+        <button class="key">n</button>
+        <button class="key">m</button>
+        <button class="key key-wide key-action">. @ - _</button>
+      </div>
+      <!-- Row 5: space + connect -->
+      <div class="kbd-row">
+        <button class="key key-wide key-action">?123</button>
+        <button class="key key-space">space</button>
+        <button class="key key-wide key-action"
+                onclick="document.getElementById('kbd').classList.remove('visible')">Cancel</button>
+        <button class="key key-connect"
+                onclick="document.getElementById('kbd').classList.remove('visible')">Connect ✓</button>
+      </div>
+    </div><!-- end keyboard -->
+
+  </div><!-- end root screen -->
+
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: Main System (tablet 7ich)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config Screen — State 3: Connecting (BLE in progress)
+- Entered when user presses "Connect" on the password entry form (State 2)
+- Parent screen: 00003-BaseConfig-2.html
+- bg_color: 0xffffff
+- bg_image: none
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Tablet Flexbox UI Mockup : Base Config (Connecting)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #888;
+    }
+    .panel-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      color: #222;
+    }
+    .panel-subtitle {
+      font-size: 16px;
+      color: #666;
+      margin: 0 0 20px 0;
+    }
+    /* CSS spinner — maps to lv_spinner in LVGL */
+    .spinner {
+      width: 64px;
+      height: 64px;
+      border: 6px solid #e0e0e0;
+      border-top-color: #2196F3;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    /* Password input — dimmed/disabled during connecting */
+    .pwd-input {
+      width: 100%;
+      height: 48px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      background: #f5f5f5;
+      color: #aaa;
+      outline: none;
+    }
+    .btn-disabled {
+      background: #bdbdbd;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 32px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: not-allowed;
+      margin-right: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 landscape — Base Config: Connecting state</div>
+
+  <div style="
+    width: 1024px;
+    height: 600px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+  ">
+
+    <!--
+      ## BATTERY BAR (row, pinned to top)
+      ### Functional
+      - Tablet battery indicator — same as all screens
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      align-items: center;
+      flex-shrink: 0;
+      height: 28px;
+      padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <div id="main-display-panel" style="
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
+    ">
+
+      <!--
+        ## Left Panel — Spinner State
+        ### Functional
+        - Shown immediately when the user presses Connect on the password entry form.
+        - Replaces the static "Connecting..." text from State 2 with an lv_spinner widget.
+        - The spinner runs until the Base unit responds via BLE (success or failure).
+        - On success: transition to State 1 (00003-BaseConfig-1.html) with refreshed config data.
+        - On failure: transition to State 4 (00003-BaseConfig-4.html) — password form re-enabled
+          with error message on left panel.
+        - LVGL: lv_spinner_create(), arc width and speed TBD.
+      -->
+      <div id="left-panel" style="
+        flex: 1;
+        background: #f5f5f5;
+        padding: 20px;
+        box-sizing: border-box;
+        border-right: 1px solid #ccc;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      ">
+        <div class="spinner"></div>
+        <p style="font-size: 20px; font-weight: 700; color: #555; margin: 0 0 8px 0;">Connecting to SKYxxxx1</p>
+        <p style="font-size: 16px; color: #888; margin: 0;">Waiting for Base to confirm…</p>
+      </div>
+
+      <!--
+        ## Right Panel — Password Entry (disabled)
+        ### Functional
+        - The password form remains visible but all inputs and buttons are disabled/greyed out
+          while the connection attempt is in progress.
+        - This prevents the user from modifying the credentials mid-attempt.
+        - If the attempt fails and we move to an error state, the form re-enables.
+      -->
+      <div id="right-panel" style="
+        flex: 1;
+        background: white;
+        padding: 20px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        opacity: 0.5;
+      ">
+        <p class="panel-title">Enter Password</p>
+        <p class="panel-subtitle">Network: <strong>SKYxxxx1</strong> &nbsp;·&nbsp; Channel: 12</p>
+
+        <label style="font-size: 16px; font-weight: 700; color: #555; margin-bottom: 8px; display: block;">
+          WiFi Password
+        </label>
+        <div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 16px;">
+          <input type="password" class="pwd-input" value="mypassword123" disabled style="margin-bottom: 0; flex: 1;">
+          <button disabled style="
+            margin-left: 10px;
+            height: 48px;
+            padding: 0 20px;
+            background: #eee;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: not-allowed;
+            flex-shrink: 0;
+            color: #aaa;
+          ">Show</button>
+        </div>
+
+        <div style="display: flex; flex-direction: row; margin-top: 8px;">
+          <button class="btn-disabled" disabled>Connect</button>
+          <button class="btn-disabled" disabled>Cancel</button>
+        </div>
+      </div>
+
+    </div><!-- end main display panel -->
+
+  </div><!-- end base config screen -->
+
+</body>
+</html>

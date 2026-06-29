@@ -6,16 +6,19 @@
 - Layout style: Flexbox-driven, light theme
 - Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
 
-## Base Config Screen — State 2: Password Entry
-- Entered when user presses a "Connect" button on an unconnected network row
-- Parent screen: 00003-BaseConfig-1.html
+## Base Config Screen — State 4: Connection Failed
+- Entered when the Base unit reports a failed connection attempt (from State 3)
+- Left panel shows error message; right panel re-enables password form for retry
+- Next states:
+  - 00003-BaseConfig-3.html (user retries — presses Connect again)
+  - 00003-BaseConfig-1.html (user cancels)
 - bg_color: 0xffffff
 - bg_image: none
 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GPS Staff — Tablet Flexbox UI Mockup : Base Config (Password Entry)</title>
+  <title>GPS Staff — Tablet Flexbox UI Mockup : Base Config (Connection Failed)</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
@@ -46,22 +49,6 @@
       color: #666;
       margin: 0 0 20px 0;
     }
-    /* Config label/value table */
-    .config-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 16px;
-    }
-    .config-table td {
-      padding: 6px 8px 6px 0;
-      vertical-align: top;
-    }
-    .config-table td:first-child {
-      font-weight: 700;
-      width: 200px;
-      color: #555;
-    }
-    /* Password input field */
     .pwd-input {
       width: 100%;
       height: 48px;
@@ -77,7 +64,6 @@
     .pwd-input:focus {
       border-color: #2196F3;
     }
-    /* Action buttons */
     .btn-connect {
       background: #2196F3;
       color: white;
@@ -105,7 +91,7 @@
 </head>
 <body>
 
-  <div class="label">Handheld Tablet — 1024 × 600 landscape — Base Config: Password Entry state</div>
+  <div class="label">Handheld Tablet — 1024 × 600 landscape — Base Config: Connection Failed state</div>
 
   <div style="
     width: 1024px;
@@ -135,9 +121,6 @@
       <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
     </div>
 
-    <!--
-      ## Main Display Panel
-    -->
     <div id="main-display-panel" style="
       flex: 1;
       display: flex;
@@ -146,16 +129,14 @@
     ">
 
       <!--
-        ## Left Panel — Waiting State
-        - Replaces the Current Config content while connection attempt is in progress
-
+        ## Left Panel — Connection Failed
         ### Functional
-        - When Connect is pressed, left panel content is cleared and replaced with this waiting state.
-        - A spinner is shown while the Base attempts to connect to the selected network.
-        - If connection succeeds, screen transitions back to 00003-BaseConfig-1.html (State 1) with
-          updated config data.
-        - If connection fails, an error message is shown and the user can try again or cancel.
-        - Waiting state is simple text only — no spinner.
+        - Spinner from State 3 is replaced with a plain error message when the Base
+          reports a failed connection attempt.
+        - Error text is simple and non-technical — the user does not need to know why
+          it failed, only that it did.
+        - No retry button here; retry is achieved by re-entering the password in the
+          right panel and pressing Connect again.
       -->
       <div id="left-panel" style="
         flex: 1;
@@ -168,22 +149,22 @@
         justify-content: center;
         align-items: center;
       ">
-        <p style="font-size: 20px; font-weight: 700; color: #555; margin: 0 0 8px 0;">Connecting...</p>
-        <p style="font-size: 16px; color: #888; margin: 0;">Waiting for Base to confirm</p>
+        <p style="font-size: 40px; margin: 0 0 16px 0;">✗</p>
+        <p style="font-size: 20px; font-weight: 700; color: #e53935; margin: 0 0 8px 0;">Connection Failed</p>
+        <p style="font-size: 16px; color: #888; margin: 0; text-align: center;">
+          Could not connect to SKYxxxx1.<br>Check the password and try again.
+        </p>
       </div>
 
       <!--
-        ## Right Panel — Password Entry
-        - Replaces the Available Networks table after Connect is pressed
-
+        ## Right Panel — Password Entry (re-enabled)
         ### Functional
-        - Shows the SSID and channel of the selected network.
-        - User enters the WiFi password via the on-screen keyboard (LVGL keyboard widget).
-        - "Connect" sends the SSID + password to the Base unit via a new BLE GATT write
-          characteristic (ToDo — to be defined in GATT.md), then transitions to
-          00003-BaseConfig-3.html (spinner/connecting state).
-        - "Cancel" discards the password and returns both panels to State 1 (00003-BaseConfig-1.html).
-        - Password field has a show/hide toggle button to reveal or mask the entered text.
+        - Password form is fully re-enabled after a failed attempt.
+        - Password field is cleared so the user must re-enter it — do not pre-fill
+          with the failed password.
+        - "Connect" triggers another attempt → State 3 (00003-BaseConfig-3.html).
+        - "Cancel" returns to State 1 (00003-BaseConfig-1.html).
+        - Show/hide toggle works as per State 2.
       -->
       <div id="right-panel" style="
         flex: 1;
@@ -202,7 +183,7 @@
         </label>
         <div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 16px;">
           <input type="password" id="pwd-field" class="pwd-input" placeholder="Enter password…"
-                 value="mypassword123" style="margin-bottom: 0; flex: 1;">
+                 style="margin-bottom: 0; flex: 1;">
           <button onclick="var f=document.getElementById('pwd-field'); f.type=f.type==='password'?'text':'password'; this.textContent=f.type==='password'?'Show':'Hide';"
                   style="
                     margin-left: 10px;
