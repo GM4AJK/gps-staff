@@ -160,8 +160,10 @@ Base Config visits identically — no special "reconnect" code path is needed.
 
 Properties: **READ + NOTIFY** (notify on mode transition)
 
-Single byte. Updated by the Base STM32 whenever operating mode changes; forwarded
-to GATT characteristic by Base ESP32 on UART message from STM32.
+Single byte. Owned and updated by the Base ESP32 application layer. The ESP32
+synthesises the value from F9P telemetry forwarded by the STM32 (SVIN active/valid,
+fix type) combined with its own command state (e.g. "I sent Start SVIN"). The STM32
+has no knowledge of this characteristic.
 
 ```
 0x00  Idle            No active mode, no valid position held.
