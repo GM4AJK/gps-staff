@@ -39,3 +39,4 @@ Numbered feature specifications and UI screen specs.
 | [features/00003-BaseConfig-FixedPos.html](features/00003-BaseConfig-FixedPos.html) | Base Config — Fixed Position entry (monument/benchmark, OSGB36/WGS84) |
 | [features/00004-BaseSatelliteView-1.html](features/00004-BaseSatelliteView-1.html) | Base Satellite View — sky plot (az/el, GPS+GLONASS), CN0 bar chart, fix status |
 | [features/00005-AboutScreen-1.html](features/00005-AboutScreen-1.html) | About screen — product identity, firmware/hardware versions, the Wizard |
+| [features/00007-RoverConfig-Mode1.html](features/00007-RoverConfig-Mode1.html) | Rover Config (Mode 1 — Local RF Link) — pole height entry, live RF link status (RSSI/SNR/frame count), F9P fix type; two dev states: Waiting / Receiving |
