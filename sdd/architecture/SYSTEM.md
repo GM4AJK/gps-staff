@@ -232,6 +232,60 @@ Full STM32 firmware module documentation: [`docs/arch/`](../../docs/arch/)
 
 ---
 
+## Status Beacon Protocol
+
+**Terminology used throughout this section:**
+- **Long-haul link** — the link the remote device uses to send data (RF in Mode 1, TCP internet in Mode 5). Carries RTCM and status beacons.
+- **Short-haul link** — local BLE between a field unit's ESP32 and the Tablet.
+
+The remote device (Base in Mode 1 / Mode 5A, Rover in Mode 5B) sends a small
+status packet every **10 seconds** over the long-haul link. This is the mechanism
+by which the Tablet's status bar shows remote battery %.
+
+### Transport
+
+| Mode | Direction | Mechanism |
+|------|-----------|-----------|
+| Mode 1 (RF) | Base → Rover (long-haul) | Interleaved in GFSK stream alongside RTCM. Rover STM32 deframes it and routes to Rover ESP32 via UART (`MSG_STATUS_BEACON`). Rover ESP32 forwards to Tablet over short-haul BLE GATT notify. |
+| Mode 5 (TCP) | Remote → Mobile (long-haul) | Sent in reverse direction on the same open TCP socket. Mobile ESP32 receives directly — no STM32 involvement. Tablet reads via short-haul BLE from the mobile ESP32. |
+| Modes 2/3/4 | — | No long-haul link between devices. Status bar shows `—` for remote device. |
+
+### Framing
+
+Status packets are interleaved with RTCM bytes on the same byte stream (RF or TCP).
+RTCM3 packets are identified by sync byte `0xD3`. Status packets use a distinct magic
+that cannot occur as a valid RTCM3 sync:
+
+```
+┌────────┬────────┬────────┬──────────────────────┬────────┐
+│ 0xAA   │ 0x55   │ LEN    │ PAYLOAD (LEN bytes)  │ CRC-8  │
+│ magic0 │ magic1 │ uint8  │                      │        │
+└────────┴────────┴────────┴──────────────────────┴────────┘
+```
+
+The RTCM/status deframer checks each sync byte: `0xD3` → RTCM path, `0xAA` (+`0x55` confirmation) → status path.
+
+### Payload (~8 bytes)
+
+| Offset | Field | Type | Notes |
+|--------|-------|------|-------|
+| 0 | `device_id` | uint8 | `0x01` = Base, `0x02` = Rover |
+| 1 | `battery_pct` | uint8 | 0–100, from STM32 ADC |
+| 2 | `fix_type` | uint8 | `0` = none, `1` = float, `2` = RTK fix |
+| 3–4 | `hacc_mm` | uint16 LE | Horizontal accuracy from UBX-NAV-PVT (mm) |
+| 5 | `rtcm_rate` | uint8 | RTCM messages/sec output (0 if not streaming) |
+| 6–7 | `uptime_s` | uint16 LE | Seconds since power-on |
+
+Total wire size: 2 (magic) + 1 (len) + 8 (payload) + 1 (CRC) = **12 bytes**.
+
+### Timing and fault tolerance
+
+- Transmitted every 10 s in the inter-epoch gap (RTCM is 1 Hz; ≥900 ms of dead air available).
+- Tablet status bar goes grey and shows `—` if 3 consecutive packets are missed (30 s timeout).
+- A missed packet does not trigger any alert or retry.
+
+---
+
 ## RTK Concepts
 
 - **Code-phase** (consumer GPS): ~1-5m — noise floor cannot be corrected below ~1m
