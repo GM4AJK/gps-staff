@@ -31,6 +31,7 @@ Numbered feature specifications and UI screen specs.
 | [features/00003-BaseConfig-3.html](features/00003-BaseConfig-3.html) | Base Config — State 3: connecting (spinner) |
 | [features/00003-BaseConfig-4.html](features/00003-BaseConfig-4.html) | Base Config — State 4: connection failed |
 | [features/00003-BaseConfig-SurveyIn-A.html](features/00003-BaseConfig-SurveyIn-A.html) | Base Config — Survey-in State A: Ready (editable settings, Start button) |
+| [features/00003-BaseConfig-SurveyIn-A-kbd.html](features/00003-BaseConfig-SurveyIn-A-kbd.html) | Base Config — Survey-in State A: Numeric keyboard (duration in minutes up to 5 digits; accuracy in metres; tab toggle between both fields) |
 | [features/00003-BaseConfig-SurveyIn.html](features/00003-BaseConfig-SurveyIn.html) | Base Config — Survey-in State B: In Progress (progress ring, condition chips, live stats, cancel) |
 | [features/00003-BaseConfig-SurveyIn-C.html](features/00003-BaseConfig-SurveyIn-C.html) | Base Config — Survey-in State C: Complete (full green ring, Begin RTCM Streaming button) |
 | [features/00003-BaseConfig-Streaming.html](features/00003-BaseConfig-Streaming.html) | Base Config — RTCM Data (broadcast stats, RTCM message activity, rover connection + LoRa link quality) |
