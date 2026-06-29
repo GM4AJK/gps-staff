@@ -201,6 +201,35 @@ MD_COMMENT -->
     .kbd-key.action   { background: #37474F; font-size: 14px; max-width: 100px; }
     .kbd-key.confirm  { background: #2E7D32; max-width: 120px; font-size: 14px; }
     .kbd-key.hex      { color: #80CBC4; }
+
+    /* ── TX Power dropdown ── */
+    .gfsk-dropdown {
+      background: #f5f5f5; border-radius: 8px; padding: 10px 14px;
+      display: flex; align-items: center; cursor: pointer;
+      border: 1px solid #e0e0e0; gap: 10px; position: relative;
+    }
+    .gfsk-dropdown:hover { background: #EEEEEE; border-color: #BDBDBD; }
+    .dropdown-chevron { font-size: 18px; color: #BDBDBD; flex-shrink: 0; }
+    .dropdown-options {
+      display: none; position: absolute;
+      top: 100%; left: 0; right: 0; z-index: 20;
+      background: #fff; border: 1px solid #BDBDBD; border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18); overflow: hidden; margin-top: 2px;
+    }
+    .dropdown-options.open { display: block; }
+    .dropdown-option {
+      padding: 12px 16px; display: flex; align-items: baseline;
+      gap: 12px; cursor: pointer; border-bottom: 1px solid #F5F5F5;
+    }
+    .dropdown-option:last-child { border-bottom: none; }
+    .dropdown-option:hover { background: #E8F5E9; }
+    .dropdown-option.selected { background: #E8F5E9; }
+    .dropdown-opt-value {
+      font-size: 18px; font-weight: 700; color: #212121; min-width: 70px;
+    }
+    .dropdown-option.selected .dropdown-opt-value { color: #2E7D32; }
+    .dropdown-opt-label { font-size: 13px; color: #9E9E9E; }
+    .dropdown-option.selected .dropdown-opt-label { color: #43A047; }
   </style>
 </head>
 <body>
@@ -324,9 +353,13 @@ MD_COMMENT -->
           transmit simultaneously. Sync word prevents a rover accepting the wrong base
           but does NOT prevent RF collision. Use different frequencies for co-located bases.
         ### LVGL note
-        - Editable rows: lv_obj containers; register LV_EVENT_CLICKED to open vkbd.
-        - Pre-populate keyboard: READ GFSK_RADIO_CONFIG on screen open, cache values.
-        - On confirm: WRITE new config, then READ back to confirm; update lv_label.
+        - Frequency, Bit Rate, Sync Word: lv_obj rows; LV_EVENT_CLICKED opens vkbd.
+        - TX Power: lv_dropdown widget — set options string on screen init from the
+          six fixed levels; lv_dropdown_set_selected() to show current value on open.
+          On LV_EVENT_VALUE_CHANGED: read selected index → map to dBm → WRITE config.
+          lv_dropdown_get_selected_str() gives the label; parse dBm from it.
+        - Pre-populate all fields: READ GFSK_RADIO_CONFIG on screen open, cache values.
+        - On vkbd/dropdown confirm: WRITE new config, then READ back; update lv_label.
         - Stop Streaming: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
       -->
       <div style="
@@ -346,13 +379,47 @@ MD_COMMENT -->
           <div class="gfsk-edit-icon">✎</div>
         </div>
 
-        <!-- TX Power — numeric keyboard (dBm, integer, −17 to +22) -->
-        <div class="gfsk-field" onclick="showKbd('num', '+22', 'TX Power (dBm, −17 to +22)')">
+        <!--
+          TX Power — dropdown (6 fixed SX1262 levels; not freeform)
+          ### Functional
+          SX1262 SetTxParams() accepts integer dBm. Six meaningful levels cover the
+          practical range; freeform entry would allow invalid/confusing values.
+          Default: +22 dBm (maximum range). Both Base and Rover should match if
+          the rover's TX power also needs coordinating (future config).
+          ### LVGL note: lv_dropdown — see right-panel LVGL note above.
+        -->
+        <div class="gfsk-dropdown" id="pwr-field" onclick="togglePowerDropdown(event)">
           <div class="gfsk-field-text">
             <div class="gfsk-field-name">TX Power</div>
-            <div class="gfsk-field-value">+22 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm</span></div>
+            <div class="gfsk-field-value" id="pwr-display">+22 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; Maximum</span></div>
           </div>
-          <div class="gfsk-edit-icon">✎</div>
+          <div class="dropdown-chevron">▾</div>
+          <div class="dropdown-options" id="pwr-options">
+            <div class="dropdown-option" onclick="selectPower(event, '-17', 'Minimum (test only)')">
+              <span class="dropdown-opt-value">−17 dBm</span>
+              <span class="dropdown-opt-label">Minimum (test only)</span>
+            </div>
+            <div class="dropdown-option" onclick="selectPower(event, '0', 'Low')">
+              <span class="dropdown-opt-value">0 dBm</span>
+              <span class="dropdown-opt-label">Low &nbsp;· 1 mW</span>
+            </div>
+            <div class="dropdown-option" onclick="selectPower(event, '+10', 'Medium')">
+              <span class="dropdown-opt-value">+10 dBm</span>
+              <span class="dropdown-opt-label">Medium &nbsp;· 10 mW</span>
+            </div>
+            <div class="dropdown-option" onclick="selectPower(event, '+14', 'High')">
+              <span class="dropdown-opt-value">+14 dBm</span>
+              <span class="dropdown-opt-label">High &nbsp;· 25 mW</span>
+            </div>
+            <div class="dropdown-option" onclick="selectPower(event, '+17', 'Very High')">
+              <span class="dropdown-opt-value">+17 dBm</span>
+              <span class="dropdown-opt-label">Very High &nbsp;· 50 mW</span>
+            </div>
+            <div class="dropdown-option selected" onclick="selectPower(event, '+22', 'Maximum')">
+              <span class="dropdown-opt-value">+22 dBm</span>
+              <span class="dropdown-opt-label">Maximum &nbsp;· 158 mW</span>
+            </div>
+          </div>
         </div>
 
         <!-- Bit Rate — numeric keyboard (bps) -->
@@ -498,6 +565,23 @@ MD_COMMENT -->
   </div><!-- end 1024×600 screen -->
 
   <script>
+    function togglePowerDropdown(e) {
+      e.stopPropagation();
+      document.getElementById('pwr-options').classList.toggle('open');
+    }
+    function selectPower(e, val, label) {
+      e.stopPropagation();
+      document.getElementById('pwr-display').innerHTML =
+        val + ' <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; ' + label + '</span>';
+      document.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
+      e.currentTarget.classList.add('selected');
+      document.getElementById('pwr-options').classList.remove('open');
+      /* LVGL: write GFSK_RADIO_CONFIG (0xAD0A) with updated tx_power int8 */
+    }
+    document.addEventListener('click', () => {
+      document.getElementById('pwr-options').classList.remove('open');
+    });
+
     let kbdMode = 'num';
     let kbdCurrent = '';
 
