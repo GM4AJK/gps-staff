@@ -16,6 +16,10 @@ System-level design: unit roles, technology decisions, data flow, BLE protocols.
 
 Numbered feature specifications and UI screen specs.
 
+> **When adding a new spec file:** also add it to the `screens` array in
+> [`features/00000-Overview.html`](features/00000-Overview.html) so it appears
+> in the spec navigator.
+
 | Document | Contents |
 |---|---|
 | [features/00001-wifi-provisioning.md](features/00001-wifi-provisioning.md) | WiFi provisioning — all phases bench-verified |
