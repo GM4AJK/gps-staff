@@ -30,11 +30,22 @@
   On open, read SURVEY_IN_STATUS immediately (request/response or cached notify value)
   and branch to the appropriate state before the user sees any flash of wrong content.
 
-### "Navigate away and return" behaviour
+### "Navigate away and return" / tablet power-cycle behaviour
   Survey-in runs entirely on the Base F9P — it continues with no interaction from the UI.
-  The Base STM32 polls UBX-NAV-SVIN and forwards the result via the SURVEY_IN_STATUS
-  BLE characteristic at 1 Hz. When the user returns to this screen from anywhere, the
-  screen opens into whichever state the live BLE data describes.
+  The HH ↔ Base BLE connection is temporary and UI-driven; it may have been dropped
+  (user left Base Config) or the tablet may have been powered off entirely.
+
+  On EVERY fresh BLE connection the tablet performs a state-discovery sequence:
+    1. Read BASE_OPERATING_MODE (0xAD01, GATT.md §0xAD00).
+    2. If 0x01 → connect here at State B (in progress).
+       If 0x02 → connect here at State C (complete).
+       Any other value → go to BaseConfig-0; this screen is not shown.
+    3. Subscribe to SURVEY_IN_STATUS notify, then immediately READ it for current values.
+       Do not wait for the first notification (up to 1 s delay).
+
+  This means the tablet never needs to remember what screen it was on — it always
+  derives the correct screen from live Base state. Handles power cycles, app restarts,
+  and long gaps between sessions identically.
 
   Important: the ← back button on this screen returns to BaseConfig-0 WITHOUT
   cancelling the survey-in. The user may leave and come back freely.
@@ -313,9 +324,9 @@
             <span class="cond-chip-sub">37 s remaining</span>
           </div>
 
-          <!-- Accuracy condition — already met -->
+          <!-- Absolute accuracy condition — already met -->
           <div class="cond-chip cond-met">
-            <span class="cond-chip-label">✓ Accuracy</span>
+            <span class="cond-chip-label">✓ Absolute Accuracy</span>
             <span class="cond-chip-value">±0.8 m</span>
             <span class="cond-chip-sub">target ≤ 3.0 m — met</span>
           </div>
@@ -374,8 +385,26 @@
             </div>
             <div class="setting-box" style="flex:1;">
               <div>
-                <div class="setting-key">Accuracy target</div>
+                <div class="setting-key">Absolute accuracy target</div>
                 <div class="setting-val">3.0 m <span style="font-size:13px;color:#aaa;">(3000 mm)</span></div>
+              </div>
+            </div>
+            <!--
+              Relative accuracy is always cm-level regardless of base position accuracy —
+              it is determined by the RTK carrier-phase solution, not the base survey-in.
+              Show this as a fixed read-only chip so the user understands what they are
+              trading off: a longer/more accurate survey-in improves absolute position
+              (coordinates in OS datum) but relative accuracy (point-to-point on site)
+              is always cm whether survey-in ran for 1 minute or 10.
+            -->
+            <div class="setting-box" style="flex:1; background:#e8f5e9; border-color:#a5d6a7;">
+              <div>
+                <div class="setting-key" style="color:#2e7d32;">Relative accuracy</div>
+                <div class="setting-val" style="color:#1b5e20;">Always cm
+                  <span style="font-size:13px; color:#4caf50; font-weight:400;">
+                    (RTK carrier-phase)
+                  </span>
+                </div>
               </div>
             </div>
           </div>

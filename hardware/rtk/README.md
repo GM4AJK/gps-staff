@@ -64,8 +64,8 @@ to verify nothing is missed.
 
 10. **Config storage** — SD card file; no EEPROM fitted.
 
-11. **OLED display (SSD1309)** — via J7 header; I2C4 bus; 0x3C/0x3D.
-    Not on PCB v1.0 — must be on v2.0.
+11. **OLED display (SSD1309)** — via J7 header; I2C4 bus (PD12 SCL, PD13 SDA); 0x3C/0x3D.
+    On PCB v1.0. Driver bench-verified on F767ZI (task_display.c, ssd1309.c).
 
 12. **Status LEDs** — LD3 (PD5, green) + LD4 (PD6, red): MCU open-drain + pull-ups R20/R21;
     LD1/LD2 hardwired to BQ24075 nPGOOD/nCHG.
