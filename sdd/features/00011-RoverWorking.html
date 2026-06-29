@@ -65,9 +65,18 @@ TCP stream stats, etc.) — specced on their own screens.
 - Elapsed time (HH:MM:SS, counting from session start)
 - Points captured this session (integer counter)
 
+## Captured points list
+Sits between the corrections strip and the Capture button in the right panel.
+Grows as points are captured; scrollable. Columns: ID, Label, Latitude,
+Longitude, hAcc. Label defaults to "P<id>" but operator can tap a row to
+rename it (lv_keyboard opens inline). Each row is written to the CSV on
+Tablet SD immediately on capture — no separate confirm screen.
+
 ## Capture button
-- RTK Fix: green, "Capture Point →", navigates to 00012-PointCapture.html
-- Float/No Fix: grey, "RTK Fix Required", non-interactive
+- RTK Fix: green, "Capture Point →". On press: grabs the next UBX-NAV-PVT
+  epoch (<1 s at 1 Hz), appends a row to the list, writes the CSV record.
+  No separate capture screen — the list IS the record of the session.
+- Float/No Fix: grey, "RTK Fix Required", non-interactive.
 
 ## LVGL implementation notes
 - Fix quality block: lv_obj with bg_color set dynamically on each BLE update.
@@ -318,17 +327,75 @@ MD_COMMENT -->
           </div>
         </div>
 
-        <!-- Spacer -->
-        <div style="flex:1;"></div>
+        <!--
+          Captured points list — grows as the operator captures points.
+          Pressing Capture grabs the next UBX-NAV-PVT epoch (<1 s wait)
+          and appends a row. Tap a row to edit its label.
+          Scrollable; all rows written to CSV on session end.
+        -->
+        <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+          <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:6px; flex-shrink:0;">
+            <span class="stat-lbl" style="margin:0;">Captured Points</span>
+            <span id="pt-count-badge" style="font-size:10px; color:#1565C0; font-weight:700;">3</span>
+          </div>
+
+          <div style="
+            flex:1; overflow-y:auto; min-height:0;
+            background:#0D1520; border:1px solid #1E2D3D; border-radius:8px;
+          ">
+            <!-- Column headers -->
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 60px;
+              gap:0; padding:6px 12px; border-bottom:1px solid #1E2D3D; flex-shrink:0;">
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">ID</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">Label</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">Latitude</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">Longitude</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238; text-align:right;">hAcc</span>
+            </div>
+            <!-- Example captured rows -->
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 60px;
+              padding:8px 12px; border-bottom:1px solid #0D1520;">
+              <span style="font-family:monospace; font-size:12px; color:#37474F;">P001</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">P001</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">57.1234562°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">−2.3456784°</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">9 mm</span>
+            </div>
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 60px;
+              padding:8px 12px; border-bottom:1px solid #0D1520; background:#111820;">
+              <span style="font-family:monospace; font-size:12px; color:#37474F;">P002</span>
+              <span style="font-family:monospace; font-size:12px; color:#64B5F6;">BM-A</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">57.1234455°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">−2.3456901°</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">7 mm</span>
+            </div>
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 60px;
+              padding:8px 12px;">
+              <span style="font-family:monospace; font-size:12px; color:#37474F;">P003</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">P003</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">57.1234678°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">−2.3456712°</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">8 mm</span>
+            </div>
+          </div>
+        </div>
 
         <!--
           Capture button — full width, green when RTK Fix only.
+          On press: grabs next UBX-NAV-PVT epoch, appends row to list,
+          writes CSV record to Tablet SD card immediately.
         -->
         <button id="btn-capture" style="
-          width: 100%; height: 58px; border: none; border-radius: 8px;
+          width: 100%; height: 52px; border: none; border-radius: 8px;
           background: #2E7D32; color: white; cursor: pointer;
           font-family: 'Montserrat', sans-serif;
           font-size: 18px; font-weight: 700; flex-shrink: 0;
+          margin-top: 10px;
           transition: background 0.15s;
         ">Capture Point →</button>
 
