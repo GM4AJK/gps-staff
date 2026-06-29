@@ -30,3 +30,4 @@ Numbered feature specifications and UI screen specs.
 | [features/00003-BaseConfig-Streaming.html](features/00003-BaseConfig-Streaming.html) | Base Config — RTCM Data (broadcast stats, RTCM message activity, rover connection + LoRa link quality) |
 | [features/00003-BaseConfig-FixedPos.html](features/00003-BaseConfig-FixedPos.html) | Base Config — Fixed Position entry (monument/benchmark, OSGB36/WGS84) |
 | [features/00004-BaseSatelliteView-1.html](features/00004-BaseSatelliteView-1.html) | Base Satellite View — sky plot (az/el, GPS+GLONASS), CN0 bar chart, fix status |
+| [features/00005-AboutScreen-1.html](features/00005-AboutScreen-1.html) | About screen — product identity, firmware/hardware versions, the Wizard |

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff (tablet 7inch)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, dark theme (matches home screen)
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## About Screen
+- bg_color: 0x141E2B  (dark navy, matching home screen)
+- Entry: settings/menu (TBD) — not yet wired into navigation
+
+### Functional
+- Static screen — no BLE data required.
+- Version strings compiled in from firmware/esp32-tablet/main/version.h at build time.
+- ← back returns to previous screen.
+
+### LVGL implementation notes
+- Screen bg_color = lv_color_hex(0x141E2B).
+- Wizard illustration: lv_img from pre-compiled C array, or approximate with
+  lv_canvas primitives. See SVG source below for geometry.
+- All text: lv_label with appropriate styles.
+- Divider lines: lv_line.
+MD_COMMENT -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — About</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #0a0f14;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 — About Screen</div>
+
+  <div style="
+    width: 1024px; height: 600px;
+    background: #141E2B;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #333;
+    font-family: 'Montserrat', sans-serif;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="
+      display: flex; justify-content: flex-end; align-items: center;
+      flex-shrink: 0; height: 28px; padding: 0 14px;
+      background: #0D1520;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!-- HEADER -->
+    <div style="
+      display: flex; align-items: center;
+      flex-shrink: 0; height: 48px; padding: 0 16px; gap: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    ">
+      <button style="
+        background: none; border: none; color: #546E7A;
+        font-family: 'Montserrat', sans-serif; font-size: 22px;
+        cursor: pointer; padding: 0; line-height: 1;
+      ">←</button>
+      <span style="font-size: 16px; font-weight: 700; color: #78909C; letter-spacing: 0.05em; text-transform: uppercase;">About</span>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex: 1; display: flex; overflow: hidden;">
+
+      <!-- LEFT PANEL — The Wizard -->
+      <div style="
+        flex-shrink: 0; width: 360px;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        border-right: 1px solid rgba(255,255,255,0.06);
+        padding: 8px 0 4px;
+        position: relative;
+      ">
+
+        <!--
+          The GPS Staff Wizard.
+          Original mascot of the project — a wizard holding a survey staff
+          topped with a GNSS antenna. Retired from the home screen in favour
+          of a more professional icon; lives on here as the true spirit of
+          the project.
+
+          Staff top uses the same GNSS signal arc motif as the home screen icon,
+          tying the two together.
+        -->
+        <svg viewBox="0 0 220 310" width="220" height="310"
+             style="filter: drop-shadow(0 0 18px rgba(103,58,183,0.4));">
+
+          <!-- ── Background sparkles ─────────────────────────────── -->
+          <!-- Large star top-right -->
+          <g transform="translate(185,28) rotate(15)">
+            <line x1="0" y1="-9" x2="0" y2="9" stroke="#FFD600" stroke-width="2" stroke-linecap="round"/>
+            <line x1="-9" y1="0" x2="9" y2="0" stroke="#FFD600" stroke-width="2" stroke-linecap="round"/>
+            <line x1="-6" y1="-6" x2="6" y2="6" stroke="#FFD600" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+            <line x1="6" y1="-6" x2="-6" y2="6" stroke="#FFD600" stroke-width="1.2" stroke-linecap="round" opacity="0.6"/>
+          </g>
+          <!-- Small star top-left -->
+          <g transform="translate(28,55) rotate(-10)">
+            <line x1="0" y1="-5" x2="0" y2="5" stroke="#FFD600" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="-5" y1="0" x2="5" y2="0" stroke="#FFD600" stroke-width="1.5" stroke-linecap="round"/>
+          </g>
+          <!-- Tiny sparkle mid-left -->
+          <g transform="translate(18,140)">
+            <line x1="0" y1="-4" x2="0" y2="4" stroke="#B39DDB" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="-4" y1="0" x2="4" y2="0" stroke="#B39DDB" stroke-width="1.2" stroke-linecap="round"/>
+          </g>
+          <!-- Tiny sparkle right -->
+          <g transform="translate(196,130)">
+            <line x1="0" y1="-4" x2="0" y2="4" stroke="#B39DDB" stroke-width="1.2" stroke-linecap="round"/>
+            <line x1="-4" y1="0" x2="4" y2="0" stroke="#B39DDB" stroke-width="1.2" stroke-linecap="round"/>
+          </g>
+          <!-- Star near feet -->
+          <g transform="translate(42,268) rotate(5)">
+            <line x1="0" y1="-5" x2="0" y2="5" stroke="#FFD600" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+            <line x1="-5" y1="0" x2="5" y2="0" stroke="#FFD600" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+          </g>
+
+          <!-- ── Staff (drawn behind wizard) ─────────────────────── -->
+          <!-- Staff pole -->
+          <line x1="158" y1="52" x2="158" y2="298"
+                stroke="#6D4C41" stroke-width="6" stroke-linecap="round"/>
+          <!-- Staff ferrule (bottom tip) -->
+          <line x1="158" y1="292" x2="158" y2="302"
+                stroke="#9E9E9E" stroke-width="4" stroke-linecap="round"/>
+
+          <!-- GNSS antenna at top of staff (mirrors home screen icon) -->
+          <!-- Outer arc -->
+          <path d="M 136 52 A 22 22 0 0 1 180 52"
+                fill="none" stroke="rgba(33,150,243,0.4)" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Middle arc -->
+          <path d="M 143 54 A 15 15 0 0 1 173 54"
+                fill="none" stroke="rgba(33,150,243,0.7)" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Inner arc -->
+          <path d="M 150 56 A 8 8 0 0 1 166 56"
+                fill="none" stroke="#2196F3" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- Antenna dot -->
+          <circle cx="158" cy="59" r="4" fill="#2196F3"/>
+
+          <!-- ── Wizard hat ───────────────────────────────────────── -->
+          <!-- Hat shadow/depth -->
+          <ellipse cx="92" cy="103" rx="42" ry="7" fill="#1A0533" opacity="0.5"/>
+          <!-- Hat brim -->
+          <ellipse cx="90" cy="101" rx="42" ry="7" fill="#311B92"/>
+          <!-- Hat cone -->
+          <path d="M 52,101 L 90,18 L 128,101 Z" fill="#4527A0"/>
+          <!-- Hat highlight -->
+          <path d="M 82,25 L 72,90" stroke="rgba(179,157,219,0.2)" stroke-width="3" stroke-linecap="round"/>
+          <!-- Gold hat band -->
+          <path d="M 57,93 Q 90,98 123,93" fill="none" stroke="#FFD600" stroke-width="3" stroke-linecap="round"/>
+          <!-- Star on hat -->
+          <g transform="translate(90,58) rotate(10)">
+            <line x1="0" y1="-7" x2="0" y2="7" stroke="#FFD600" stroke-width="2" stroke-linecap="round"/>
+            <line x1="-7" y1="0" x2="7" y2="0" stroke="#FFD600" stroke-width="2" stroke-linecap="round"/>
+            <line x1="-5" y1="-5" x2="5" y2="5" stroke="#FFD600" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+            <line x1="5" y1="-5" x2="-5" y2="5" stroke="#FFD600" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+          </g>
+
+          <!-- ── Face ────────────────────────────────────────────── -->
+          <!-- Head -->
+          <circle cx="90" cy="122" r="21" fill="#FFCC80"/>
+          <!-- Eyes -->
+          <circle cx="83" cy="118" r="3" fill="#37474F"/>
+          <circle cx="97" cy="118" r="3" fill="#37474F"/>
+          <!-- Eye twinkle -->
+          <circle cx="84" cy="117" r="1" fill="white"/>
+          <circle cx="98" cy="117" r="1" fill="white"/>
+          <!-- Nose -->
+          <ellipse cx="90" cy="124" rx="2.5" ry="3.5" fill="#E6AC6A"/>
+          <!-- Smile (knowing, sage-like) -->
+          <path d="M 83,130 Q 90,136 97,130" fill="none" stroke="#C17B3B" stroke-width="1.8" stroke-linecap="round"/>
+
+          <!-- ── Beard ───────────────────────────────────────────── -->
+          <!-- Moustache -->
+          <path d="M 81,128 Q 86,132 90,130 Q 94,132 99,128"
+                fill="#ECEFF1" stroke="none"/>
+          <!-- Main beard -->
+          <path d="M 70,138 Q 62,165 66,200 Q 72,225 82,240 L 90,246 L 98,240 Q 108,225 114,200 Q 118,165 110,138 Q 102,145 90,143 Q 78,145 70,138 Z"
+                fill="#ECEFF1"/>
+          <!-- Beard shading -->
+          <path d="M 78,150 Q 76,180 80,210 Q 84,230 90,240"
+                fill="none" stroke="rgba(176,190,197,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M 100,152 Q 103,182 100,212"
+                fill="none" stroke="rgba(176,190,197,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- ── Robe body ───────────────────────────────────────── -->
+          <!-- Main robe -->
+          <path d="M 68,138 L 55,300 L 125,300 L 112,138 Q 102,144 90,142 Q 78,144 68,138 Z"
+                fill="#4527A0"/>
+          <!-- Robe folds / highlights -->
+          <path d="M 78,150 L 65,295" stroke="rgba(179,157,219,0.15)" stroke-width="2" stroke-linecap="round"/>
+          <path d="M 100,150 L 115,295" stroke="rgba(179,157,219,0.15)" stroke-width="2" stroke-linecap="round"/>
+          <!-- Robe hem -->
+          <path d="M 55,296 L 125,296" stroke="#7B1FA2" stroke-width="3" stroke-linecap="round" opacity="0.6"/>
+          <!-- Belt/sash -->
+          <rect x="63" y="175" width="54" height="9" rx="4" fill="#7B1FA2"/>
+          <!-- Belt buckle -->
+          <rect x="85" y="175" width="10" height="9" rx="2" fill="#FFD600" opacity="0.8"/>
+
+          <!-- ── Sleeves and arms ────────────────────────────────── -->
+          <!-- Left sleeve (hanging naturally) -->
+          <path d="M 68,138 Q 48,165 44,200 Q 44,212 52,214 Q 60,216 65,205 Q 68,185 72,160"
+                fill="#4527A0"/>
+          <!-- Left hand -->
+          <circle cx="51" cy="210" r="8" fill="#FFCC80"/>
+
+          <!-- Right sleeve (reaching across to grip staff) -->
+          <path d="M 112,138 Q 128,152 146,162 Q 155,167 156,175 Q 157,183 148,185 Q 140,186 132,178 Q 120,165 108,155"
+                fill="#4527A0"/>
+          <!-- Right hand gripping staff -->
+          <ellipse cx="153" cy="178" rx="9" ry="7" fill="#FFCC80"/>
+          <!-- Grip fingers suggestion -->
+          <path d="M 149,172 Q 158,175 157,183" fill="none" stroke="#E6AC6A" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- ── Feet ────────────────────────────────────────────── -->
+          <!-- Left boot -->
+          <path d="M 63,296 Q 58,302 52,303 Q 46,304 46,298 Q 46,292 55,291 L 67,291 Z"
+                fill="#263238"/>
+          <!-- Right boot -->
+          <path d="M 117,296 Q 122,302 128,303 Q 134,304 134,298 Q 134,292 125,291 L 113,291 Z"
+                fill="#263238"/>
+
+        </svg>
+
+        <!-- Caption -->
+        <div style="
+          font-size: 11px; color: #37474F; text-align: center;
+          letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px;
+        ">The GPS Staff Wizard</div>
+
+      </div><!-- end left panel -->
+
+      <!-- RIGHT PANEL — About content -->
+      <div style="
+        flex: 1; padding: 24px 32px;
+        display: flex; flex-direction: column; gap: 0;
+        overflow: hidden;
+      ">
+
+        <!-- Product identity -->
+        <div style="margin-bottom: 16px;">
+          <div style="font-size: 32px; font-weight: 700; color: #ECEFF1; line-height: 1;">GPS Staff</div>
+          <div style="font-size: 13px; color: #546E7A; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px;">RTK Survey Instrument</div>
+        </div>
+
+        <!-- Version info -->
+        <div style="
+          background: rgba(255,255,255,0.03); border-radius: 8px;
+          border: 1px solid rgba(255,255,255,0.06);
+          padding: 12px 16px; margin-bottom: 16px;
+        ">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px;">
+            <div>
+              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">Tablet firmware</div>
+              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">v0.1.0</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">PCB</div>
+              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">v1.0</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">GNSS</div>
+              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">u-blox ZED-F9P-05B</div>
+            </div>
+            <div>
+              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">Radio</div>
+              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">Semtech SX1262 · GFSK</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="border-top: 1px solid rgba(255,255,255,0.06); margin-bottom: 14px;"></div>
+
+        <!-- The wizard story -->
+        <div style="margin-bottom: 14px;">
+          <div style="font-size: 11px; font-weight: 700; color: #4527A0; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
+            ✦ &nbsp;Meet the Wizard
+          </div>
+          <div style="font-size: 13px; color: #455A64; line-height: 1.6;">
+            He was the original home screen. A wizard — naturally — holding a survey staff topped
+            with a GNSS antenna, standing in for the project's earliest mockups. Replaced in favour
+            of something more boardroom-appropriate, he refused to leave entirely. His staff still
+            points skyward. So does ours.
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="border-top: 1px solid rgba(255,255,255,0.06); margin-bottom: 14px;"></div>
+
+        <!-- Build / acknowledgements -->
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+          <div style="font-size: 11px; font-weight: 700; color: #37474F; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Built with</div>
+          <div style="font-size: 12px; color: #37474F;">ESP-IDF · LVGL 9.x · FreeRTOS · u-blox UBX · ETSI EN 300 220</div>
+          <div style="font-size: 12px; color: #37474F;">STM32 HAL · FatFS · SX1262 GFSK · OS Net NTRIP</div>
+        </div>
+
+        <!-- Author / copyright pushed to bottom -->
+        <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end;">
+          <div style="font-size: 11px; color: #263238;">GM4AJK · 2026</div>
+          <div style="font-size: 10px; color: #1E2D3D; letter-spacing: 0.06em;">GPS STAFF · PCB v1.0 · fw 0.1.0</div>
+        </div>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end 1024×600 screen -->
+
+</body>
+</html>
