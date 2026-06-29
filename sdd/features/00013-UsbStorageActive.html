@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff — USB Storage Active
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Theme: dark (#141E2B)
+- Entry: Settings / About screen → "Transfer Files" button
+- Exit: "Done" button (ejected state) or cable unplug detection
+
+## Purpose
+Holding screen shown while the Tablet is in USB Mass Storage (MSC) mode.
+All normal survey and config UI is frozen. The SD card is handed exclusively
+to the USB host (PC/Mac); FatFS is unmounted for the duration.
+
+## USB class switching
+Normal operation: TinyUSB class = CDC UART (debug console).
+On entering this screen:
+  1. Any open log file is flushed and closed.
+  2. FatFS unmounted (f_mount(NULL, ...)).
+  3. TinyUSB reconfigured: CDC → MSC.
+  4. This screen shown; all other navigation blocked.
+
+On exit (Done button or cable unplug):
+  1. TinyUSB reconfigured: MSC → CDC.
+  2. FatFS remounted (f_mount(&fs, ...)).
+  3. Navigate back to the screen that launched Transfer Files.
+
+## States
+
+### Connected
+PC has the drive mounted and may be reading/writing.
+- Status: amber "Connected — do not disconnect"
+- Disconnect button: present but amber/cautionary — pressing it while the
+  PC still has the drive mounted risks filesystem corruption. Show a
+  confirmation dialog: "PC may still be accessing files. Disconnect anyway?"
+- Instruction: "Eject the drive on your PC before disconnecting."
+
+### Ejected
+PC has unmounted/ejected the drive (MSC eject callback fired).
+- Status: green "Ejected — safe to disconnect"
+- Done button: prominent green — tap to exit MSC mode and return to normal.
+- Cable may also simply be unplugged; firmware detects VBUS loss and exits
+  MSC mode automatically, remounting FatFS and returning to prior screen.
+
+## SD card info panel
+Shows what is on the card so the operator knows whether a transfer is needed:
+- Sessions on card: count of .log files in the root
+- Total log size: sum of .log file sizes (KB or MB)
+- Last session: filename of the most recently modified .log file
+
+This info is read once when the screen is entered (before FatFS unmount,
+during the brief window after flush/close and before MSC handover).
+
+## LVGL implementation notes
+- Block all lv_scr_load() calls while in MSC mode (guard flag in app state).
+- USB connect/eject events arrive as TinyUSB callbacks; post to LVGL event
+  queue and handle in main LVGL task to update label colours and button state.
+- VBUS loss detection: GPIO on VBUS sense pin or TinyUSB device disconnect
+  callback → auto-exit MSC mode, remount FatFS, navigate back.
+- Confirmation dialog on premature Disconnect: lv_msgbox with Yes/No.
+- SD info: populated in a pre-MSC init step; stored in RAM, displayed from
+  there (FatFS is unmounted by the time this screen is visible).
+MD_COMMENT -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — USB Storage Active</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #060c12;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .screen-label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #555;
+    }
+    .dev-toggle {
+      margin-bottom: 12px; display: flex; gap: 0;
+      border: 1px solid #222; border-radius: 6px; overflow: hidden;
+    }
+    .dev-btn {
+      font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700;
+      padding: 6px 16px; border: none; cursor: pointer;
+      background: #111; color: #444;
+    }
+    .dev-btn.active { background: #1565C0; color: #fff; }
+  </style>
+</head>
+<body>
+
+  <div class="screen-label">Handheld Tablet — 1024 × 600 — USB Storage Active</div>
+
+  <div class="dev-toggle">
+    <button class="dev-btn active" onclick="setState('connected')">⚡ Connected</button>
+    <button class="dev-btn"        onclick="setState('ejected')">✓ Ejected</button>
+  </div>
+
+  <div style="
+    width: 1024px; height: 600px;
+    background: #141E2B;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #222;
+    font-family: 'Montserrat', sans-serif;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="display:flex; justify-content:space-between; align-items:center;
+      flex-shrink:0; height:28px; padding:0 10px; background:#0D1520;">
+      <div style="display:flex; gap:16px; align-items:center;">
+        <span style="font-family:monospace; font-size:11px; color:#546E7A;">
+          Base <span style="color:#66BB6A;">▐████▌</span> 91%
+        </span>
+        <span style="font-family:monospace; font-size:11px; color:#546E7A;">
+          Rover <span style="color:#66BB6A;">▐███░▌</span> 72%
+        </span>
+      </div>
+      <div style="display:flex; gap:14px; align-items:center;">
+        <span style="font-family:monospace; font-size:11px; color:#37474F;">2026/06/30 14:23:47</span>
+        <span style="font-family:monospace; font-size:11px; color:#66BB6A;">▐███░▌ 78%</span>
+      </div>
+    </div>
+
+    <!-- HEADER -->
+    <div style="display:flex; align-items:center; flex-shrink:0;
+      height:44px; padding:0 14px; background:#0D1520;
+      border-bottom:1px solid #1E2D3D; gap:12px;">
+      <span style="font-size:16px; font-weight:700; color:#78909C; flex:1;">
+        USB File Transfer
+      </span>
+      <span style="font-size:11px; font-weight:700; text-transform:uppercase;
+        letter-spacing:.1em; color:#37474F;">
+        All other functions suspended
+      </span>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex:1; display:flex; overflow:hidden;">
+
+      <!--
+        ## LEFT PANEL — SD card info
+        Read once before FatFS is unmounted; displayed from RAM.
+      -->
+      <div style="
+        flex:0 0 280px;
+        border-right:1px solid #1E2D3D;
+        padding:24px 20px;
+        box-sizing:border-box;
+        display:flex; flex-direction:column; gap:20px;
+      ">
+        <div>
+          <div style="font-size:10px; font-weight:700; text-transform:uppercase;
+            letter-spacing:.12em; color:#263238; margin-bottom:10px;">SD Card Contents</div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+              <div style="font-size:10px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238; margin-bottom:3px;">Sessions</div>
+              <div style="font-family:monospace; font-size:24px; font-weight:700;
+                color:#546E7A;">4</div>
+            </div>
+            <div>
+              <div style="font-size:10px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238; margin-bottom:3px;">Total size</div>
+              <div style="font-family:monospace; font-size:24px; font-weight:700;
+                color:#546E7A;">18 KB</div>
+            </div>
+            <div>
+              <div style="font-size:10px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238; margin-bottom:3px;">Last session</div>
+              <div style="font-family:monospace; font-size:13px; font-weight:700;
+                color:#37474F;">survey_004.log</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <div style="font-size:11px; color:#1E2D3D; line-height:1.7;">
+          These figures were read before the SD card was handed to USB.
+          The card may have changed while connected.
+        </div>
+      </div>
+
+      <!--
+        ## RIGHT PANEL — Status + instructions + action button
+      -->
+      <div style="
+        flex:1;
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        padding:32px 40px; box-sizing:border-box; gap:0;
+      ">
+
+        <!-- USB symbol -->
+        <div style="
+          font-size:64px; line-height:1; margin-bottom:24px;
+          color:#1E2D3D;
+        ">⬡</div>
+
+        <!-- Status block -->
+        <div id="status-block" style="
+          background:#1A0F00; border:1px solid #5E3500;
+          border-radius:12px; padding:20px 40px;
+          display:flex; flex-direction:column; align-items:center; gap:8px;
+          margin-bottom:28px; min-width:400px;
+        ">
+          <div id="status-label" style="
+            font-size:11px; font-weight:700; text-transform:uppercase;
+            letter-spacing:.12em; color:#7E4A00;
+          ">Status</div>
+          <div id="status-text" style="
+            font-size:26px; font-weight:700; color:#FFCC80;
+          ">Connected — do not disconnect</div>
+          <div id="status-sub" style="
+            font-size:13px; color:#5E3500; margin-top:4px; text-align:center;
+          ">Eject the drive on your PC before disconnecting</div>
+        </div>
+
+        <!-- Action button -->
+        <button id="btn-action" style="
+          width:320px; height:52px; border:1px solid #5E3500;
+          border-radius:8px; background:none; color:#7E4A00;
+          font-family:'Montserrat',sans-serif; font-size:15px;
+          font-weight:700; cursor:pointer;
+        ">Disconnect anyway…</button>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+  <script>
+    function setState(key) {
+      document.querySelectorAll('.dev-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+
+      const block  = document.getElementById('status-block');
+      const label  = document.getElementById('status-label');
+      const text   = document.getElementById('status-text');
+      const sub    = document.getElementById('status-sub');
+      const btn    = document.getElementById('btn-action');
+
+      if (key === 'connected') {
+        block.style.background   = '#1A0F00';
+        block.style.borderColor  = '#5E3500';
+        label.style.color        = '#7E4A00';
+        text.style.color         = '#FFCC80';
+        text.textContent         = 'Connected — do not disconnect';
+        sub.style.color          = '#5E3500';
+        sub.textContent          = 'Eject the drive on your PC before disconnecting';
+        btn.style.borderColor    = '#5E3500';
+        btn.style.color          = '#7E4A00';
+        btn.style.background     = 'none';
+        btn.style.cursor         = 'pointer';
+        btn.textContent          = 'Disconnect anyway…';
+      } else {
+        block.style.background   = '#1B5E20';
+        block.style.borderColor  = '#2E7D32';
+        label.style.color        = '#388E3C';
+        text.style.color         = '#A5D6A7';
+        text.textContent         = 'Ejected — safe to disconnect';
+        sub.style.color          = '#2E7D32';
+        sub.textContent          = 'You may unplug the cable or tap Done to return';
+        btn.style.borderColor    = 'transparent';
+        btn.style.color          = 'white';
+        btn.style.background     = '#2E7D32';
+        btn.style.cursor         = 'pointer';
+        btn.textContent          = 'Done — return to normal';
+      }
+    }
+  </script>
+
+</body>
+</html>
