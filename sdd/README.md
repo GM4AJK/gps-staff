@@ -20,6 +20,7 @@ Numbered feature specifications and UI screen specs.
 |---|---|
 | [features/00001-wifi-provisioning.md](features/00001-wifi-provisioning.md) | WiFi provisioning — all phases bench-verified |
 | [features/00002-HomeScreen.html](features/00002-HomeScreen.html) | Home screen spec (1024×600 landscape) |
+| [features/00003-BaseConfig-0.html](features/00003-BaseConfig-0.html) | Base Config — State 0: top-level mode selector (Survey-in / RTCM Streaming / config strip) |
 | [features/00003-BaseConfig-1.html](features/00003-BaseConfig-1.html) | Base Config — State 1: normal view, network table |
 | [features/00003-BaseConfig-2.html](features/00003-BaseConfig-2.html) | Base Config — State 2: password entry |
 | [features/00003-BaseConfig-2-kbd.html](features/00003-BaseConfig-2-kbd.html) | Base Config — State 2 with virtual keyboard |
