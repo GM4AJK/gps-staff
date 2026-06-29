@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff — Start Survey Session
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Entry: Rover working area → "New Session" button (or first-run after Rover Config)
+- Next: 00011-RoverWorking.html (on Start Session)
+
+## Purpose
+Pre-session setup screen. Creates a new log file on the Rover SD card and
+records the session metadata (title, description) in the file header before
+any positions are captured.
+
+## Fields
+
+### Filename (required)
+- Auto-suggested on screen open: `survey_NNN` where NNN is a zero-padded
+  3-digit session counter stored in NVS (increments on each session start).
+- Extension `.log` is appended automatically — not shown or editable by user.
+- Constrained to FAT-safe characters: a-z, 0-9, underscore, hyphen. Max 20 chars.
+- Tap → lv_keyboard LV_KEYBOARD_MODE_TEXT_LOWER with only safe chars enabled.
+- If the filename already exists on the SD card: show inline warning and append
+  `_1`, `_2` etc. to make it unique, or let the user rename.
+- Note: GPS UTC time is not yet wired to the STM32 RTC (FF_FS_NORTC set).
+  Once F9P UTC is available, auto-suggest format becomes `survey_YYYYMMDD_NNN`.
+
+### Title (required)
+- Short human-readable label stored in log file header.
+- Example: "Garden CP survey", "Boundary markers plot A".
+- Max 60 chars. Tap → lv_keyboard LV_KEYBOARD_MODE_TEXT_LOWER.
+
+### Description (optional)
+- Free-text notes about the session. Stored in log file header.
+- Example: "Base at shed corner. Rover at fence posts A, B, C. Overcast."
+- Multi-line; max 200 chars. Tap → lv_keyboard LV_KEYBOARD_MODE_TEXT_LOWER.
+- Greyed placeholder text when empty.
+
+## SD card status
+- Left panel shows SD card presence (detected via STM32 card-detect pin).
+- If card absent: Start Session button is disabled; warning shown.
+- Available space and existing session count shown when card is present.
+
+## Log file header format
+Written to the first lines of the .log file before any position records:
+
+```
+# GPS Staff Survey Log
+# Title:       Garden CP survey
+# Description: Base at shed corner. Rover at fence posts A, B, C.
+# Session:     003
+# Filename:    survey_003.log
+# Started:     (GPS UTC timestamp once RTC is available; else "--")
+# Mode:        1 (Local RF Link)
+# Pole height: 1.80 m
+# RF mode:     GFSK
+#
+# Easting,Northing,Elevation_m,hAcc_mm,vAcc_mm,Fix,Satellites,Timestamp
+```
+
+## Data path — SD card is on the STM32F765
+
+The SD card (SDMMC) is physically attached to the Rover STM32F765, NOT the ESP32.
+All logging commands originate on the Tablet (user action), transit BLE to the
+Rover ESP32, then transit UART from ESP32 to STM32, where FatFS writes to the card.
+
+```
+Tablet ──BLE──▶ Rover ESP32 ──UART──▶ Rover STM32F765 ──SDMMC──▶ SD card
+```
+
+SD card status (present / free space / session count) travels the reverse path:
+STM32 holds this state; ESP32 queries it on screen open and forwards to Tablet via BLE.
+
+## UART protocol additions required (Rover ESP32 ↔ STM32)
+
+This screen introduces four new UART commands. These extend the existing
+ESP32↔STM32 UART protocol (see sdd/architecture/SYSTEM.md) but are NOT yet
+defined there — they must be added when implementing this feature.
+
+### Commands (ESP32 → STM32)
+
+| Command | Payload | Description |
+|---------|---------|-------------|
+| `LOG_STATUS` | — | Query SD card state. STM32 responds with `LOG_STATUS_RESP`. |
+| `LOG_OPEN`   | `<filename>\t<title>\t<description>` | Create log file, write header. STM32 responds `LOG_OK` or `LOG_ERR <reason>`. Session counter in NVS incremented by ESP32 on `LOG_OK`. |
+| `LOG_RECORD` | CSV position row (see log header for column order) | Append one position record to the open log file. Fire-and-forget; no response. |
+| `LOG_CLOSE`  | — | Flush and close the log file. STM32 responds `LOG_OK`. |
+
+### Responses (STM32 → ESP32)
+
+| Response | Payload | Description |
+|----------|---------|-------------|
+| `LOG_STATUS_RESP` | `<present:0\|1> <free_mb> <session_count>` | Sent in reply to `LOG_STATUS`. `present=0` if no card or mount failed. |
+| `LOG_OK`          | — | Command accepted and completed. |
+| `LOG_ERR`         | `<reason_string>` | Command failed. Reason forwarded to Tablet for display. |
+
+### Framing
+Commands and responses are newline-terminated ASCII strings over the existing
+UART link (same physical channel as the OLED display protocol). The command
+keyword is the first token; tab-separated fields follow.
+Filename field is sanitised by ESP32 before sending (FAT-safe chars only).
+
+## LVGL implementation notes
+- Filename field: lv_textarea, single line, tap opens lv_keyboard.
+  Pre-filled with auto-suggested name from NVS counter.
+- Title field: lv_textarea, single line.
+- Description field: lv_textarea, multi-line (4 rows tall), lv_label placeholder.
+- Start Session: lv_btn, green, disabled (LV_STATE_DISABLED) if SD absent or
+  filename/title empty. On press: send `LOG_OPEN` over UART, await `LOG_OK`,
+  increment NVS session counter, navigate to 00011-RoverWorking.html.
+- SD status: populated by sending `LOG_STATUS` on screen open; left panel updated
+  on response. Dot colour and Start button state set from `present` field.
+MD_COMMENT -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Start Survey Session</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #111;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif; color: #333;
+    }
+    .screen-label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #888;
+    }
+    .dev-toggle {
+      margin-bottom: 12px; display: flex; gap: 0;
+      border: 1px solid #333; border-radius: 6px; overflow: hidden;
+    }
+    .dev-btn {
+      font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700;
+      padding: 6px 16px; border: none; cursor: pointer;
+      background: #1a1a1a; color: #555;
+    }
+    .dev-btn.active { background: #1565C0; color: #fff; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #999; margin: 0 0 10px 0;
+    }
+
+    /* Form fields */
+    .field-wrap { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+    .field-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #999;
+    }
+    .field-label span { font-weight: 400; color: #ccc; text-transform: none; letter-spacing: 0; }
+    .field-input {
+      background: #fff; border: 2px solid #e0e0e0; border-radius: 6px;
+      padding: 10px 14px; font-family: 'Montserrat', sans-serif;
+      font-size: 14px; color: #333; cursor: pointer;
+      transition: border-color 0.15s; display: flex; align-items: center;
+      justify-content: space-between;
+    }
+    .field-input:hover { border-color: #2196F3; }
+    .field-input.filled { border-color: #e0e0e0; }
+    .field-input .placeholder { color: #ccc; font-style: italic; }
+    .field-edit { color: #bbb; font-size: 15px; flex-shrink: 0; }
+
+    .field-hint { font-size: 11px; color: #bbb; margin-top: 2px; }
+
+    /* Filename suffix badge */
+    .suffix {
+      font-size: 12px; font-weight: 700; color: #aaa;
+      background: #f5f5f5; border: 1px solid #e0e0e0;
+      border-radius: 4px; padding: 2px 8px; margin-left: 8px;
+    }
+
+    /* Description textarea mock */
+    .field-textarea {
+      background: #fff; border: 2px solid #e0e0e0; border-radius: 6px;
+      padding: 10px 14px; font-family: 'Montserrat', sans-serif;
+      font-size: 13px; color: #ccc; font-style: italic;
+      cursor: pointer; min-height: 72px; transition: border-color 0.15s;
+      line-height: 1.6;
+    }
+    .field-textarea:hover { border-color: #2196F3; }
+    .field-textarea.filled { color: #333; font-style: normal; }
+  </style>
+</head>
+<body>
+
+  <div class="screen-label">Handheld Tablet — 1024 × 600 — Start Survey Session</div>
+
+  <div class="dev-toggle">
+    <button class="dev-btn active" onclick="setState('ready')">💾 SD Card Present</button>
+    <button class="dev-btn"       onclick="setState('no-sd')">✗ No SD Card</button>
+  </div>
+
+  <div style="
+    width: 1024px; height: 600px; background: white;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #444;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="display:flex; justify-content:flex-end; align-items:center;
+      flex-shrink:0; height:28px; padding:0 10px; background:#111;">
+      <span style="font-family:monospace; font-size:12px; color:#0f0;">▐███░▌ 91%</span>
+    </div>
+
+    <!-- HEADER -->
+    <div style="display:flex; align-items:center; flex-shrink:0;
+      height:52px; padding:0 16px; background:#fff;
+      border-bottom:1px solid #e0e0e0; gap:14px;">
+      <button style="background:none; border:none; font-size:24px;
+        cursor:pointer; color:#aaa; padding:0; line-height:1;">←</button>
+      <span style="font-size:20px; font-weight:700; color:#222; flex:1;">New Survey Session</span>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex:1; display:flex; overflow:hidden;">
+
+      <!--
+        ## LEFT PANEL — SD card status + session info
+      -->
+      <div style="
+        flex-shrink:0; width:300px; background:#f8f9fa;
+        border-right:1px solid #e0e0e0;
+        padding:20px; box-sizing:border-box;
+        display:flex; flex-direction:column; gap:16px;
+      ">
+
+        <!-- SD Card status -->
+        <div>
+          <p class="section-label">SD Card</p>
+          <div style="
+            background:white; border:1px solid #e0e0e0; border-radius:8px;
+            padding:14px 16px; display:flex; flex-direction:column; gap:10px;
+          ">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div id="sd-dot" style="
+                width:12px; height:12px; border-radius:50%;
+                background:#43A047; flex-shrink:0;
+              "></div>
+              <span id="sd-status" style="font-size:14px; font-weight:700; color:#2E7D32;">
+                Card detected
+              </span>
+            </div>
+            <div id="sd-detail" style="font-size:12px; color:#888; line-height:1.7;">
+              Available: 14.2 GB free<br>
+              Sessions on card: 3
+            </div>
+          </div>
+        </div>
+
+        <!-- Session counter info -->
+        <div>
+          <p class="section-label">This Session</p>
+          <div style="font-size:13px; color:#888; line-height:1.8;">
+            <span style="font-weight:700; color:#333;">Session #004</span><br>
+            File: <span style="font-family:monospace; color:#555;">survey_004.log</span><br>
+            Pole height: <span style="font-weight:700; color:#333;">1.80 m</span><br>
+            Mode: <span style="color:#555;">1 — Local RF</span>
+          </div>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <div id="sd-warning" style="display:none;
+          background:#FFF3E0; border:1px solid #FFB300; border-radius:6px;
+          padding:10px 12px; font-size:12px; color:#E65100; line-height:1.6;">
+          Insert SD card to save session data. Without a card, position data will not be logged.
+        </div>
+
+      </div><!-- end left panel -->
+
+      <!--
+        ## RIGHT PANEL — Session metadata form
+      -->
+      <div style="
+        flex:1; padding:20px 28px; box-sizing:border-box;
+        display:flex; flex-direction:column;
+      ">
+
+        <!--
+          Filename — auto-suggested, editable.
+          .log extension is appended by firmware; not shown to user.
+        -->
+        <div class="field-wrap">
+          <div class="field-label">Filename <span>— .log extension added automatically</span></div>
+          <div class="field-input filled">
+            <div style="display:flex; align-items:center;">
+              <span>survey_004</span>
+              <span class="suffix">.log</span>
+            </div>
+            <span class="field-edit">✎</span>
+          </div>
+          <div class="field-hint">FAT-safe characters only: a–z, 0–9, underscore, hyphen. Max 20 chars.</div>
+        </div>
+
+        <!--
+          Title — required, short human-readable label.
+          Written to log file header.
+        -->
+        <div class="field-wrap">
+          <div class="field-label">Title <span>— required</span></div>
+          <div class="field-input">
+            <span class="placeholder">e.g. Garden CP survey</span>
+            <span class="field-edit">✎</span>
+          </div>
+        </div>
+
+        <!--
+          Description — optional notes, multi-line.
+          Written to log file header.
+        -->
+        <div class="field-wrap" style="flex:1;">
+          <div class="field-label">Description <span>— optional</span></div>
+          <div class="field-textarea" style="flex:1;">
+            Base setup, weather conditions, point identifiers…
+          </div>
+        </div>
+
+        <!-- Start button -->
+        <button id="btn-start" style="
+          width:100%; height:52px; border:none; border-radius:8px;
+          background:#2E7D32; color:white; cursor:pointer;
+          font-family:'Montserrat',sans-serif; font-size:16px; font-weight:700;
+          margin-top:14px; flex-shrink:0;
+        ">Start Session →</button>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+  <script>
+    function setState(state) {
+      document.querySelectorAll('.dev-btn').forEach((b, i) => {
+        b.classList.toggle('active',
+          (i === 0 && state === 'ready') ||
+          (i === 1 && state === 'no-sd'));
+      });
+
+      const ok = state === 'ready';
+
+      document.getElementById('sd-dot').style.background    = ok ? '#43A047' : '#e53935';
+      document.getElementById('sd-status').style.color      = ok ? '#2E7D32' : '#C62828';
+      document.getElementById('sd-status').textContent      = ok ? 'Card detected' : 'No card detected';
+      document.getElementById('sd-detail').style.display    = ok ? 'block' : 'none';
+      document.getElementById('sd-warning').style.display   = ok ? 'none'  : 'block';
+
+      const btn = document.getElementById('btn-start');
+      btn.style.background = ok ? '#2E7D32' : '#bdbdbd';
+      btn.style.cursor     = ok ? 'pointer'  : 'default';
+      btn.textContent      = ok ? 'Start Session →' : 'SD Card Required';
+    }
+  </script>
+
+</body>
+</html>
