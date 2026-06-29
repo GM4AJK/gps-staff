@@ -22,6 +22,10 @@ Assign new UUIDs here first to avoid collisions.
 | 0xAD04 | Base Telemetry — SET_SURVEY_PARAMS characteristic |
 | 0xAD05 | Base Telemetry — GNSS_SAT_DATA characteristic |
 | 0xAD06 | Base Telemetry — GNSS_FIX_STATUS characteristic |
+| 0xAD07 | Base Telemetry — RTCM_STREAM_STATUS characteristic |
+| 0xAD08 | ~~ROVER_LINK_STATUS~~ — removed; Base is a pure broadcaster, rover status flows Base←→Handheld directly |
+| 0xAD09 | Base Telemetry — RTCM_STREAM_COMMAND characteristic |
+| 0xAD0A | Base Telemetry — GFSK_RADIO_CONFIG characteristic |
 | 0xAE00 | *reserved — next service block* |
 
 ---
@@ -265,6 +269,85 @@ Bytes 7–10  iTOW      uint32  GPS time of week, ms
 
 RTK float = fixType≥3 + carrSoln=1. RTK fixed = fixType≥3 + carrSoln=2.
 Source: UBX-NAV-PVT from Base F9P.
+
+---
+
+### 0xAD07 — RTCM_STREAM_STATUS
+
+Properties: **READ + NOTIFY** (1 Hz while streaming; single READ returns current snapshot)
+
+```
+Byte  0     streaming   uint8   1 = actively broadcasting over LoRa; 0 = idle
+Byte  1     msg_mask    uint8   bit 0 = RTCM 1005 seen in last 2 s
+                                bit 1 = RTCM 1074 seen in last 2 s
+                                bit 2 = RTCM 1084 seen in last 2 s
+Bytes 2–3   byte_rate   uint16  bytes/sec forwarded to LoRa (5 s rolling average)
+Byte  4     pkt_rate    uint8   RTCM packets/sec (5 s rolling average)
+Byte  5     _pad        uint8   reserved, 0
+Bytes 6–9   total_pkts  uint32  total packets forwarded since Base boot (little-endian)
+Bytes 10–13 total_bytes uint32  total bytes forwarded since Base boot (little-endian)
+```
+
+Source: Base STM32 counters (RTCM framer / LoRa TX path), forwarded to ESP32 over UART.
+Session counters reset on power cycle (not persisted).
+
+---
+
+### 0xAD08 — ~~ROVER_LINK_STATUS~~ (removed)
+
+Removed: the Base is a pure GFSK broadcaster with no concept of connected rovers —
+there may be zero, one, or many, or the receiver may be an NTRIP caster rather than
+a rover. Rover status (fix quality, RSSI, battery) flows directly between the Rover
+ESP32 and the Handheld over BLE; it does not route through the Base.
+
+---
+
+### 0xAD09 — RTCM_STREAM_COMMAND
+
+Properties: **WRITE NO RESPONSE**
+
+```
+0x01  Stop streaming    BASE_OPERATING_MODE → 0x02 (position held, not streaming).
+                        STM32 stops forwarding RTCM packets to LoRa TX.
+0x02  Resume streaming  BASE_OPERATING_MODE → 0x04. Valid only if mode was 0x02.
+                        Ignored if no valid position is held.
+```
+
+---
+
+### 0xAD0A — GFSK_RADIO_CONFIG
+
+Properties: **READ + WRITE** (no notify — config changes are infrequent)
+
+Same 18-byte layout for both READ response and WRITE command.
+On WRITE, STM32 reconfigures SX1262 immediately and persists to STM32 flash.
+Tablet confirms the write by issuing a READ after ~200 ms and updating the display.
+
+```
+Bytes  0–3   freq_hz    uint32   carrier frequency, Hz (e.g. 434000000 = 434.000 MHz)
+Byte   4     tx_power   int8     TX power, dBm. UI presents 6 fixed levels:
+                                 −17 (min/test), 0 (1 mW, default), +10 (10 mW),
+                                 +14 (25 mW), +17 (50 mW), +22 (158 mW, max batt drain).
+                                 Wire value is raw dBm int8; SX1262 PA_CONFIG limits apply.
+Bytes  5–8   bit_rate   uint32   GFSK bit rate, bps (e.g. 9600)
+Bytes  9–12  sync_word  uint32   sync word, big-endian
+                                 e.g. 0x00906F26 for the 3-byte word 0x906F26
+                                 Base and Rover must share the same value.
+Bytes 13–14  freq_dev   uint16   frequency deviation, Hz (READ only; STM32 calculates
+                                 as bit_rate / 2 for BT=0.5 Gaussian, modulation index β=1.0;
+                                 ignored on WRITE)
+Bytes 15–18  rx_bw      uint32   SX1262 RX bandwidth, Hz (READ only; STM32 selects the
+                                 nearest available step above 2×freq_dev + bit_rate;
+                                 ignored on WRITE)
+```
+
+**GFSK collision note:** The F9P outputs RTCM on the GPS timepulse (~1 Hz, UTC-aligned).
+Two nearby base stations therefore transmit simultaneously with GPS-clock precision,
+causing repeated RF collisions regardless of sync word. Sync word prevents a rover
+accepting packets from the wrong base; it does not prevent the RF collision itself.
+Mitigation: assign different frequencies to co-located bases.
+LoRa spread-spectrum would be more collision-tolerant; GFSK is used here for duty-cycle
+efficiency (7–8× less airtime, critical under ETSI EN 300 220 10% limit on 433/434 MHz).
 
 ---
 
