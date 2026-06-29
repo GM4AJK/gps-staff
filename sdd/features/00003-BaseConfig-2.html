@@ -101,6 +101,39 @@
       font-weight: 700;
       cursor: pointer;
     }
+    .keyboard {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: #d0d3d8;
+      padding: 8px 6px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transform: translateY(100%);
+      transition: transform 0.25s ease-out;
+    }
+    .keyboard.visible { transform: translateY(0); }
+    .kbd-row { display: flex; flex-direction: row; justify-content: center; gap: 6px; }
+    .key {
+      height: 52px; min-width: 52px; flex: 1; max-width: 80px;
+      background: white; border: none; border-radius: 6px;
+      font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700;
+      color: #222; cursor: pointer; box-shadow: 0 2px 0 #aaa;
+      display: flex; justify-content: center; align-items: center;
+    }
+    .key-wide    { max-width: 120px; font-size: 14px; flex: 1.8; }
+    .key-space   { max-width: 400px; flex: 5; }
+    .key-action  { background: #adb5bd; color: #111; }
+    .key-connect { background: #2196F3; color: white; max-width: 140px; flex: 2; }
+    .kbd-preview {
+      background: #1a1a1a;
+      border-radius: 4px;
+      padding: 8px 16px 10px 16px;
+      display: flex; flex-direction: column; gap: 2px; margin-bottom: 2px;
+    }
+    .kbd-preview-label { font-size: 12px; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .kbd-preview-value { font-size: 24px; font-weight: 700; color: white; letter-spacing: 1px; }
   </style>
 </head>
 <body>
@@ -115,6 +148,7 @@
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 0 0 2px #444;
+    position: relative;
   ">
 
     <!--
@@ -202,7 +236,8 @@
         </label>
         <div style="display: flex; flex-direction: row; align-items: center; margin-bottom: 16px;">
           <input type="password" id="pwd-field" class="pwd-input" placeholder="Enter password…"
-                 value="mypassword123" style="margin-bottom: 0; flex: 1;">
+                 value="mypassword123" style="margin-bottom: 0; flex: 1;"
+                 onclick="showKbd(this, 'WiFi Password')">
           <button onclick="var f=document.getElementById('pwd-field'); f.type=f.type==='password'?'text':'password'; this.textContent=f.type==='password'?'Show':'Hide';"
                   style="
                     margin-left: 10px;
@@ -227,7 +262,72 @@
 
     </div><!-- end main display panel -->
 
+    <!--
+      ## VIRTUAL KEYBOARD
+      ### Functional
+      - Slides up from bottom when password field is tapped.
+      - Preview strip shows field label and current value — user sees what they are typing
+        without the covered field being visible.
+      - Connect key (blue) and Cancel both dismiss the keyboard.
+      - LVGL: lv_keyboard_create(); lv_keyboard_set_textarea(kb, pwd_ta);
+        lv_label above keyboard updated on LV_EVENT_FOCUSED / LV_EVENT_VALUE_CHANGED.
+    -->
+    <div class="keyboard" id="kbd">
+      <div class="kbd-preview">
+        <span class="kbd-preview-label" id="kbd-label">WiFi Password</span>
+        <span class="kbd-preview-value" id="kbd-value">mypassword123<span style="opacity:0.6;">|</span></span>
+      </div>
+      <div class="kbd-row">
+        <button class="key">1</button><button class="key">2</button>
+        <button class="key">3</button><button class="key">4</button>
+        <button class="key">5</button><button class="key">6</button>
+        <button class="key">7</button><button class="key">8</button>
+        <button class="key">9</button><button class="key">0</button>
+        <button class="key key-wide key-action">⌫ Del</button>
+      </div>
+      <div class="kbd-row">
+        <button class="key">q</button><button class="key">w</button>
+        <button class="key">e</button><button class="key">r</button>
+        <button class="key">t</button><button class="key">y</button>
+        <button class="key">u</button><button class="key">i</button>
+        <button class="key">o</button><button class="key">p</button>
+      </div>
+      <div class="kbd-row">
+        <button class="key">a</button><button class="key">s</button>
+        <button class="key">d</button><button class="key">f</button>
+        <button class="key">g</button><button class="key">h</button>
+        <button class="key">j</button><button class="key">k</button>
+        <button class="key">l</button>
+      </div>
+      <div class="kbd-row">
+        <button class="key key-wide key-action">⇧ Shift</button>
+        <button class="key">z</button><button class="key">x</button>
+        <button class="key">c</button><button class="key">v</button>
+        <button class="key">b</button><button class="key">n</button>
+        <button class="key">m</button>
+        <button class="key key-wide key-action">. @ - _</button>
+      </div>
+      <div class="kbd-row">
+        <button class="key key-wide key-action">?123</button>
+        <button class="key key-space">space</button>
+        <button class="key key-wide key-action" onclick="hideKbd()">Cancel</button>
+        <button class="key key-connect" onclick="hideKbd()">Connect ✓</button>
+      </div>
+    </div><!-- end keyboard -->
+
   </div><!-- end base config screen -->
+
+  <script>
+    function showKbd(input, label) {
+      document.getElementById('kbd-label').textContent = label;
+      document.getElementById('kbd-value').innerHTML =
+        (input.value || input.placeholder || '') + '<span style="opacity:0.6;">|</span>';
+      document.getElementById('kbd').classList.add('visible');
+    }
+    function hideKbd() {
+      document.getElementById('kbd').classList.remove('visible');
+    }
+  </script>
 
 </body>
 </html>
