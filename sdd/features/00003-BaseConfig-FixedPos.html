@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: Main System (tablet 7inch)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config — Fixed Position Entry
+- Reached from: 00003-BaseConfig-0.html (position source banner tap or Fixed Position config button)
+- Allows the user to enter a known benchmark/monument position to achieve cm absolute accuracy
+- Three position source tiers displayed, with the active one highlighted
+- Coordinate system selector: OSGB36 (British National Grid) or WGS84 (GPS native)
+- On Save: position transmitted to Base via BLE (ToDo — new GATT characteristic needed)
+- On Cancel / Clear: returns to 00003-BaseConfig-0.html
+- bg_color: 0xffffff
+
+## Position source tiers (for reference):
+  - None:      No position — streaming blocked
+  - Survey-in: Base surveyed its own position (~0.5–2 m absolute accuracy)
+  - Monument:  Known benchmark entered here — cm absolute accuracy
+  (NTRIP: future — network provides base position automatically, no manual entry)
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Base Config: Fixed Position</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #888;
+    }
+    /* Accuracy tier cards in left panel */
+    .tier-card {
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      margin-bottom: 10px;
+    }
+    .tier-card.active {
+      border-color: currentColor;
+    }
+    .tier-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+    /* Form inputs */
+    .form-input {
+      width: 100%;
+      height: 44px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      padding: 0 12px;
+      box-sizing: border-box;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      outline: none;
+    }
+    .form-input:focus { border-color: #2196F3; }
+    .form-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 6px;
+      display: block;
+    }
+    .form-row {
+      display: flex;
+      flex-direction: row;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .form-field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Coordinate system toggle */
+    .cs-toggle {
+      display: flex;
+      flex-direction: row;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 18px;
+    }
+    .cs-btn {
+      flex: 1;
+      height: 40px;
+      border: none;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .cs-btn.active { background: #2196F3; color: white; }
+    .cs-btn.inactive { background: #f5f5f5; color: #888; }
+    /* Action buttons */
+    .btn-save {
+      height: 52px;
+      background: #43A047;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      flex: 1;
+      margin-right: 10px;
+    }
+    .btn-clear {
+      height: 52px;
+      background: #e53935;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      flex: 1;
+      margin-right: 10px;
+    }
+    .btn-cancel {
+      height: 52px;
+      background: #757575;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: Fixed Position Entry</div>
+
+  <div style="
+    width: 1024px;
+    height: 600px;
+    background: white;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="
+      display: flex; flex-direction: row; justify-content: flex-end;
+      align-items: center; flex-shrink: 0; height: 28px; padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!--
+      ## HEADER BAR
+      ### Functional
+      - Back arrow returns to 00003-BaseConfig-0.html without saving
+    -->
+    <div style="
+      display: flex; flex-direction: row; align-items: center;
+      flex-shrink: 0; height: 52px; padding: 0 16px;
+      background: #222; gap: 16px;
+    ">
+      <button style="
+        background: none; border: none; color: white;
+        font-family: 'Montserrat', sans-serif; font-size: 24px;
+        cursor: pointer; padding: 0; line-height: 1;
+      ">←</button>
+      <span style="font-size: 20px; font-weight: 700; color: white;">Fixed Position</span>
+    </div>
+
+    <!-- MAIN PANELS -->
+    <div style="flex: 1; display: flex; flex-direction: row; overflow: hidden;">
+
+      <!--
+        ## LEFT PANEL — Position accuracy tiers
+        ### Functional
+        - Explains the three tiers so the user understands the value of entering a monument
+        - Active tier is highlighted (border + coloured dot)
+        - Currently active: Survey-in (amber) — monument not yet set
+        - Read-only; no interaction other than visual reference
+      -->
+      <div style="
+        width: 320px;
+        flex-shrink: 0;
+        background: #f5f5f5;
+        padding: 20px;
+        box-sizing: border-box;
+        border-right: 1px solid #ccc;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      ">
+        <p style="font-size: 18px; font-weight: 700; margin: 0 0 16px 0; color: #222;">
+          Position Accuracy Tiers
+        </p>
+
+        <!-- Tier: Survey-in (currently active) -->
+        <div class="tier-card active" style="background: #fff8e1; color: #e65100;">
+          <div class="tier-dot" style="background: #e65100;"></div>
+          <div>
+            <p style="font-size: 16px; font-weight: 700; margin: 0 0 4px 0;">Survey-in</p>
+            <p style="font-size: 13px; color: #777; margin: 0;">
+              ~0.5–2 m absolute accuracy.<br>
+              Relative accuracy between points: cm.
+            </p>
+          </div>
+        </div>
+
+        <!-- Tier: Monument (not active) -->
+        <div class="tier-card" style="background: #f1f8e9; color: #2E7D32;">
+          <div class="tier-dot" style="background: #2E7D32;"></div>
+          <div>
+            <p style="font-size: 16px; font-weight: 700; margin: 0 0 4px 0;">Monument / Benchmark</p>
+            <p style="font-size: 13px; color: #777; margin: 0;">
+              cm absolute accuracy.<br>
+              Enter coordinates from a known surveyed point.
+            </p>
+          </div>
+        </div>
+
+        <!-- Tier: NTRIP (future) -->
+        <div class="tier-card" style="background: #f0f0f0; color: #aaa;">
+          <div class="tier-dot" style="background: #aaa;"></div>
+          <div>
+            <p style="font-size: 16px; font-weight: 700; margin: 0 0 4px 0; color: #aaa;">NTRIP Network</p>
+            <p style="font-size: 13px; color: #aaa; margin: 0;">
+              cm absolute accuracy.<br>
+              Base position from correction network.<br>
+              (Future feature — requires WiFi)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!--
+        ## RIGHT PANEL — Monument coordinate entry form
+        ### Functional
+        - Monument ID: free text, stored alongside coordinates (e.g. "OS-BM-TP-1234", "Site datum A")
+        - Coordinate system toggle: OSGB36 (British National Grid) or WGS84 (GPS/GNSS native)
+            - OSGB36: Easting (m), Northing (m), Orthometric height above Ordnance Datum Newlyn (m)
+            - WGS84:  Latitude (decimal degrees), Longitude (decimal degrees), Ellipsoidal height (m)
+            - The F9P accepts position in WGS84 LLH; OSGB36 entries are converted internally
+              using the OSTN15 transformation (ToDo — firmware)
+        - Save: transmits position to Base via BLE (ToDo — new GATT characteristic needed in GATT.md)
+          and returns to 00003-BaseConfig-0.html with monument badge active
+        - Clear: removes any stored monument position, reverts to survey-in tier,
+          returns to 00003-BaseConfig-0.html
+        - Cancel / back arrow: returns to 00003-BaseConfig-0.html without saving
+      -->
+      <div style="
+        flex: 1;
+        background: white;
+        padding: 20px 24px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      ">
+        <p style="font-size: 22px; font-weight: 700; margin: 0 0 16px 0; color: #222;">
+          Enter Monument / Benchmark
+        </p>
+
+        <!-- Monument ID -->
+        <div style="margin-bottom: 14px;">
+          <label class="form-label">Monument / Benchmark ID (optional)</label>
+          <input type="text" class="form-input" placeholder="e.g. OS-BM-TP-1234 or Site datum A"
+                 value="OS-BM-TP-1234">
+        </div>
+
+        <!-- Coordinate system toggle -->
+        <label class="form-label">Coordinate System</label>
+        <div class="cs-toggle" id="cs-toggle">
+          <button class="cs-btn active" onclick="setCS('osgb36')">OSGB36 (National Grid)</button>
+          <button class="cs-btn inactive" onclick="setCS('wgs84')">WGS84 (GPS)</button>
+        </div>
+
+        <!-- OSGB36 fields (shown by default) -->
+        <div id="fields-osgb36">
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Easting (m)</label>
+              <input type="text" class="form-input" value="651409.903">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Northing (m)</label>
+              <input type="text" class="form-input" value="313177.270">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Height ODN (m)</label>
+              <input type="text" class="form-input" value="24.700">
+            </div>
+          </div>
+        </div>
+
+        <!-- WGS84 fields (hidden by default) -->
+        <div id="fields-wgs84" style="display: none;">
+          <div class="form-row">
+            <div class="form-field">
+              <label class="form-label">Latitude (°)</label>
+              <input type="text" class="form-input" placeholder="e.g. 52.657570">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Longitude (°)</label>
+              <input type="text" class="form-input" placeholder="e.g. 1.716573">
+            </div>
+            <div class="form-field">
+              <label class="form-label">Height (m)</label>
+              <input type="text" class="form-input" placeholder="e.g. 63.180">
+            </div>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div style="display: flex; flex-direction: row; margin-top: 8px;">
+          <button class="btn-save">Save ✓</button>
+          <button class="btn-clear">Clear Position</button>
+          <button class="btn-cancel">Cancel</button>
+        </div>
+
+      </div>
+
+    </div><!-- end panels -->
+
+  </div><!-- end screen -->
+
+  <script>
+    function setCS(cs) {
+      document.getElementById('fields-osgb36').style.display = cs === 'osgb36' ? '' : 'none';
+      document.getElementById('fields-wgs84').style.display  = cs === 'wgs84'  ? '' : 'none';
+      document.querySelectorAll('.cs-btn').forEach((b, i) => {
+        b.className = 'cs-btn ' + ((i === 0) === (cs === 'osgb36') ? 'active' : 'inactive');
+      });
+    }
+  </script>
+
+</body>
+</html>

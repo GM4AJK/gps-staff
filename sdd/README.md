@@ -26,3 +26,4 @@ Numbered feature specifications and UI screen specs.
 | [features/00003-BaseConfig-2-kbd.html](features/00003-BaseConfig-2-kbd.html) | Base Config — State 2 with virtual keyboard |
 | [features/00003-BaseConfig-3.html](features/00003-BaseConfig-3.html) | Base Config — State 3: connecting (spinner) |
 | [features/00003-BaseConfig-4.html](features/00003-BaseConfig-4.html) | Base Config — State 4: connection failed |
+| [features/00003-BaseConfig-FixedPos.html](features/00003-BaseConfig-FixedPos.html) | Base Config — Fixed Position entry (monument/benchmark, OSGB36/WGS84) |

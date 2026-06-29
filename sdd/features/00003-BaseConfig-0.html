@@ -11,10 +11,13 @@
 - Keeps "run" (operating modes) separate from "config" (settings)
 - Operating mode cards are the primary content — large, prominent
 - Config access is a secondary strip at the bottom
+- A position source banner between the header and mode cards shows the current
+  base position accuracy tier (None / Survey-in / Monument / NTRIP)
 - Next states:
   - Survey-in card → 00003-BaseConfig-SurveyIn.html (ToDo)
   - RTCM Streaming card → 00003-BaseConfig-Streaming.html (ToDo)
   - WiFi Settings → 00003-BaseConfig-1.html (existing WiFi config flow)
+  - Fixed Position → 00003-BaseConfig-FixedPos.html
 - bg_color: 0xffffff
 -->
 <html lang="en">
@@ -109,6 +112,28 @@
       font-size: 22px;
       margin-bottom: 4px;
     }
+    /* Position source banner */
+    .pos-banner {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      height: 44px;
+      padding: 0 16px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .pos-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .pos-badge-none       { background: #ffebee; color: #c62828; }
+    .pos-badge-surveyin   { background: #fff8e1; color: #e65100; }
+    .pos-badge-monument   { background: #e8f5e9; color: #1b5e20; }
+    .pos-badge-ntrip      { background: #e3f2fd; color: #0d47a1; }
   </style>
 </head>
 <body>
@@ -170,6 +195,34 @@
         line-height: 1;
       ">←</button>
       <span style="font-size: 20px; font-weight: 700; color: white;">Base Configuration</span>
+    </div>
+
+    <!--
+      ## POSITION SOURCE BANNER
+      ### Functional
+      - Spans full width between the header and the mode cards.
+      - Shows the current base position accuracy tier — fetched once via BLE on screen open.
+      - Four possible states:
+          None:      red badge   "No position set"  — survey-in has never completed and no
+                                                       monument has been entered; streaming
+                                                       is blocked until a position exists.
+          Survey-in: amber badge "Survey-in ±0.8 m" — position from a completed survey-in;
+                                                       relative accuracy is cm, absolute ~0.5–2 m.
+          Monument:  green badge "Monument: OS-BM-12345" — position from a known benchmark;
+                                                       both relative and absolute accuracy are cm.
+          NTRIP:     blue badge  "NTRIP (OS Net)"   — base position corrected by network;
+                                                       absolute accuracy cm (future feature).
+      - Tapping the banner navigates to Fixed Position entry (00003-BaseConfig-FixedPos.html)
+        so the user can upgrade their accuracy tier without going via the config strip.
+    -->
+    <div class="pos-banner" style="cursor: pointer;" title="Tap to change position source">
+      <span style="font-size: 14px; color: #888; font-weight: 700;">Base Position:</span>
+      <!-- Show one of these badges depending on state: -->
+      <!-- <span class="pos-badge pos-badge-none">No position set</span> -->
+      <span class="pos-badge pos-badge-surveyin">Survey-in &nbsp;±0.8 m</span>
+      <!-- <span class="pos-badge pos-badge-monument">Monument: OS-BM-12345</span> -->
+      <!-- <span class="pos-badge pos-badge-ntrip">NTRIP (OS Net)</span> -->
+      <span style="font-size: 13px; color: #aaa; margin-left: 4px;">· tap to change →</span>
     </div>
 
     <!--
@@ -250,7 +303,7 @@
       - Deliberately smaller than the mode cards to reinforce "run vs config" separation
       - WiFi Settings → 00003-BaseConfig-1.html (existing WiFi config flow)
       - LoRa Settings → ToDo (future spec)
-      - Fixed Position → ToDo (manual base position entry, future spec)
+      - Fixed Position → 00003-BaseConfig-FixedPos.html
     -->
     <div style="
       display: flex;
@@ -271,7 +324,6 @@
       </button>
       <button class="config-btn">
         <span class="config-btn-icon">📍</span>Fixed Position
-        <span style="font-size: 11px; color: #aaa; font-weight: 400;">(ToDo)</span>
       </button>
     </div>
 
