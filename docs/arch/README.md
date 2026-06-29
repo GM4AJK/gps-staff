@@ -36,6 +36,11 @@ the UART link between the ZED-F9P and STM32F765 on the finished PCB.
 
 ![System deployment](img/system-deployment.png)
 
+> **ToDo:** `img/system-deployment.puml` and `img/firmware-modules.puml` were drawn against the
+> Nucleo bench stand-in configuration. Both need to be redrawn once PCB v1.0 is in hand and the
+> bench boards retire. The replacement high-level block diagram is
+> [`sdd/architecture/system-overview.png`](../../sdd/architecture/system-overview.png).
+
 ---
 
 ## Firmware Module Map
