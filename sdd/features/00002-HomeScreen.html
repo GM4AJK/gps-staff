@@ -1,187 +1,266 @@
 <!DOCTYPE html>
 <!-- MD_COMMENT
-# HTML SPEC: Main System (tablet 7ich)
+# HTML SPEC: GPS Staff (tablet 7inch)
 - Target resolution: 1024x600 px
 - Target environment: ESP32-S3 LVGL 9.x
-- Layout style: Flexbox-driven, light theme
+- Layout style: Flexbox-driven, dark theme
 - Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
 
-## Home Screen 
-- bg_color: 0xffffff
-- bg_image: images/gps-staff-logo-900x600.png
--->
+## Home Screen
+- bg_color: 0x141E2B  (dark navy — home screen uses dark theme; all other screens use white)
+- Entry: power-on or back-navigation from Base/Rover screens
+
+### Functional
+- Tapping Base card navigates to 00003-BaseConfig-0.html.
+- Rover card is present but disabled (coming soon); tap shows no action.
+- BLE connection status dots update live:
+    ● green  = ESP32 reachable and responding
+    ● amber  = previously seen, currently unreachable
+    ● grey   = never connected this session
+- Version string bottom-right is compiled in at build time (firmware/esp32-tablet/main/version.h).
+
+### LVGL implementation notes
+- Screen bg_color = lv_color_hex(0x141E2B).
+- SVG icon: render as lv_img from a pre-compiled C array (LVGLImage tool).
+  Alternatively, approximate with lv_arc + lv_line primitives if RAM is tight.
+- Mode cards: lv_obj with LV_BORDER_SIDE_LEFT, border width 4, card bg = lv_color_hex(0x1E2D3D).
+  Rover card: lv_obj_add_state(rover_card, LV_STATE_DISABLED) — dims automatically.
+- Bullet items: lv_label with LV_SYMBOL_BULLET prefix or custom "·" character.
+- Enter button: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -0) within card.
+  Do NOT rely on margin-top: auto — use lv_obj_align().
+- Connection dot: lv_obj small circle, recolour on BLE event callback.
+MD_COMMENT -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GPS Staff — Tablet Flexbox UI Mockup</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <title>GPS Staff — Home Screen</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     body {
-      margin: 0;
-      padding: 20px;
-      background: #111;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+      margin: 0; padding: 20px;
+      background: #0a0f14;
+      display: flex; flex-direction: column; align-items: center;
       font-family: 'Montserrat', sans-serif;
-      color: #888;
     }
     .label {
-      margin-bottom: 8px;
-      font-size: 12px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #555;
     }
   </style>
 </head>
 <body>
 
-  <div class="label">Handheld Tablet — 1024 × 600 landscape — flexbox layout</div>
+  <div class="label">Handheld Tablet — 1024 × 600 — Home Screen</div>
 
-  <!--
-    ## ROOT SCREEN
-    - flex-direction: column   → children stack top-to-bottom
-    - height: 800px            → fixed, matches display
-    - overflow: hidden         → clip anything that escapes
-
-    ```
-	LVGL equivalent:
-      lv_obj_set_layout(screen, LV_LAYOUT_FLEX);
-      lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_COLUMN);
-      lv_obj_set_size(screen, 600, 1024);
-	```  
-  -->
   <div style="
-    width: 1024px;
-    height: 600px;
-    background: white;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 0 0 2px #444;
+    width: 1024px; height: 600px;
+    background: #141E2B;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #333;
+    font-family: 'Montserrat', sans-serif;
   ">
 
-    <!--
-      ## BATTERY BAR  (row, pinned to top)
-      - flex-direction: row          → children sit side by side
-      - justify-content: flex-end    → push content to the right
-      - align-items: center          → vertically centre the text
-      - flex-shrink: 0               → do not shrink when logo grows
-      
-	  ### Functional
-	  - This battery indicator shows the state of the battery ON THIS DEVICE (esp32_tablet)
-	  - For details on the operation of this widget see Spec Doc XXX(ToDo)
-
-      ```
-	  LVGL equivalent:
-        lv_obj_set_layout(batt_bar, LV_LAYOUT_FLEX);
-        lv_obj_set_flex_flow(batt_bar, LV_FLEX_FLOW_ROW);
-        lv_obj_set_flex_align(batt_bar,
-            LV_FLEX_ALIGN_END,    // main axis  → right
-            LV_FLEX_ALIGN_CENTER, // cross axis → centre
-            LV_FLEX_ALIGN_START)
-	  ```
-    -->
+    <!-- BATTERY BAR -->
     <div style="
-      display: flex;
-      flex-direction: row;
-      justify-content: flex-end;
-      align-items: center;
-      flex-shrink: 0;
-      height: 28px;
-      padding: 0 10px;
-      background: #111;
+      display: flex; justify-content: flex-end; align-items: center;
+      flex-shrink: 0; height: 28px; padding: 0 14px;
+      background: #0D1520;
     ">
       <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
     </div>
 
-    <!--
-      ## LOGO AREA  Image is 900px wide by 600px high
-	  - This is a "background image" for the home screen
-      - display: flex                → become a flex container itself
-      - justify-content: center      → centre child horizontally
-      - align-items: center          → centre child vertically
-      - Logo area fills remaining height. Position:relative so the
-        button bar can be absolutely centred on top of the image.
-    -->
+    <!-- HERO — product identity -->
     <div style="
-      flex: 1;
-      position: relative;
-      overflow: hidden;
+      flex-shrink: 0; height: 168px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
     ">
-      <!-- Logo fills the area -->
-      <img src="images/gps-staff-logo-900x600.png" style="
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%; height: 100%;
-        object-fit: cover;
-        display: block;
-      ">
+
+      <!-- SVG icon: GNSS signals + survey staff -->
+      <svg viewBox="0 0 80 68" width="80" height="68" style="flex-shrink:0;">
+        <!-- Outer signal arc -->
+        <path d="M 4 38 A 36 36 0 0 1 76 38"
+              fill="none" stroke="rgba(33,150,243,0.35)" stroke-width="3" stroke-linecap="round"/>
+        <!-- Middle signal arc -->
+        <path d="M 15 40 A 25 25 0 0 1 65 40"
+              fill="none" stroke="rgba(33,150,243,0.6)" stroke-width="3" stroke-linecap="round"/>
+        <!-- Inner signal arc -->
+        <path d="M 26 42 A 14 14 0 0 1 54 42"
+              fill="none" stroke="#2196F3" stroke-width="3" stroke-linecap="round"/>
+        <!-- Antenna -->
+        <circle cx="40" cy="45" r="5" fill="#2196F3"/>
+        <!-- Staff pole -->
+        <line x1="40" y1="50" x2="40" y2="64" stroke="#546E7A" stroke-width="3" stroke-linecap="round"/>
+        <!-- Ground foot — inverted V -->
+        <polyline points="33,62 40,68 47,62"
+                  fill="none" stroke="#546E7A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      <!-- Product name -->
+      <div style="font-size: 36px; font-weight: 700; color: #ECEFF1; letter-spacing: 0.04em; line-height: 1;">
+        GPS Staff
+      </div>
+
+      <!-- Tagline -->
+      <div style="font-size: 13px; color: #546E7A; letter-spacing: 0.08em; text-transform: uppercase;">
+        RTK Survey Instrument
+      </div>
+
+    </div><!-- end hero -->
+
+    <!-- MODE CARDS -->
+    <div style="
+      flex: 1; display: flex; flex-direction: row;
+      align-items: stretch; gap: 20px;
+      padding: 20px 40px 16px;
+    ">
 
       <!--
-        ## BUTTON BAR — overlaid, vertically centred, Rover left / Base right.
-        - justify-content: space-between  → pins each button to its side
-        - padding: 0 60px                 → keep buttons away from screen edge
-        - position: absolute + top/transform → centres the bar vertically
+        ## BASE CARD — active
+        ### Functional
+        Tap anywhere on card (or button) → navigate to 00003-BaseConfig-0.html.
+        Connection dot reflects BLE reachability of Base ESP32.
       -->
       <div style="
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        left: 0; right: 0;
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0 60px;
-        box-sizing: border-box;
+        flex: 1; background: #1E2D3D;
+        border-radius: 12px;
+        border-left: 4px solid #2196F3;
+        border-top: 1px solid rgba(255,255,255,0.08);
+        border-right: 1px solid rgba(255,255,255,0.06);
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        display: flex; flex-direction: column;
+        padding: 20px 22px 18px;
+        cursor: pointer;
       ">
 
-        <!--
-		## Button BASE — left, blue
-		### Functional
-		- When pressed, hides the Home screen and brings forward the Base Configuration screen
-		- See: 00003-BaseConfig.html (ToDo)
-		-->
-        <button style="
-          width: 220px;
-          height: 90px;
-          background: #2196F3;
-          border: none;
-          border-radius: 8px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          cursor: pointer;
-        ">
-          <span style="font-family: 'Montserrat', sans-serif; font-size: 40px; font-weight: 700; color: white;">Base</span>
-        </button>
+        <!-- Card header -->
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+          <div style="
+            width: 44px; height: 44px; border-radius: 10px;
+            background: #0D47A1;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; color: #90CAF9; flex-shrink: 0;
+          ">⊙</div>
+          <div style="flex: 1;">
+            <div style="font-size: 20px; font-weight: 700; color: #ECEFF1;">Base Station</div>
+            <div style="font-size: 12px; color: #546E7A; margin-top: 2px;">Fixed position · RTCM broadcast</div>
+          </div>
+          <!-- BLE connection dot -->
+          <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+            <div style="width: 8px; height: 8px; border-radius: 50%; background: #43A047;"></div>
+            <span style="font-size: 11px; color: #546E7A;">Connected</span>
+          </div>
+        </div>
 
-        <!--
-		## Button ROVER — right, dark grey
-		### Functional
-		- No action for now — placeholder for future Rover Configuration screen
-		- See: 00004-RoverConfig.html (ToDo)
-		-->
+        <!-- Bullets -->
+        <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: #2196F3; font-size: 16px; line-height: 1.3; flex-shrink: 0;">·</span>
+            <span style="font-size: 13px; color: #78909C; line-height: 1.3;">Survey-in position or enter a known monument</span>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: #2196F3; font-size: 16px; line-height: 1.3; flex-shrink: 0;">·</span>
+            <span style="font-size: 13px; color: #78909C; line-height: 1.3;">Broadcast RTCM corrections over GFSK radio</span>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: #2196F3; font-size: 16px; line-height: 1.3; flex-shrink: 0;">·</span>
+            <span style="font-size: 13px; color: #78909C; line-height: 1.3;">WiFi NTRIP gateway to OS Net correction service</span>
+          </div>
+        </div>
+
+        <!-- Enter button -->
         <button style="
-          width: 220px;
-          height: 90px;
-          background: #424242;
-          border: none;
-          border-radius: 8px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
+          width: 100%; height: 48px; margin-top: 16px;
+          background: #1565C0; color: #fff; border: none; border-radius: 8px;
+          font-family: 'Montserrat', sans-serif; font-size: 15px; font-weight: 700;
+          cursor: pointer; letter-spacing: 0.03em;
+        ">Configure Base →</button>
+
+      </div><!-- end base card -->
+
+      <!--
+        ## ROVER CARD — disabled (not yet implemented)
+        ### Functional
+        Tap: no action. Visually present to show the full system capability
+        and to act as a navigation placeholder when Rover firmware is ready.
+        LV_STATE_DISABLED dims the card automatically in LVGL.
+      -->
+      <div style="
+        flex: 1; background: #181F28;
+        border-radius: 12px;
+        border-left: 4px solid #37474F;
+        border-top: 1px solid rgba(255,255,255,0.04);
+        border-right: 1px solid rgba(255,255,255,0.03);
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        display: flex; flex-direction: column;
+        padding: 20px 22px 18px;
+        opacity: 0.55; cursor: default;
+      ">
+
+        <!-- Card header -->
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+          <div style="
+            width: 44px; height: 44px; border-radius: 10px;
+            background: #1C2A35;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px; color: #546E7A; flex-shrink: 0;
+          ">⊛</div>
+          <div style="flex: 1;">
+            <div style="font-size: 20px; font-weight: 700; color: #78909C;">Rover</div>
+            <div style="font-size: 12px; color: #37474F; margin-top: 2px;">Mobile receiver · RTK fix</div>
+          </div>
+          <!-- Coming soon badge -->
+          <div style="
+            padding: 3px 10px; border-radius: 10px;
+            background: #1C2A35; flex-shrink: 0;
+          ">
+            <span style="font-size: 11px; color: #455A64; font-weight: 600;">Coming soon</span>
+          </div>
+        </div>
+
+        <!-- Bullets -->
+        <div style="display: flex; flex-direction: column; gap: 8px; flex: 1;">
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: #37474F; font-size: 16px; line-height: 1.3; flex-shrink: 0;">·</span>
+            <span style="font-size: 13px; color: #37474F; line-height: 1.3;">Receive RTCM corrections from Base over GFSK</span>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: #37474F; font-size: 16px; line-height: 1.3; flex-shrink: 0;">·</span>
+            <span style="font-size: 13px; color: #37474F; line-height: 1.3;">Achieve RTK fixed solution — centimetre accuracy</span>
+          </div>
+          <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="color: #37474F; font-size: 16px; line-height: 1.3; flex-shrink: 0;">·</span>
+            <span style="font-size: 13px; color: #37474F; line-height: 1.3;">Log survey points and export to standard formats</span>
+          </div>
+        </div>
+
+        <!-- Disabled button -->
+        <button style="
+          width: 100%; height: 48px; margin-top: 16px;
+          background: #1C2A35; color: #37474F; border: none; border-radius: 8px;
+          font-family: 'Montserrat', sans-serif; font-size: 15px; font-weight: 700;
           cursor: default;
-        ">
-          <span style="font-family: 'Montserrat', sans-serif; font-size: 40px; font-weight: 700; color: white;">Rover</span>
-        </button>
+        " disabled>Not yet available</button>
 
-      </div><!-- end button bar -->
+      </div><!-- end rover card -->
 
-    </div><!-- end logo area -->
+    </div><!-- end mode cards -->
 
-  </div><!-- end root screen -->
+    <!-- VERSION STRIP -->
+    <div style="
+      flex-shrink: 0; height: 24px;
+      display: flex; align-items: center; justify-content: flex-end;
+      padding: 0 18px;
+      background: #0D1520;
+    ">
+      <span style="font-size: 10px; color: #263238; letter-spacing: 0.06em;">
+        GPS STAFF · PCB v1.0 · fw 0.1.0
+      </span>
+    </div>
+
+  </div><!-- end 1024×600 screen -->
 
 </body>
 </html>
