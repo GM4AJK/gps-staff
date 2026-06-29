@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff — Rover Working Screen
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Theme: dark (#141E2B) — better outdoor readability
+- Entry: 00010-StartSurveySession.html → Start Session
+- Next: 00012-PointCapture.html (Capture Point button)
+
+## Purpose
+Primary operational screen. The operator holds this screen while moving the
+Rover pole. It shows live position, fix quality, and accuracy, and provides
+the Capture Point trigger. This is the screen that matters in the field.
+
+## Data source
+All data arrives via BLE from the Rover ESP32, which forwards parsed
+UBX-NAV-PVT fields from the Rover STM32F765. Update rate follows the F9P
+navigation rate (typically 1 Hz). The Tablet updates the display on each
+BLE notification — no polling.
+
+UBX-NAV-PVT fields used:
+- lat / lon       → decimal degrees (÷ 1e7 from raw i32)
+- hMSL            → height above mean sea level (mm → m)
+- hAcc / vAcc     → horizontal / vertical accuracy estimate (mm)
+- fixType         → 0=No Fix, 3=3D Fix, 4=GNSS+DR, 5=Time only
+- flags.carrSoln  → 0=None, 1=Float, 2=Fix  (RTK status)
+- numSV           → satellites used
+
+## Fix quality states
+
+| State       | carrSoln | fixType | Colour  | Capture |
+|-------------|----------|---------|---------|---------|
+| No Fix      | any      | <3      | #C62828 red   | Disabled |
+| 3D / Float  | 0 or 1   | ≥3      | #E65100 amber | Disabled |
+| RTK Fix     | 2        | ≥3      | #1B5E20 green | Enabled  |
+
+Capture is only enabled on RTK Fix — no float captures to keep the log clean.
+
+## Left panel — Position
+Shows live WGS84 position as logged. Monospace font for alignment.
+Large enough to read at arm's length (28px coordinates, 20px accuracy).
+- Latitude:  decimal degrees, 7 dp (±0.011 mm at equator)
+- Longitude: decimal degrees, 7 dp
+- Height:    metres above MSL, 3 dp
+- hAcc:      mm, 1 dp
+- vAcc:      mm, 1 dp
+- Satellites used
+
+## Right panel — Fix + Session + Capture
+Top block: fix quality — coloured background, large bold text, dominant visual.
+Middle block: corrections source status (RF link stats for Mode 1).
+Bottom block: session strip (name, elapsed time, point count) + Capture button.
+
+## Corrections source display (Mode 1 — Local RF)
+Shows the RF link feeding RTCM to this Rover:
+- RSSI (dBm), SNR (dB), frame rate (fps), last frame age (s)
+- If no frames received for >5 s: amber "Stale" warning
+- If no frames received for >30 s: red "No Signal" warning
+
+Other modes replace this block with the relevant status (NTRIP connected/rate,
+TCP stream stats, etc.) — specced on their own screens.
+
+## Session strip
+- Session filename (truncated if long)
+- Elapsed time (HH:MM:SS, counting from session start)
+- Points captured this session (integer counter)
+
+## Captured points list
+Sits between the corrections strip and the Capture button in the right panel.
+Grows as points are captured; scrollable. Columns: ID, Label, Latitude,
+Longitude, hAcc. Label defaults to "P<id>" but operator can tap a row to
+rename it (lv_keyboard opens inline). Each row is written to the CSV on
+Tablet SD immediately on capture — no separate confirm screen.
+
+## Capture button
+- RTK Fix: green, "Capture Point →". On press: grabs the next UBX-NAV-PVT
+  epoch (<1 s at 1 Hz), appends a row to the list, writes the CSV record.
+  No separate capture screen — the list IS the record of the session.
+- Float/No Fix: grey, "RTK Fix Required", non-interactive.
+
+## LVGL implementation notes
+- Fix quality block: lv_obj with bg_color set dynamically on each BLE update.
+  lv_label for state text + accuracy figures. Smooth colour transition via
+  lv_anim if desired, but not required.
+- Position labels: lv_label, LV_FONT_MONTSERRAT_28 or similar monospace.
+- Elapsed timer: lv_timer callback every 1 s, updates HH:MM:SS label.
+- Capture button: lv_btn, state toggled on each fix update.
+  LV_STATE_DISABLED when carrSoln < 2 or fixType < 3.
+- BLE update: registered as a notification callback; calls lv_label_set_text()
+  + lv_obj_set_style_bg_color() from the LVGL task context.
+MD_COMMENT -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Rover Working Screen</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #060c12;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .screen-label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #555;
+    }
+    .dev-toggle {
+      margin-bottom: 12px; display: flex; gap: 0;
+      border: 1px solid #222; border-radius: 6px; overflow: hidden;
+    }
+    .dev-btn {
+      font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700;
+      padding: 6px 16px; border: none; cursor: pointer;
+      background: #111; color: #444;
+    }
+    .dev-btn.active { background: #1565C0; color: #fff; }
+
+    .coord-val {
+      font-family: 'Courier New', monospace;
+      font-size: 26px; font-weight: 700;
+      color: #ECEFF1; letter-spacing: 0.02em; line-height: 1.3;
+    }
+    .coord-lbl {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.12em; color: #37474F; margin-bottom: 2px;
+    }
+    .coord-row { margin-bottom: 14px; }
+
+    .acc-val {
+      font-family: 'Courier New', monospace;
+      font-size: 20px; font-weight: 700; color: #78909C;
+    }
+    .acc-good { color: #66BB6A; }
+    .acc-warn { color: #FFA726; }
+
+    .stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #263238; margin-bottom: 3px; }
+    .stat-val  { font-size: 13px; color: #546E7A; }
+  </style>
+</head>
+<body>
+
+  <div class="screen-label">Handheld Tablet — 1024 × 600 — Rover Working Screen</div>
+
+  <div class="dev-toggle">
+    <button class="dev-btn"        onclick="setState('nofix')">✗ No Fix</button>
+    <button class="dev-btn"        onclick="setState('float')">~ RTK Float</button>
+    <button class="dev-btn active" onclick="setState('fix')">✓ RTK Fix</button>
+  </div>
+
+  <div style="
+    width: 1024px; height: 600px;
+    background: #141E2B;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #222;
+    font-family: 'Montserrat', sans-serif;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="display:flex; justify-content:space-between; align-items:center;
+      flex-shrink:0; height:28px; padding:0 10px; background:#0D1520;">
+      <div style="display:flex; gap:16px; align-items:center;">
+        <span style="font-family:monospace; font-size:11px; color:#546E7A;">
+          Base <span style="color:#66BB6A;">▐████▌</span> 91%
+        </span>
+        <span style="font-family:monospace; font-size:11px; color:#546E7A;">
+          Rover <span style="color:#66BB6A;">▐███░▌</span> 72%
+        </span>
+      </div>
+      <span style="font-family:monospace; font-size:11px; color:#66BB6A;">▐███░▌ 78%</span>
+    </div>
+
+    <!-- HEADER -->
+    <div style="display:flex; align-items:center; flex-shrink:0;
+      height:44px; padding:0 14px; background:#0D1520;
+      border-bottom:1px solid #1E2D3D; gap:12px;">
+      <button style="background:none; border:none; color:#37474F;
+        font-size:20px; cursor:pointer; padding:0; line-height:1;">←</button>
+      <span style="font-size:14px; font-weight:700; color:#78909C; flex:1;">
+        survey_004
+      </span>
+      <!-- Elapsed time -->
+      <span id="elapsed" style="font-family:monospace; font-size:14px; color:#37474F;">
+        00:12:34
+      </span>
+      <!-- Point counter -->
+      <div style="background:#1A2640; border:1px solid #1E2D3D; border-radius:4px;
+        padding:3px 10px; font-size:12px; font-weight:700; color:#546E7A;">
+        <span id="point-count">3</span> pts
+      </div>
+      <!-- End session -->
+      <button style="background:none; border:1px solid #37474F; border-radius:5px;
+        color:#546E7A; font-family:'Montserrat',sans-serif; font-size:11px;
+        font-weight:700; padding:5px 12px; cursor:pointer;">
+        End Session
+      </button>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex:1; display:flex; overflow:hidden;">
+
+      <!--
+        ## LEFT PANEL — Live WGS84 position
+        Data from UBX-NAV-PVT, updated at F9P nav rate (1 Hz).
+      -->
+      <div style="
+        flex: 0 0 420px;
+        padding: 20px 20px 16px 20px;
+        box-sizing: border-box;
+        border-right: 1px solid #1E2D3D;
+        display: flex; flex-direction: column; justify-content: center;
+      ">
+
+        <div style="margin-bottom:18px;">
+          <div class="coord-lbl">Session</div>
+          <div style="font-size:16px; font-weight:700; color:#90A4AE; line-height:1.3;">
+            Garden CP survey
+          </div>
+        </div>
+
+        <div style="margin-bottom:18px;">
+          <div class="coord-lbl">Pole height</div>
+          <div style="font-size:16px; font-weight:700; color:#90A4AE;">1.80 m</div>
+        </div>
+
+        <div class="coord-row">
+          <div class="coord-lbl">Latitude</div>
+          <div class="coord-val" id="lat">57.1234567°</div>
+        </div>
+
+        <div class="coord-row">
+          <div class="coord-lbl">Longitude</div>
+          <div class="coord-val" id="lon">−2.3456789°</div>
+        </div>
+
+        <div class="coord-row">
+          <div class="coord-lbl">Height (MSL)</div>
+          <div class="coord-val" id="height">143.421 m</div>
+        </div>
+
+        <!-- Accuracy + sats row -->
+        <div style="display:flex; gap:24px; margin-top:6px; align-items:flex-end;">
+          <div>
+            <div class="coord-lbl">hAcc</div>
+            <div class="acc-val acc-good" id="hacc">8 mm</div>
+          </div>
+          <div>
+            <div class="coord-lbl">vAcc</div>
+            <div class="acc-val acc-good" id="vacc">12 mm</div>
+          </div>
+          <div style="margin-left:auto; text-align:right;">
+            <div class="coord-lbl">Satellites</div>
+            <div class="acc-val" id="sats">18</div>
+          </div>
+        </div>
+
+      </div><!-- end left panel -->
+
+      <!--
+        ## RIGHT PANEL — Fix quality + corrections + capture
+      -->
+      <div style="
+        flex: 1;
+        display: flex; flex-direction: column;
+        padding: 14px 16px; box-sizing: border-box; gap: 12px;
+      ">
+
+        <!--
+          Fix quality block — dominant visual, colour changes with state.
+          RTK Fix: dark green · RTK Float: dark amber · No Fix: dark red
+        -->
+        <div id="fix-block" style="
+          flex: 0 0 auto;
+          background: #1B5E20;
+          border: 1px solid #2E7D32;
+          border-radius: 10px;
+          padding: 16px 20px;
+          display: flex; align-items: center; gap: 20px;
+        ">
+          <div style="flex:1;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase;
+              letter-spacing:0.12em; color:#388E3C; margin-bottom:4px;">Fix Quality</div>
+            <div id="fix-text" style="font-size:32px; font-weight:700; color:#A5D6A7;">
+              RTK Fix
+            </div>
+          </div>
+          <!-- Accuracy summary in fix block -->
+          <div style="text-align:right;">
+            <div style="font-size:11px; font-weight:700; text-transform:uppercase;
+              letter-spacing:0.1em; color:#388E3C; margin-bottom:4px;">Horizontal</div>
+            <div id="fix-hacc" style="font-family:monospace; font-size:28px;
+              font-weight:700; color:#A5D6A7;">8 mm</div>
+          </div>
+        </div>
+
+        <!--
+          Corrections source — Mode 1: RF link stats from Rover ESP32.
+          Other modes show NTRIP/TCP status instead (separate specs).
+        -->
+        <div style="
+          background: #0D1520; border: 1px solid #1E2D3D; border-radius: 8px;
+          padding: 12px 16px;
+          display: flex; gap: 24px; align-items: center; flex-shrink: 0;
+        ">
+          <div>
+            <div class="stat-lbl">Corrections</div>
+            <div class="stat-val" id="corr-src" style="color:#64B5F6; font-weight:700;">
+              RF · GFSK
+            </div>
+          </div>
+          <div>
+            <div class="stat-lbl">RSSI</div>
+            <div class="stat-val" id="rssi">−82 dBm</div>
+          </div>
+          <div>
+            <div class="stat-lbl">SNR</div>
+            <div class="stat-val" id="snr">9.2 dB</div>
+          </div>
+          <div>
+            <div class="stat-lbl">Frame rate</div>
+            <div class="stat-val" id="fps">4.1 fps</div>
+          </div>
+          <div>
+            <div class="stat-lbl">Last frame</div>
+            <div class="stat-val" id="last-frame">0.8 s ago</div>
+          </div>
+        </div>
+
+        <!--
+          Captured points list — grows as the operator captures points.
+          Pressing Capture grabs the next UBX-NAV-PVT epoch (<1 s wait)
+          and appends a row. Tap a row to edit its label.
+          Scrollable; all rows written to CSV on session end.
+        -->
+        <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+          <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:6px; flex-shrink:0;">
+            <span class="stat-lbl" style="margin:0;">Captured Points</span>
+            <span id="pt-count-badge" style="font-size:10px; color:#1565C0; font-weight:700;">3</span>
+          </div>
+
+          <div style="
+            flex:1; overflow-y:auto; min-height:0;
+            background:#0D1520; border:1px solid #1E2D3D; border-radius:8px;
+          ">
+            <!-- Column headers -->
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 80px 60px 60px;
+              gap:0; padding:6px 12px; border-bottom:1px solid #1E2D3D; flex-shrink:0;">
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">ID</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">Label</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">Latitude</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238;">Longitude</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238; text-align:right;">Height</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238; text-align:right;">hAcc</span>
+              <span style="font-size:9px; font-weight:700; text-transform:uppercase;
+                letter-spacing:.1em; color:#263238; text-align:right;">vAcc</span>
+            </div>
+            <!-- Example captured rows -->
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 80px 60px 60px;
+              padding:8px 12px; border-bottom:1px solid #0D1520;">
+              <span style="font-family:monospace; font-size:12px; color:#37474F;">P001</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">P001</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">57.1234562°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">−2.3456784°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A; text-align:right;">143.418 m</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">9 mm</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">13 mm</span>
+            </div>
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 80px 60px 60px;
+              padding:8px 12px; border-bottom:1px solid #0D1520; background:#111820;">
+              <span style="font-family:monospace; font-size:12px; color:#37474F;">P002</span>
+              <span style="font-family:monospace; font-size:12px; color:#64B5F6;">BM-A</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">57.1234455°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">−2.3456901°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A; text-align:right;">143.409 m</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">7 mm</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">11 mm</span>
+            </div>
+            <div style="display:grid; grid-template-columns:52px 72px 1fr 1fr 80px 60px 60px;
+              padding:8px 12px;">
+              <span style="font-family:monospace; font-size:12px; color:#37474F;">P003</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">P003</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">57.1234678°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A;">−2.3456712°</span>
+              <span style="font-family:monospace; font-size:12px; color:#546E7A; text-align:right;">143.424 m</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">8 mm</span>
+              <span style="font-family:monospace; font-size:12px; color:#66BB6A; text-align:right;">12 mm</span>
+            </div>
+          </div>
+        </div>
+
+        <!--
+          Capture button — full width, green when RTK Fix only.
+          On press: grabs next UBX-NAV-PVT epoch, appends row to list,
+          writes CSV record to Tablet SD card immediately.
+        -->
+        <button id="btn-capture" style="
+          width: 100%; height: 52px; border: none; border-radius: 8px;
+          background: #2E7D32; color: white; cursor: pointer;
+          font-family: 'Montserrat', sans-serif;
+          font-size: 18px; font-weight: 700; flex-shrink: 0;
+          margin-top: 10px;
+          transition: background 0.15s;
+        ">Capture Point →</button>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+  <script>
+    const states = {
+      nofix: {
+        fixBg:     '#1A0A0A', fixBorder: '#4E1010',
+        fixLabel:  '#7F2020', fixText: 'No Fix',
+        fixTextC:  '#EF9A9A',
+        haccC:     '#EF9A9A', haccV: '— mm', vaccV: '— mm',
+        lat: '—', lon: '—', height: '—',
+        hacc: '— mm', vacc: '— mm', sats: '—',
+        btnBg: '#1A1A1A', btnColor: '#37474F', btnText: 'RTK Fix Required', btnCursor: 'default',
+        corrSrc: 'RF · GFSK', rssi: '−94 dBm', snr: '2.1 dB', fps: '0.0 fps', lastFrame: '38 s ago',
+        corrSrcC: '#546E7A',
+      },
+      float: {
+        fixBg:     '#1A0F00', fixBorder: '#5E3500',
+        fixLabel:  '#7E4A00', fixText: 'RTK Float',
+        fixTextC:  '#FFCC80',
+        haccC:     '#FFCC80', haccV: '142 mm', vaccV: '190 mm',
+        lat: '57.1234498°', lon: '−2.3456721°', height: '143.318 m',
+        hacc: '142 mm', vacc: '190 mm', sats: '16',
+        btnBg: '#1A1A1A', btnColor: '#37474F', btnText: 'RTK Fix Required', btnCursor: 'default',
+        corrSrc: 'RF · GFSK', rssi: '−86 dBm', snr: '5.8 dB', fps: '3.9 fps', lastFrame: '0.3 s ago',
+        corrSrcC: '#64B5F6',
+      },
+      fix: {
+        fixBg:     '#1B5E20', fixBorder: '#2E7D32',
+        fixLabel:  '#388E3C', fixText: 'RTK Fix',
+        fixTextC:  '#A5D6A7',
+        haccC:     '#A5D6A7', haccV: '8 mm', vaccV: '12 mm',
+        lat: '57.1234567°', lon: '−2.3456789°', height: '143.421 m',
+        hacc: '8 mm', vacc: '12 mm', sats: '18',
+        btnBg: '#2E7D32', btnColor: 'white', btnText: 'Capture Point →', btnCursor: 'pointer',
+        corrSrc: 'RF · GFSK', rssi: '−82 dBm', snr: '9.2 dB', fps: '4.1 fps', lastFrame: '0.8 s ago',
+        corrSrcC: '#64B5F6',
+      },
+    };
+
+    function setState(key) {
+      document.querySelectorAll('.dev-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+
+      const s = states[key];
+
+      const fb = document.getElementById('fix-block');
+      fb.style.background   = s.fixBg;
+      fb.style.borderColor  = s.fixBorder;
+      fb.querySelector('div > div:first-child').style.color = s.fixLabel;
+      document.getElementById('fix-text').style.color = s.fixTextC;
+      document.getElementById('fix-text').textContent  = s.fixText;
+      document.getElementById('fix-hacc').style.color  = s.haccC;
+      document.getElementById('fix-hacc').textContent  = s.haccV;
+
+      document.getElementById('lat').textContent    = s.lat;
+      document.getElementById('lon').textContent    = s.lon;
+      document.getElementById('height').textContent = s.height;
+      document.getElementById('hacc').textContent   = s.hacc;
+      document.getElementById('vacc').textContent   = s.vacc;
+      document.getElementById('sats').textContent   = s.sats;
+
+      document.getElementById('hacc').className = 'acc-val ' + (key === 'fix' ? 'acc-good' : key === 'float' ? 'acc-warn' : '');
+      document.getElementById('vacc').className = 'acc-val ' + (key === 'fix' ? 'acc-good' : key === 'float' ? 'acc-warn' : '');
+
+      document.getElementById('corr-src').textContent   = s.corrSrc;
+      document.getElementById('corr-src').style.color   = s.corrSrcC;
+      document.getElementById('rssi').textContent       = s.rssi;
+      document.getElementById('snr').textContent        = s.snr;
+      document.getElementById('fps').textContent        = s.fps;
+      document.getElementById('last-frame').textContent = s.lastFrame;
+
+      const btn = document.getElementById('btn-capture');
+      btn.style.background = s.btnBg;
+      btn.style.color      = s.btnColor;
+      btn.style.cursor     = s.btnCursor;
+      btn.textContent      = s.btnText;
+    }
+  </script>
+
+</body>
+</html>
