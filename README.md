@@ -10,8 +10,13 @@ It's designed to be self-contained and portable -- battery powered, with an onbo
 
 ## Project status
 
-This is a personal hobby project, currently in the research and specification phase. It's being designed from the ground up -- electronics, firmware, and enclosure -- by an electrical engineer and licensed radio amateur (GM4AJK, Scotland).
+Active development. PCB v1.0 ordered 2026-06-25. Firmware bring-up ongoing on Nucleo dev boards.
 
 ## Documentation
 
-The full technical specification -- component choices, design decisions, architecture, and open questions -- is maintained as a living specification document in [`sdd/`](sdd/). That document is the primary input to a formal System Design Document (SDD) process once the hardware and software design phases begin.
+| Location | Contents |
+|----------|----------|
+| [`sdd/`](sdd/) | System design: architecture, unit specs, BLE protocols, UI screen specs |
+| [`docs/arch/`](docs/arch/) | Firmware architecture: RTCM3, OTA protocol, SX1262 driver, SD card |
+| [`docs/datasheets/`](docs/datasheets/) | Component datasheets and reference documents |
+| [`hardware/rtk/`](hardware/rtk/) | PCB electronics design: KiCad files, BOM, design notes |
