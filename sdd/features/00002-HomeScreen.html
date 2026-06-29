@@ -39,17 +39,17 @@
   <div class="label">Handheld Tablet — 1024 × 600 landscape — flexbox layout</div>
 
   <!--
-    ============================================================
-    ROOT SCREEN
-    ============================================================
-    flex-direction: column   → children stack top-to-bottom
-    height: 800px            → fixed, matches display
-    overflow: hidden         → clip anything that escapes
+    ## ROOT SCREEN
+    - flex-direction: column   → children stack top-to-bottom
+    - height: 800px            → fixed, matches display
+    - overflow: hidden         → clip anything that escapes
 
-    LVGL equivalent:
+    ```
+	LVGL equivalent:
       lv_obj_set_layout(screen, LV_LAYOUT_FLEX);
       lv_obj_set_flex_flow(screen, LV_FLEX_FLOW_COLUMN);
       lv_obj_set_size(screen, 600, 1024);
+	```  
   -->
   <div style="
     width: 1024px;
@@ -62,21 +62,25 @@
   ">
 
     <!--
-      ============================================================
-      BATTERY BAR  (row, pinned to top)
-      ============================================================
-      flex-direction: row          → children sit side by side
-      justify-content: flex-end    → push content to the right
-      align-items: center          → vertically centre the text
-      flex-shrink: 0               → do not shrink when logo grows
+      ## BATTERY BAR  (row, pinned to top)
+      - flex-direction: row          → children sit side by side
+      - justify-content: flex-end    → push content to the right
+      - align-items: center          → vertically centre the text
+      - flex-shrink: 0               → do not shrink when logo grows
+      
+	  ### Functional
+	  - This battery indicator shows the state of the battery ON THIS DEVICE (esp32_tablet)
+	  - For details on the operation of this widget see Spec Doc XXX(ToDo)
 
-      LVGL equivalent:
+      ```
+	  LVGL equivalent:
         lv_obj_set_layout(batt_bar, LV_LAYOUT_FLEX);
         lv_obj_set_flex_flow(batt_bar, LV_FLEX_FLOW_ROW);
         lv_obj_set_flex_align(batt_bar,
             LV_FLEX_ALIGN_END,    // main axis  → right
             LV_FLEX_ALIGN_CENTER, // cross axis → centre
-            LV_FLEX_ALIGN_START);
+            LV_FLEX_ALIGN_START)
+	  ```
     -->
     <div style="
       display: flex;
@@ -92,17 +96,13 @@
     </div>
 
     <!--
-      ============================================================
-      LOGO AREA  Image is 900px wide by 600px high
-      ============================================================
-	  This is a "background image" for the home screen
-      display: flex                → become a flex container itself
-      justify-content: center      → centre child horizontally
-      align-items: center          → centre child vertically
-    -->
-    <!--
-      Logo area fills remaining height. Position:relative so the
-      button bar can be absolutely centred on top of the image.
+      ## LOGO AREA  Image is 900px wide by 600px high
+	  - This is a "background image" for the home screen
+      - display: flex                → become a flex container itself
+      - justify-content: center      → centre child horizontally
+      - align-items: center          → centre child vertically
+      - Logo area fills remaining height. Position:relative so the
+        button bar can be absolutely centred on top of the image.
     -->
     <div style="
       flex: 1;
@@ -119,10 +119,10 @@
       ">
 
       <!--
-        BUTTON BAR — overlaid, vertically centred, Rover left / Base right.
-        justify-content: space-between  → pins each button to its side
-        padding: 0 60px                 → keep buttons away from screen edge
-        position: absolute + top/transform → centres the bar vertically
+        ## BUTTON BAR — overlaid, vertically centred, Rover left / Base right.
+        - justify-content: space-between  → pins each button to its side
+        - padding: 0 60px                 → keep buttons away from screen edge
+        - position: absolute + top/transform → centres the bar vertically
       -->
       <div style="
         position: absolute;
@@ -137,7 +137,12 @@
         box-sizing: border-box;
       ">
 
-        <!-- BASE — left, blue, navigates to Base Config -->
+        <!--
+		## Button BASE — left, blue
+		### Functional
+		- When pressed, hides the Home screen and brings forward the Base Configuration screen
+		- See: 00003-BaseConfig.html (ToDo)
+		-->
         <button style="
           width: 220px;
           height: 90px;
@@ -152,7 +157,12 @@
           <span style="font-family: 'Montserrat', sans-serif; font-size: 40px; font-weight: 700; color: white;">Base</span>
         </button>
 
-        <!-- ROVER — right, dark grey, no action -->
+        <!--
+		## Button ROVER — right, dark grey
+		### Functional
+		- No action for now — placeholder for future Rover Configuration screen
+		- See: 00004-RoverConfig.html (ToDo)
+		-->
         <button style="
           width: 220px;
           height: 90px;
@@ -172,53 +182,6 @@
     </div><!-- end logo area -->
 
   </div><!-- end root screen -->
-
-  <!--
-    ============================================================
-    KEY FLEXBOX CONCEPTS USED HERE
-    ============================================================
-
-    flex-direction: column/row
-      Controls whether children stack vertically (column) or
-      sit side by side (row).  The default is row.
-
-    flex: 1  (on a child)
-      That child expands to fill all leftover space along the
-      main axis.  If two siblings both have flex:1 they share
-      equally.  Think of it as "take what's left".
-
-    justify-content  (main axis — the direction of flex-direction)
-      center        → pack children at the centre
-      flex-end      → pack children at the end
-      space-between → first child at start, last at end, rest evenly spaced
-      space-around  → equal space around each child
-
-    align-items  (cross axis — perpendicular to flex-direction)
-      center        → centre children across the cross axis
-      flex-start    → align to the start
-      stretch       → stretch children to fill (default)
-
-    gap
-      Space between children.  Cleaner than margin hacks.
-      In LVGL: pad_column (row flow) or pad_row (column flow).
-
-    flex-shrink: 0
-      Prevents a child from being squashed when the container
-      is too small.  Use it on bars/headers you want to keep
-      at their stated height.
-
-    ============================================================
-    WHY FLEXBOX OVER ABSOLUTE POSITIONING
-    ============================================================
-    In example.html the button positions were calculated:
-      left: calc(50% - 100px - 80px)  ← fragile, breaks if width changes
-
-    Here the button bar is flex: row + justify:center + gap:40px.
-    Change the screen width to 1024px for the tablet and the
-    buttons still centre correctly — no recalculation needed.
-    That's the payoff.
-    ============================================================
-  -->
 
 </body>
 </html>
