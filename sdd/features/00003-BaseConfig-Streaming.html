@@ -391,7 +391,7 @@ MD_COMMENT -->
         <div class="gfsk-dropdown" id="pwr-field" onclick="togglePowerDropdown(event)">
           <div class="gfsk-field-text">
             <div class="gfsk-field-name">TX Power</div>
-            <div class="gfsk-field-value" id="pwr-display">+22 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; Maximum</span></div>
+            <div class="gfsk-field-value" id="pwr-display">+22 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; Maximum · max batt drain</span></div>
           </div>
           <div class="dropdown-chevron">▾</div>
           <div class="dropdown-options" id="pwr-options">
@@ -417,7 +417,7 @@ MD_COMMENT -->
             </div>
             <div class="dropdown-option selected" onclick="selectPower(event, '+22', 'Maximum')">
               <span class="dropdown-opt-value">+22 dBm</span>
-              <span class="dropdown-opt-label">Maximum &nbsp;· 158 mW</span>
+              <span class="dropdown-opt-label">Maximum &nbsp;· 158 mW &nbsp;· max batt drain</span>
             </div>
           </div>
         </div>
@@ -571,8 +571,9 @@ MD_COMMENT -->
     }
     function selectPower(e, val, label) {
       e.stopPropagation();
+      const suffix = (val === '+22') ? ' · max batt drain' : '';
       document.getElementById('pwr-display').innerHTML =
-        val + ' <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; ' + label + '</span>';
+        val + ' <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; ' + label + suffix + '</span>';
       document.querySelectorAll('.dropdown-option').forEach(o => o.classList.remove('selected'));
       e.currentTarget.classList.add('selected');
       document.getElementById('pwr-options').classList.remove('open');
