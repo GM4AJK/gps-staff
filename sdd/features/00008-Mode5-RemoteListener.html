@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff — Mode 5 Remote Listener Config
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Entry: Home Screen — "Configure [Rover|Base]" when Operating Mode = Mode 5
+  and this device is the one selected as "remote" in 00006-OperatingMode.html.
+
+## Purpose
+Configures the device that will sit unattended on the home/remote network and
+listen for an incoming TCP connection from the mobile device in the field.
+
+## Which device uses this screen
+- If "remote = Rover" was selected in 00006: Rover shows this screen.
+- If "remote = Base" was selected in 00006: Base shows this screen.
+The device role label in the header and body text adapts accordingly.
+This spec uses "Rover" as the example; Base is identical with labels swapped.
+
+## Listen port
+- Default: 2101 (standard NTRIP port — familiar to field operators).
+- Editable integer, range 1024–65535.
+- Tap field → integer numeric vkbd (no decimal key).
+- Stored in NVS as MODE5_LISTEN_PORT.
+- The device binds a TCP server socket on this port at startup when Mode 5
+  is active and this device is the remote listener.
+
+## Router port forward
+- The home router must forward the chosen port to this device's LAN IP.
+- This is a one-time router config step done by the operator.
+- The screen shows a reminder note — it does not configure the router.
+- LVGL: static lv_label, no interaction.
+
+## Two display states (dev toggle — automatic in firmware)
+- **Idle:** TCP server socket open, no client connected yet.
+  Shows "Listening on port 2101".
+- **Connected:** Client has connected (the mobile device called in from the field).
+  Shows client IP, RTCM stream byte counter, elapsed connection time.
+
+## TCP protocol
+- Raw TCP stream. No NTRIP framing overhead.
+- Listener accepts exactly one connection at a time.
+- On connect: begin forwarding RTCM frames byte-for-byte from F9P UART.
+- On disconnect: close socket, re-open listener, return to Idle state.
+- LVGL: lwIP netconn API. Accept loop in task_tcp_listener FreeRTOS task.
+
+## LVGL implementation notes
+- Listen port field: lv_textarea, integer only, tap opens lv_keyboard
+  LV_KEYBOARD_MODE_NUMBER. On confirm write NVS and rebind socket.
+- Status dot + text: toggle colour/text on TCP_CLIENT_CONNECTED /
+  TCP_CLIENT_DISCONNECTED events from task_tcp_listener.
+- Byte counter: lv_label, updated every 500ms from atomic byte-count variable
+  in task_tcp_listener.
+- Connection timer: lv_label, driven by lv_timer at 1s interval.
+MD_COMMENT -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Mode 5: Remote Listener Config</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #111;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .screen-label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #888;
+    }
+    .dev-toggle {
+      margin-bottom: 12px; display: flex; gap: 0;
+      border: 1px solid #333; border-radius: 6px; overflow: hidden;
+    }
+    .dev-btn {
+      font-family: 'Montserrat', sans-serif; font-size: 11px; font-weight: 700;
+      padding: 6px 16px; border: none; cursor: pointer;
+      background: #1a1a1a; color: #555; letter-spacing: 0.05em;
+    }
+    .dev-btn.active { background: #1565C0; color: #fff; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #999; margin: 0 0 10px 0;
+    }
+    .port-field {
+      background: #fff; border: 2px solid #e0e0e0; border-radius: 6px;
+      padding: 10px 14px; display: flex; justify-content: space-between;
+      align-items: center; cursor: pointer; transition: border-color 0.15s;
+      margin-bottom: 6px;
+    }
+    .port-field:hover { border-color: #2196F3; }
+    .port-val  { font-size: 22px; font-weight: 700; color: #333; font-family: monospace; }
+    .port-edit { font-size: 16px; color: #bbb; }
+
+    .info-note {
+      font-size: 11px; color: #aaa; line-height: 1.6;
+      background: #fafafa; border: 1px solid #efefef;
+      border-radius: 6px; padding: 10px 12px;
+    }
+    .info-note strong { color: #888; }
+
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 7px 0; border-bottom: 1px solid #f0f0f0;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-key { font-size: 13px; color: #888; }
+    .stat-val { font-size: 14px; font-weight: 700; color: #333; font-family: monospace; }
+  </style>
+</head>
+<body>
+
+  <div class="screen-label">Handheld Tablet — 1024 × 600 — Mode 5: Remote Listener Config (Rover shown)</div>
+
+  <div class="dev-toggle">
+    <button class="dev-btn active" onclick="setState('idle')">⏳ Idle — Listening</button>
+    <button class="dev-btn"       onclick="setState('connected')">🔗 Client Connected</button>
+  </div>
+
+  <div style="
+    width: 1024px; height: 600px; background: white;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #444;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="display:flex; justify-content:flex-end; align-items:center;
+      flex-shrink:0; height:28px; padding:0 10px; background:#111;">
+      <span style="font-family:monospace; font-size:12px; color:#0f0;">▐███████▌ 100%</span>
+    </div>
+
+    <!-- HEADER -->
+    <div style="display:flex; align-items:center; flex-shrink:0;
+      height:52px; padding:0 16px; background:#222; gap:16px;">
+      <button style="background:none; border:none; color:white;
+        font-size:24px; cursor:pointer; padding:0; line-height:1;">←</button>
+      <span style="font-size:20px; font-weight:700; color:white; flex:1;">Rover Config</span>
+      <!-- Mode 5 chip — read-only -->
+      <div style="
+        font-size:11px; font-weight:700; font-family:monospace;
+        background:#1A0A2E; color:#CE93D8;
+        border:1px solid #4A148C; border-radius:4px; padding:3px 10px;
+      ">Mode 5 · Remote</div>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex:1; display:flex; overflow:hidden;">
+
+      <!--
+        ## LEFT PANEL — Connection status
+        Updates driven by TCP server socket events in task_tcp_listener.
+      -->
+      <div style="
+        flex-shrink:0; width:420px; background:#f8f9fa;
+        border-right:1px solid #e0e0e0;
+        padding:20px; box-sizing:border-box;
+        display:flex; flex-direction:column; gap:18px;
+      ">
+
+        <!-- Live connection status -->
+        <div>
+          <p class="section-label">TCP Connection</p>
+          <div style="
+            background:white; border:1px solid #e0e0e0; border-radius:8px;
+            padding:16px; display:flex; flex-direction:column; gap:12px;
+          ">
+            <!-- Status indicator -->
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div id="status-dot" style="
+                width:14px; height:14px; border-radius:50%;
+                background:#FFF8E1; border:2px solid #FFB300;
+                flex-shrink:0;
+              "></div>
+              <div>
+                <div id="status-text" style="font-size:14px; font-weight:700; color:#FF8F00;">
+                  Listening on port 2101
+                </div>
+                <div id="status-sub" style="font-size:11px; color:#bbb; margin-top:2px;">
+                  Waiting for mobile device to connect…
+                </div>
+              </div>
+            </div>
+
+            <!-- Connected stats — hidden when idle -->
+            <div id="conn-stats" style="display:none;">
+              <div class="stat-row">
+                <span class="stat-key">Client address</span>
+                <span class="stat-val" id="client-ip">—</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-key">RTCM sent</span>
+                <span class="stat-val" id="bytes-sent">—</span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-key">Connected for</span>
+                <span class="stat-val" id="conn-time">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!--
+          F9P status — shows survey-in / fix state of this device.
+          In the "Rover remote" scenario the F9P on the Rover is the
+          one receiving corrections and computing position.
+        -->
+        <div>
+          <p class="section-label">F9P Status</p>
+          <div style="
+            background:white; border:1px solid #e0e0e0; border-radius:8px;
+            padding:14px 16px;
+          ">
+            <div class="stat-row">
+              <span class="stat-key">Fix type</span>
+              <span class="stat-val" id="fix-type" style="color:#607D8B;">No RTK</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-key">Horiz. accuracy</span>
+              <span class="stat-val" id="hacc" style="color:#bbb;">—</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- end left panel -->
+
+      <!--
+        ## RIGHT PANEL — Listener configuration
+      -->
+      <div style="
+        flex:1; padding:20px 24px; box-sizing:border-box;
+        display:flex; flex-direction:column; gap:18px;
+      ">
+
+        <!--
+          Listen port — the TCP port this device will bind.
+          Must match the port forwarded on the home router AND the port
+          entered in the mobile device's connector config screen.
+          Default 2101.
+        -->
+        <div>
+          <p class="section-label">Listen Port</p>
+          <div class="port-field">
+            <div>
+              <div style="font-size:12px; color:#aaa; margin-bottom:4px;">
+                TCP port this device listens on
+              </div>
+              <span class="port-val">2101</span>
+            </div>
+            <span class="port-edit">✎</span>
+          </div>
+          <div class="info-note">
+            <strong>Router setup:</strong> Forward this port on your home router to this
+            device's local IP address. The mobile device connects using your router's
+            external hostname and this port number.
+          </div>
+        </div>
+
+        <!--
+          Operating mode reminder
+        -->
+        <div>
+          <p class="section-label">System Mode</p>
+          <div style="
+            background:#f5f5f5; border:1px solid #e0e0e0; border-radius:6px;
+            padding:10px 14px; display:flex; justify-content:space-between; align-items:center;
+            cursor:pointer;
+          ">
+            <div>
+              <div style="font-size:13px; color:#888;">Mode 5 — Direct TCP</div>
+              <div style="font-size:11px; color:#bbb; margin-top:2px;">This device: remote listener</div>
+            </div>
+            <span style="font-size:11px; color:#bbb;">Change ›</span>
+          </div>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <button style="
+          width:100%; height:48px; border:none; border-radius:8px;
+          background:#1565C0; color:white; cursor:pointer;
+          font-family:'Montserrat',sans-serif; font-size:15px; font-weight:700;
+        ">Save &amp; Start Listening</button>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+  <script>
+    function setState(state) {
+      document.querySelectorAll('.dev-btn').forEach((b, i) => {
+        b.classList.toggle('active', (i === 0 && state === 'idle') ||
+                                     (i === 1 && state === 'connected'));
+      });
+
+      const idle = state === 'idle';
+
+      document.getElementById('status-dot').style.background   = idle ? '#FFF8E1' : '#E8F5E9';
+      document.getElementById('status-dot').style.border       = idle ? '2px solid #FFB300' : '2px solid #43A047';
+      document.getElementById('status-text').style.color       = idle ? '#FF8F00' : '#2E7D32';
+      document.getElementById('status-text').textContent       = idle ? 'Listening on port 2101' : 'Client connected';
+      document.getElementById('status-sub').textContent        = idle ? 'Waiting for mobile device to connect…' : 'Streaming RTCM corrections';
+      document.getElementById('conn-stats').style.display      = idle ? 'none' : 'block';
+
+      if (!idle) {
+        document.getElementById('client-ip').textContent   = '203.0.113.42';
+        document.getElementById('bytes-sent').textContent  = '2,847,392 bytes';
+        document.getElementById('conn-time').textContent   = '00:08:24';
+        document.getElementById('fix-type').style.color    = '#2E7D32';
+        document.getElementById('fix-type').textContent    = 'RTK Fix';
+        document.getElementById('hacc').style.color        = '#333';
+        document.getElementById('hacc').textContent        = '± 0.8 cm';
+      } else {
+        document.getElementById('fix-type').style.color    = '#607D8B';
+        document.getElementById('fix-type').textContent    = 'No RTK';
+        document.getElementById('hacc').style.color        = '#bbb';
+        document.getElementById('hacc').textContent        = '—';
+      }
+    }
+  </script>
+
+</body>
+</html>
