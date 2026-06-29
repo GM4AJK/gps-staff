@@ -78,6 +78,45 @@
       outline: none;
     }
     .form-input:focus { border-color: #2196F3; }
+    /* Virtual keyboard — full width, slides up from bottom */
+    .keyboard {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      background: #d0d3d8;
+      padding: 8px 6px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transform: translateY(100%);
+      transition: transform 0.25s ease-out;
+    }
+    .keyboard.visible { transform: translateY(0); }
+    .kbd-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 6px;
+    }
+    .key {
+      height: 52px;
+      min-width: 52px;
+      flex: 1;
+      max-width: 80px;
+      background: white;
+      border: none;
+      border-radius: 6px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #222;
+      cursor: pointer;
+      box-shadow: 0 2px 0 #aaa;
+    }
+    .key-wide  { max-width: 120px; font-size: 14px; flex: 1.8; }
+    .key-space { max-width: 400px; flex: 5; }
+    .key-action { background: #adb5bd; color: #111; }
+    .key-done   { background: #43A047; color: white; max-width: 140px; flex: 2; }
     .form-label {
       font-size: 14px;
       font-weight: 700;
@@ -169,6 +208,7 @@
     flex-direction: column;
     overflow: hidden;
     box-shadow: 0 0 0 2px #444;
+    position: relative;
   ">
 
     <!-- BATTERY BAR -->
@@ -294,7 +334,8 @@
         <div style="margin-bottom: 14px;">
           <label class="form-label">Monument / Benchmark ID (optional)</label>
           <input type="text" class="form-input" placeholder="e.g. OS-BM-TP-1234 or Site datum A"
-                 value="OS-BM-TP-1234">
+                 value="OS-BM-TP-1234"
+                 onclick="showKbd('text')">
         </div>
 
         <!-- Coordinate system toggle -->
@@ -309,15 +350,15 @@
           <div class="form-row">
             <div class="form-field">
               <label class="form-label">Easting (m)</label>
-              <input type="text" class="form-input" value="651409.903">
+              <input type="text" class="form-input" value="651409.903" onclick="showKbd('num')">
             </div>
             <div class="form-field">
               <label class="form-label">Northing (m)</label>
-              <input type="text" class="form-input" value="313177.270">
+              <input type="text" class="form-input" value="313177.270" onclick="showKbd('num')">
             </div>
             <div class="form-field">
               <label class="form-label">Height ODN (m)</label>
-              <input type="text" class="form-input" value="24.700">
+              <input type="text" class="form-input" value="24.700" onclick="showKbd('num')">
             </div>
           </div>
         </div>
@@ -327,15 +368,15 @@
           <div class="form-row">
             <div class="form-field">
               <label class="form-label">Latitude (°)</label>
-              <input type="text" class="form-input" placeholder="e.g. 52.657570">
+              <input type="text" class="form-input" placeholder="e.g. 52.657570" onclick="showKbd('num')">
             </div>
             <div class="form-field">
               <label class="form-label">Longitude (°)</label>
-              <input type="text" class="form-input" placeholder="e.g. 1.716573">
+              <input type="text" class="form-input" placeholder="e.g. 1.716573" onclick="showKbd('num')">
             </div>
             <div class="form-field">
               <label class="form-label">Height (m)</label>
-              <input type="text" class="form-input" placeholder="e.g. 63.180">
+              <input type="text" class="form-input" placeholder="e.g. 63.180" onclick="showKbd('num')">
             </div>
           </div>
         </div>
@@ -353,7 +394,97 @@
 
   </div><!-- end screen -->
 
+  <!--
+    ## VIRTUAL KEYBOARDS
+    ### Functional
+    - Monument ID field (text): tapping opens the full QWERTY keyboard
+        (LV_KEYBOARD_MODE_TEXT_LOWER / UPPER).
+    - All coordinate fields (numeric): tapping opens the numeric keyboard
+        (LV_KEYBOARD_MODE_NUMBER). Includes decimal point and minus sign for
+        negative longitudes and below-datum heights.
+    - Both keyboards slide up from the bottom (0.25s ease-out) on field tap,
+        slide back down on Done.
+    - LVGL: lv_keyboard_set_mode(kb, mode) called on LV_EVENT_FOCUSED for each
+        textarea; lv_keyboard_set_textarea(kb, focused_ta) switches the active field.
+    - Done key dismisses keyboard and returns focus to the form.
+  -->
+
+  <!-- QWERTY keyboard (Monument ID) -->
+  <div class="keyboard" id="kbd-text">
+    <div class="kbd-row">
+      <button class="key">1</button><button class="key">2</button>
+      <button class="key">3</button><button class="key">4</button>
+      <button class="key">5</button><button class="key">6</button>
+      <button class="key">7</button><button class="key">8</button>
+      <button class="key">9</button><button class="key">0</button>
+      <button class="key key-wide key-action">⌫ Del</button>
+    </div>
+    <div class="kbd-row">
+      <button class="key">q</button><button class="key">w</button>
+      <button class="key">e</button><button class="key">r</button>
+      <button class="key">t</button><button class="key">y</button>
+      <button class="key">u</button><button class="key">i</button>
+      <button class="key">o</button><button class="key">p</button>
+    </div>
+    <div class="kbd-row">
+      <button class="key">a</button><button class="key">s</button>
+      <button class="key">d</button><button class="key">f</button>
+      <button class="key">g</button><button class="key">h</button>
+      <button class="key">j</button><button class="key">k</button>
+      <button class="key">l</button>
+    </div>
+    <div class="kbd-row">
+      <button class="key key-wide key-action">⇧ Shift</button>
+      <button class="key">z</button><button class="key">x</button>
+      <button class="key">c</button><button class="key">v</button>
+      <button class="key">b</button><button class="key">n</button>
+      <button class="key">m</button>
+      <button class="key key-wide key-action">- _ /</button>
+    </div>
+    <div class="kbd-row">
+      <button class="key key-wide key-action">?123</button>
+      <button class="key key-space">space</button>
+      <button class="key key-done" onclick="hideKbd()">Done ✓</button>
+    </div>
+  </div>
+
+  <!-- Numeric keyboard (coordinate fields) -->
+  <div class="keyboard" id="kbd-num">
+    <div class="kbd-row">
+      <button class="key" style="max-width:none; flex:1;">7</button>
+      <button class="key" style="max-width:none; flex:1;">8</button>
+      <button class="key" style="max-width:none; flex:1;">9</button>
+      <button class="key key-action" style="max-width:none; flex:1;">⌫</button>
+    </div>
+    <div class="kbd-row">
+      <button class="key" style="max-width:none; flex:1;">4</button>
+      <button class="key" style="max-width:none; flex:1;">5</button>
+      <button class="key" style="max-width:none; flex:1;">6</button>
+      <button class="key key-action" style="max-width:none; flex:1;">.</button>
+    </div>
+    <div class="kbd-row">
+      <button class="key" style="max-width:none; flex:1;">1</button>
+      <button class="key" style="max-width:none; flex:1;">2</button>
+      <button class="key" style="max-width:none; flex:1;">3</button>
+      <button class="key key-action" style="max-width:none; flex:1;">−</button>
+    </div>
+    <div class="kbd-row">
+      <button class="key" style="max-width:none; flex:3;">0</button>
+      <button class="key key-done" style="max-width:none; flex:1;"
+              onclick="hideKbd()">Done ✓</button>
+    </div>
+  </div>
+
   <script>
+    function showKbd(mode) {
+      document.getElementById('kbd-text').classList.remove('visible');
+      document.getElementById('kbd-num').classList.remove('visible');
+      document.getElementById(mode === 'text' ? 'kbd-text' : 'kbd-num').classList.add('visible');
+    }
+    function hideKbd() {
+      document.getElementById('kbd-text').classList.remove('visible');
+      document.getElementById('kbd-num').classList.remove('visible');
+    }
     function setCS(cs) {
       document.getElementById('fields-osgb36').style.display = cs === 'osgb36' ? '' : 'none';
       document.getElementById('fields-wgs84').style.display  = cs === 'wgs84'  ? '' : 'none';
