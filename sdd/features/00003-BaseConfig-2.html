@@ -268,7 +268,9 @@
       - Slides up from bottom when password field is tapped.
       - Preview strip shows field label and current value — user sees what they are typing
         without the covered field being visible.
-      - Connect key (blue) and Cancel both dismiss the keyboard.
+      - ← Cancel navigates back to State 1 (discards password entry entirely) —
+        same action as the form-level Cancel, not just keyboard dismiss.
+      - Connect ✓ sends SSID + password to Base via BLE, transitions to State 3.
       - LVGL: lv_keyboard_create(); lv_keyboard_set_textarea(kb, pwd_ta);
         lv_label above keyboard updated on LV_EVENT_FOCUSED / LV_EVENT_VALUE_CHANGED.
     -->
@@ -310,7 +312,7 @@
       <div class="kbd-row">
         <button class="key key-wide key-action">?123</button>
         <button class="key key-space">space</button>
-        <button class="key key-wide key-action" onclick="hideKbd()">Cancel</button>
+        <button class="key key-wide key-action" onclick="hideKbd()">← Cancel</button>
         <button class="key key-connect" onclick="hideKbd()">Connect ✓</button>
       </div>
     </div><!-- end keyboard -->
