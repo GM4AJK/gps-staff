@@ -115,6 +115,23 @@ fresh BLE connection (see Reconnect / State Discovery below).
 | Peripheral (GATT server) | ESP32-S3 Zero — base role | `firmware/esp32-base` |
 | Central (GATT client) | ESP32-S3 Tablet / Handheld | `firmware/esp32-tablet` / `esp32-handheld` |
 
+### State ownership
+
+**All application state lives in the ESP32-S3-Zero — not the STM32.**
+
+The STM32F765 is a smart pipe: it parses UBX frames from the F9P and forwards
+condensed binary messages to the ESP32 over UART, and executes commands the ESP32
+sends back (start/cancel SVIN, write UBX-CFG-TMODE3, enable LoRa TX). It has no
+knowledge of BLE, GATT, or operating mode.
+
+The ESP32 synthesises `BASE_OPERATING_MODE` from two inputs:
+  1. F9P telemetry forwarded by the STM32 (SVIN active/valid, fix type, etc.)
+  2. Its own command state (e.g. "I sent Start SVIN → mode = 0x01").
+
+State is held in ESP32 RAM only. The STM32 and ESP32 share the same power supply;
+if the Base is switched off, all state is lost and the system performs a clean start
+on next power-on. No NVS persistence is required or expected.
+
 ---
 
 ### Reconnect / State Discovery
