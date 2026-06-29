@@ -1,4 +1,4 @@
-# GPS Staff — System Architecture
+# GPS Staff — Firmware Architecture
 
 ## Overview
 
@@ -9,23 +9,25 @@ and broadcasts it to the rover over a 434 MHz radio link.  The rover feeds
 the corrections to its own ZED-F9P to achieve centimetre-level relative
 accuracy.
 
-The target hardware is a unified STM32F765VIT6 PCB (base and rover are
-identical boards, configured by role at boot).  While that PCB is in design,
-all firmware development runs on three Nucleo boards acting as bench stand-ins.
+The target hardware is a unified STM32F765VIT6 PCB — **PCB v1.0 ordered
+2026-06-25, ZED-F9P-05B ordered same date**.  Until hardware arrives, firmware
+development runs on three Nucleo boards as bench stand-ins.
+
+For system-level design decisions (component choices, data flow, unit roles)
+see [`sdd/architecture/SYSTEM.md`](../../sdd/architecture/SYSTEM.md).
 
 ---
 
-## Hardware Roles
+## Bench Hardware Roles
 
-| Board | Role | Key peripherals |
+| Board | Role | Key peripherals active |
 |---|---|---|
-| Nucleo-G431KB | **Fake F9P** (bench stand-in for ZED-F9P) | UART1 @ 115200 — RTCM3 out (base mode) / in (rover mode) |
-| Nucleo-F767ZI | **Base station** | UART2 @ 115200 RTCM3 in from G431; SPI2 → SX1262 GFSK TX |
-| Nucleo-F446RE | **Rover** | SPI2 → SX1262 GFSK RX; UART3 @ 115200 RTCM3 out to G431 |
+| Nucleo-G431KB (×2) | **Fake F9P** — streams sample RTCM3 data from `firmware/data/` | UART1 @ 115200 — RTCM3 out (base mode) / in (rover mode) |
+| Nucleo-F767ZI | **Base station** — bench-tethered, UART debug via PuTTY | UART2 @ 115200 RTCM3 in from G431; SPI2 → SX1262 GFSK TX; SDMMC SD card; I2C1 SSD1309 OLED |
+| Nucleo-F446RE | **Rover** — portable, battery-powered, OLED-only UI | SPI2 → SX1262 GFSK RX; UART3 @ 115200 RTCM3 out to G431; I2C1 SSD1309 OLED |
 
-The two G431 boards talk directly to the two "big" boards over UART patch
-cables, simulating the UART link that will exist between the ZED-F9P and the
-STM32F765 on the finished PCB.
+The G431 boards talk to the "big" boards over UART patch cables, simulating
+the UART link between the ZED-F9P and STM32F765 on the finished PCB.
 
 ---
 
@@ -64,17 +66,27 @@ five bytes are a header; the remaining 250 carry RTCM3 payload bytes.  See
 |---|---|
 | **[sx1262.md](sx1262.md)** | SX1262 driver — architecture, GFSK bring-up, interrupt model, full API |
 | **[ota-protocol.md](ota-protocol.md)** | OTA protocol — packet format, ota_tx chunking, ota_rx reassembly, timing |
-| **[rtcm3.md](rtcm3.md)** | rtcm3 module — RTCM3 frame format, state machine, buffer pool, IRQ/loop split |
+| **[rtcm3.md](rtcm3.md)** | RTCM3 module — frame format, state machine, buffer pool, IRQ/loop split |
+| **[sdcard.md](sdcard.md)** | SD card module — state machine, card-detect debounce, DMA transfer model, FatFS integration |
 
 ---
 
-## Current Bench State
+## Bench Status (as of 2026-06-25)
 
-- G431 Fake-F9P-Rover holds **SYNCED** indefinitely with zero accumulating
-  mismatches at 1064 bytes/cycle (1005 + 1074 + 1084 + 1094 + 1124 bytes).
-- The GFSK link operates at 434 MHz, 50 kbps, 25 kHz deviation — 7–8× less
-  air time per cycle than the earlier LoRa SF7/BW500 configuration.
-- `SX1262_WITH_LOGGING` is **disabled on the rover** (F446RE) to keep the
-  post-reception blocking window short enough that a 434 MHz ISM interferer
-  cannot displace a 1005-frame packet before `service_rx` reads it.  It
-  remains enabled on the base (F767ZI) where the timing pressure is absent.
+**Radio / RTCM link** — bench-verified and stable:
+- GFSK link at 434 MHz, 50 kbps, 25 kHz deviation — 7–8× less air time per cycle than the earlier LoRa SF7/BW500 configuration
+- G431 Fake-F9P-Rover holds **SYNCED** indefinitely, zero accumulating mismatches at 1064 bytes/cycle (1005 + 1074 + 1084 + 1094 + 1124 bytes)
+- `SX1262_WITH_LOGGING` disabled on rover (F446RE) to keep the post-reception blocking window short; enabled on base (F767ZI) where timing pressure is absent
+
+**SD card** — bench-verified on F767ZI:
+- FatFS + SDMMC DMA, sequentially-numbered session files
+- `FF_FS_NORTC` set — file timestamps will be wired to ZED-F9P UTC when F9P arrives
+
+**IMU / magnetometer** — bench-verified on F446RE I2C1:
+- LSM6DSOX accelerometer + gyroscope driver (PR #124)
+- MMC5603NJ magnetometer driver replaces obsolete LIS3MDL (PR #129, heading unvalidated)
+- Tilt fusion and soft-iron calibration: deferred pending PCB delivery
+
+**Awaiting hardware:**
+- ZED-F9P UART driver — ordered 2026-06-25
+- PE2/PE3 mode-select GPIO — PCB v1.0 ordered 2026-06-25
