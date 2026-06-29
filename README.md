@@ -20,3 +20,7 @@ Active development. PCB v1.0 ordered 2026-06-25. Firmware bring-up ongoing on Nu
 | [`docs/arch/`](docs/arch/) | Firmware architecture: RTCM3, OTA protocol, SX1262 driver, SD card |
 | [`docs/datasheets/`](docs/datasheets/) | Component datasheets and reference documents |
 | [`hardware/rtk/`](hardware/rtk/) | PCB electronics design: KiCad files, BOM, design notes |
+
+## License
+
+MIT — see [LICENSE](LICENSE). This project is provided for educational and personal use without warranty of any kind. No liability is accepted for any use of these designs, including use in safety-critical or commercial applications. Use at your own risk.
