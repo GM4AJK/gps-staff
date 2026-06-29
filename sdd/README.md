@@ -23,6 +23,7 @@ Numbered feature specifications and UI screen specs.
 | Document | Contents |
 |---|---|
 | [features/00001-wifi-provisioning.md](features/00001-wifi-provisioning.md) | WiFi provisioning — all phases bench-verified |
+| [features/00006-OperatingMode.html](features/00006-OperatingMode.html) | Operating Mode selector — 5 modes: Local RF, Rover NTRIP, Base via relay caster, Dual NTRIP, Direct TCP; RF sub-selector (GFSK/LoRa) for Mode 1 |
 | [features/00002-HomeScreen.html](features/00002-HomeScreen.html) | Home screen spec (1024×600 landscape) |
 | [features/00003-BaseConfig-0.html](features/00003-BaseConfig-0.html) | Base Config — State 0: top-level mode selector (Survey-in / RTCM Streaming / Satellite View / config strip) |
 | [features/00003-BaseConfig-1.html](features/00003-BaseConfig-1.html) | Base Config — State 1: normal view, network table |
