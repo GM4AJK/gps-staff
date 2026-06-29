@@ -313,9 +313,9 @@
             <span class="cond-chip-sub">37 s remaining</span>
           </div>
 
-          <!-- Accuracy condition — already met -->
+          <!-- Absolute accuracy condition — already met -->
           <div class="cond-chip cond-met">
-            <span class="cond-chip-label">✓ Accuracy</span>
+            <span class="cond-chip-label">✓ Absolute Accuracy</span>
             <span class="cond-chip-value">±0.8 m</span>
             <span class="cond-chip-sub">target ≤ 3.0 m — met</span>
           </div>
@@ -374,8 +374,26 @@
             </div>
             <div class="setting-box" style="flex:1;">
               <div>
-                <div class="setting-key">Accuracy target</div>
+                <div class="setting-key">Absolute accuracy target</div>
                 <div class="setting-val">3.0 m <span style="font-size:13px;color:#aaa;">(3000 mm)</span></div>
+              </div>
+            </div>
+            <!--
+              Relative accuracy is always cm-level regardless of base position accuracy —
+              it is determined by the RTK carrier-phase solution, not the base survey-in.
+              Show this as a fixed read-only chip so the user understands what they are
+              trading off: a longer/more accurate survey-in improves absolute position
+              (coordinates in OS datum) but relative accuracy (point-to-point on site)
+              is always cm whether survey-in ran for 1 minute or 10.
+            -->
+            <div class="setting-box" style="flex:1; background:#e8f5e9; border-color:#a5d6a7;">
+              <div>
+                <div class="setting-key" style="color:#2e7d32;">Relative accuracy</div>
+                <div class="setting-val" style="color:#1b5e20;">Always cm
+                  <span style="font-size:13px; color:#4caf50; font-weight:400;">
+                    (RTK carrier-phase)
+                  </span>
+                </div>
               </div>
             </div>
           </div>
