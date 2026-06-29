@@ -1,294 +1,276 @@
 <!DOCTYPE html>
 <!-- MD_COMMENT
-# HTML SPEC: Main System (tablet 7ich)
+# HTML SPEC: GPS Staff — Base Config: WiFi Networks (State 1)
 - Target resolution: 1024x600 px
 - Target environment: ESP32-S3 LVGL 9.x
-- Layout style: Flexbox-driven, light theme
-- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+- Entry: Base Config (00003-BaseConfig-0.html) → WiFi Provisioning tab
 
-## Base Config Screen — State 1: Normal view
-- bg_color: 0xffffff
-- bg_image: none
-- Next states: 00003-BaseConfig-2.html (Connect pressed on a network row)
--->
+## Purpose
+Shows the Base unit's WiFi status and allows the operator to connect to a
+known or new network. The Base ESP32 stores up to 5 remembered networks in
+NVS (SSID + password). On boot it scans and connects automatically to the
+highest-signal known network in range — no tablet interaction required if a
+known network is available.
+
+## Right panel — two sections
+
+### Remembered Networks (top section)
+Networks previously connected to, stored in Base NVS.
+Each entry can be in one of three states:
+
+| State | Appearance | Actions |
+|-------|-----------|---------|
+| Connected | Grey italic, green dot | Disconnect |
+| In range (not connected) | Normal, signal shown | Connect · Forget |
+| Not in range | Dimmed, signal "—" | Forget |
+
+- **Connect** on a remembered network: no password prompt — uses stored
+  credential. Proceeds directly to State 3 (Connecting spinner).
+- **Forget**: removes the entry from NVS immediately. Confirm dialog not
+  required (operator can re-add by connecting again).
+- Forget is not shown on the currently connected network (disconnect first).
+- Maximum 5 remembered entries. If full, oldest non-connected entry is
+  evicted when a new network is successfully connected.
+
+### Other Networks (bottom section)
+Scan results not in the remembered list. Tapping Connect opens the password
+entry screen (State 2). On successful connection the network is added to
+the remembered list.
+
+A Scan ↺ button refreshes the scan results. Auto-scan on screen open.
+
+## Left panel — Current Config + Base Battery
+Shows the currently connected SSID, channel, IP, signal, and Base battery %.
+Fetched once via BLE on screen open. Not live-updated.
+
+## NVS schema (Base ESP32)
+Key prefix `wifi_n_` where n = 0..4 (slot index).
+Each slot: `wifi_n_ssid` (string), `wifi_n_pass` (string, AES-128 encrypted).
+Most-recently-connected slot written on each successful association.
+Boot sequence: scan → try slots in MRU order → connect first match.
+
+## LVGL implementation notes
+- Remembered section: lv_list or custom lv_obj rows, fixed height per entry.
+- Other Networks section: separate lv_list below, populated from scan results
+  filtered to exclude SSIDs already in remembered list.
+- Status dot: small lv_obj circle. Green = connected, grey = not connected.
+- Forget button: lv_btn, small, red-bordered text style.
+- Scan button: lv_btn with refresh icon, triggers esp_wifi_scan_start().
+- On Connect (remembered): call esp_wifi_set_config() + esp_wifi_connect()
+  with stored credential, navigate to State 3 spinner.
+- On Connect (other): navigate to State 2 (password entry).
+MD_COMMENT -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>GPS Staff — Tablet Flexbox UI Mockup : Base Config</title>
+  <title>GPS Staff — Base Config: WiFi Networks</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
-      margin: 0;
-      padding: 20px;
+      margin: 0; padding: 20px;
       background: #111;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      font-family: 'Montserrat', sans-serif;
-      color: #333;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif; color: #333;
     }
     .label {
-      margin-bottom: 8px;
-      font-size: 12px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: #888;
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #888;
     }
-    /* Panel headings — 24px is a permitted LVGL size */
     .panel-title {
-      font-size: 24px;
-      font-weight: 700;
-      margin: 0 0 12px 0;
-      color: #222;
+      font-size: 20px; font-weight: 700; margin: 0 0 10px 0; color: #222;
     }
-    /* Config label/value table — no borders, label column fixed width */
     .config-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 16px;
+      width: 100%; border-collapse: collapse; font-size: 14px;
     }
-    .config-table td {
-      padding: 6px 8px 6px 0;
-      vertical-align: top;
+    .config-table td { padding: 5px 8px 5px 0; vertical-align: top; }
+    .config-table td:first-child { font-weight: 700; width: 160px; color: #555; }
+
+    /* Section label (REMEMBERED / OTHER NETWORKS) */
+    .section-hdr {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #aaa;
+      padding: 8px 0 5px 0;
+      display: flex; justify-content: space-between; align-items: center;
     }
-    .config-table td:first-child {
-      font-weight: 700;
-      width: 200px;
-      color: #555;
+
+    /* Network rows */
+    .net-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 0; border-bottom: 1px solid #f0f0f0; min-height: 44px;
     }
-    /* Network list table — full width, collapsed borders, touch-friendly rows */
-    .network-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 16px;
+    .net-row:last-child { border-bottom: none; }
+
+    /* Status dot */
+    .dot {
+      flex-shrink: 0; width: 10px; height: 10px; border-radius: 50%;
     }
-    .network-table th {
-      background: #333;
-      color: white;
-      font-size: 14px;
-      font-weight: 700;
-      padding: 8px 10px;
-      text-align: left;
+    .dot-connected { background: #43A047; }
+    .dot-known     { background: #e0e0e0; }
+
+    /* SSID + meta */
+    .net-ssid  { font-size: 14px; font-weight: 700; flex: 1; }
+    .net-meta  { font-size: 12px; color: #aaa; }
+    .net-row.connected .net-ssid { color: #aaa; font-style: italic; }
+    .net-row.dimmed    .net-ssid { color: #ccc; }
+    .net-row.dimmed    .net-meta { color: #ddd; }
+
+    /* Buttons */
+    .btn {
+      border: none; border-radius: 6px; cursor: pointer;
+      font-family: 'Montserrat', sans-serif; font-weight: 700;
+      white-space: nowrap; flex-shrink: 0;
     }
-    .network-table td {
-      padding: 10px 10px;
-      border-bottom: 1px solid #e0e0e0;
-      color: #333;
+    .btn-connect    { background: #2196F3; color: white;   font-size: 12px; padding: 7px 14px; }
+    .btn-connect:hover { background: #1976D2; }
+    .btn-disconnect { background: #e53935; color: white;   font-size: 12px; padding: 7px 14px; }
+    .btn-disconnect:hover { background: #b71c1c; }
+    .btn-forget     {
+      background: none; color: #e53935;
+      font-size: 11px; padding: 5px 8px;
+      border: 1px solid #ffcdd2; border-radius: 5px;
     }
-    /* Currently connected network — grey, italic, non-interactive */
-    .network-table tr.connected td {
-      color: #aaa;
-      font-style: italic;
-      cursor: default;
+    .btn-forget:hover { background: #ffebee; }
+    .btn-scan {
+      background: none; color: #2196F3; font-size: 11px; font-weight: 700;
+      border: 1px solid #BBDEFB; border-radius: 5px; padding: 4px 10px;
+      cursor: pointer; font-family: 'Montserrat', sans-serif;
     }
-    /* Connect button in each unconnected row */
-    .connect-btn {
-      background: #2196F3;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 16px;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .connect-btn:hover {
-      background: #1976D2;
-    }
-    /* Disconnect button on the currently connected row */
-    .disconnect-btn {
-      background: #e53935;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 16px;
-      font-family: 'Montserrat', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .disconnect-btn:hover {
-      background: #b71c1c;
+    .btn-scan:hover { background: #E3F2FD; }
+
+    .not-in-range {
+      font-size: 11px; color: #ccc; font-style: italic; flex-shrink: 0;
     }
   </style>
 </head>
 <body>
 
-  <div class="label">Handheld Tablet — 1024 × 600 landscape — flexbox layout</div>
+  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: WiFi Networks</div>
 
-  <!--
-    ## Base Config Screen
-    - flex-direction: column  → children stack top-to-bottom
-  -->
   <div style="
-    width: 1024px;
-    height: 600px;
-    background: white;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 0 0 2px #444;
+    width: 1024px; height: 600px; background: white;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #444;
   ">
 
-    <!--
-      ## BATTERY BAR (row, pinned to top)
-      - flex-direction: row       → children sit side by side
-      - justify-content: flex-end → push content to the right
-      - align-items: center       → vertically centre the text
-      - flex-shrink: 0            → do not shrink when content grows
-
-      ### Functional
-      - This battery indicator shows the state of the battery ON THIS DEVICE (esp32_tablet)
-      - For details on the operation of this widget see Spec Doc XXX (ToDo)
-    -->
+    <!-- BATTERY BAR -->
     <div style="
-      display: flex;
-      flex-direction: row;
-      justify-content: flex-end;
-      align-items: center;
-      flex-shrink: 0;
-      height: 28px;
-      padding: 0 10px;
-      background: #111;
+      display: flex; justify-content: flex-end; align-items: center;
+      flex-shrink: 0; height: 28px; padding: 0 10px; background: #111;
     ">
       <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
     </div>
 
-    <!--
-      ## Main Display Panel
-      - flex: 1             → fills all remaining height below the battery bar
-      - flex-direction: row → left and right panels sit side by side
-    -->
-    <div id="main-display-panel" style="
-      flex: 1;
-      display: flex;
-      flex-direction: row;
-      overflow: hidden;
-    ">
+    <!-- MAIN PANEL -->
+    <div style="flex: 1; display: flex; overflow: hidden;">
 
       <!--
-        ## Left Panel — Current Config
-        - flex: 1      → takes half the available width
-        - overflow-y   → scrollable if content grows
-
-        ### Functional
-        - The data in this panel will be supplied by the Base unit via BLE req/resp model (ToDo).
-        - Only one request is made when the screen is opened or redisplayed, it is not continuously updated.
+        ## LEFT PANEL — Current connection + Base battery
+        Fetched once via BLE on screen open.
       -->
-      <div id="left-panel" style="
-        flex: 1;
-        background: #f5f5f5;
-        padding: 20px;
-        box-sizing: border-box;
-        border-right: 1px solid #ccc;
-        overflow-y: auto;
+      <div style="
+        flex: 0 0 340px; background: #f5f5f5;
+        padding: 20px; box-sizing: border-box;
+        border-right: 1px solid #ccc; overflow-y: auto;
       ">
         <p class="panel-title">Current Config</p>
         <table class="config-table">
-          <tr>
-            <td>Network SSID:</td>
-            <td>SKYxxxx</td>
-          </tr>
-          <tr>
-            <td>SSID Channel:</td>
-            <td>6</td>
-          </tr>
-          <tr>
-            <td>Status:</td>
-            <td style="color: #4caf50; font-weight: 700;">Connected</td>
-          </tr>
-          <tr>
-            <td>IP Address:</td>
-            <td>192.168.1.42</td>
-          </tr>
-          <tr>
-            <td>Signal:</td>
-            <td>-65 dBm</td>
-          </tr>
+          <tr><td>Network SSID:</td><td>BT-HomeHub-ABC</td></tr>
+          <tr><td>Channel:</td><td>6</td></tr>
+          <tr><td>Status:</td><td style="color:#43A047; font-weight:700;">Connected</td></tr>
+          <tr><td>IP Address:</td><td>192.168.1.42</td></tr>
+          <tr><td>Signal:</td><td>−65 dBm</td></tr>
         </table>
 
-        <!--
-          ## Left Panel — Current Status
-          ### Functional
-          - Shows Base unit status fetched once when the screen is opened (same BLE req/resp as Current Config).
-          - Battery indicator reflects the Base unit's battery, NOT the tablet's.
-          - Displays charge percentage and a lightning bolt ⚡ if the Base is currently charging.
-          - No animation, no continuous updates.
-        -->
-        <p class="panel-title" style="margin-top: 20px;">Current Status</p>
+        <p class="panel-title" style="margin-top:20px;">Remembered</p>
         <table class="config-table">
-          <tr>
-            <td>Base Battery:</td>
-            <td>
-              <span style="font-size: 16px;">82%</span>
-              <!-- ⚡ shown only when charging -->
-              <span style="font-size: 16px; margin-left: 6px;">⚡</span>
-            </td>
-          </tr>
+          <tr><td>Slots used:</td><td>3 of 5</td></tr>
         </table>
+        <div style="font-size:11px; color:#aaa; margin-top:8px; line-height:1.6;">
+          On power-on, Base connects automatically to the highest-signal
+          remembered network in range.
+        </div>
       </div>
 
       <!--
-        ## Right Panel — Available Networks
-        - flex: 1      → takes the other half
-        - overflow-y   → scrollable when network list is long
-
-        ### Functional
-        - This data comes from the Base unit via BLE subscription and is refreshed each time
-          a subscription message is received.
-        - Each unconnected row has a "Connect" button; pressing it changes the Right Panel to
-          a password entry screen for that SSID/Channel (ToDo).
-        - The currently connected SSID row is greyed out and italic; it has a red "Disconnect"
-          button. Pressing Disconnect instructs the Base to drop the WiFi connection (ToDo).
-        - If the user enters a password the Left Panel goes to a "waiting" state with contents
-          removed. A loading spinner may be shown while waiting for the Base to confirm connection.
-        - See password entry panel: ToDo.
+        ## RIGHT PANEL — Remembered + Other Networks
       -->
-      <div id="right-panel" style="
-        flex: 1;
-        background: white;
-        padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
+      <div style="
+        flex: 1; background: white;
+        padding: 16px 20px; box-sizing: border-box; overflow-y: auto;
       ">
-        <p class="panel-title">Available Networks</p>
-        <table class="network-table">
-          <thead>
-            <tr>
-              <th>SSID</th>
-              <th>Channel</th>
-              <th>Signal</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- connected row: greyed out, italic, Disconnect button -->
-            <tr class="connected">
-              <td>SKYxxxx</td>
-              <td>6</td>
-              <td>-65 dBm</td>
-              <td><button class="disconnect-btn">Disconnect</button></td>
-            </tr>
-            <tr>
-              <td>SKYxxxx1</td>
-              <td>12</td>
-              <td>-79 dBm</td>
-              <td><button class="connect-btn">Connect</button></td>
-            </tr>
-            <tr>
-              <td>SKYxxxx2</td>
-              <td>2</td>
-              <td>-89 dBm</td>
-              <td><button class="connect-btn">Connect</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
 
-    </div><!-- end main display panel -->
+        <!--
+          REMEMBERED NETWORKS
+          Stored in Base NVS. Each shows current range/connection state.
+        -->
+        <div class="section-hdr">
+          Remembered Networks
+        </div>
 
-  </div><!-- end base config screen -->
+        <!-- Row: currently connected remembered network -->
+        <div class="net-row connected">
+          <div class="dot dot-connected"></div>
+          <div style="flex:1;">
+            <div class="net-ssid">BT-HomeHub-ABC</div>
+            <div class="net-meta">Ch 6 · −65 dBm</div>
+          </div>
+          <button class="btn btn-disconnect">Disconnect</button>
+          <!-- No Forget on connected network — disconnect first -->
+        </div>
+
+        <!-- Row: remembered, in range, not connected -->
+        <div class="net-row">
+          <div class="dot dot-known"></div>
+          <div style="flex:1;">
+            <div class="net-ssid">AndroidAP_Kirk</div>
+            <div class="net-meta">Ch 11 · −72 dBm</div>
+          </div>
+          <button class="btn btn-connect">Connect</button>
+          <button class="btn btn-forget">Forget</button>
+        </div>
+
+        <!-- Row: remembered, NOT in range -->
+        <div class="net-row dimmed">
+          <div class="dot dot-known"></div>
+          <div style="flex:1;">
+            <div class="net-ssid">VM12345678</div>
+            <div class="net-meta">Ch — · —</div>
+          </div>
+          <span class="not-in-range">Not in range</span>
+          <button class="btn btn-forget">Forget</button>
+        </div>
+
+        <!--
+          OTHER NETWORKS
+          Scan results not in the remembered list. Connecting here
+          prompts for password (State 2) and adds to remembered list.
+        -->
+        <div class="section-hdr" style="margin-top:10px;">
+          Other Networks
+          <button class="btn-scan">Scan ↺</button>
+        </div>
+
+        <div class="net-row">
+          <div style="flex:1;">
+            <div class="net-ssid">SKYxxxx1</div>
+            <div class="net-meta">Ch 12 · −79 dBm</div>
+          </div>
+          <button class="btn btn-connect">Connect</button>
+        </div>
+
+        <div class="net-row">
+          <div style="flex:1;">
+            <div class="net-ssid">SKYxxxx2</div>
+            <div class="net-meta">Ch 2 · −89 dBm</div>
+          </div>
+          <button class="btn btn-connect">Connect</button>
+        </div>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main panel -->
+
+  </div><!-- end screen -->
 
 </body>
 </html>
