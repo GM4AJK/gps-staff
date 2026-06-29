@@ -278,6 +278,27 @@ The RTCM/status deframer checks each sync byte: `0xD3` → RTCM path, `0xAA` (+`
 
 Total wire size: 2 (magic) + 1 (len) + 8 (payload) + 1 (CRC) = **12 bytes**.
 
+### Local battery — same path, different source
+
+The local device (Rover in Mode 1 / Mode 5A, Base in Mode 5B) also has a battery
+that needs to reach the Tablet. It runs the same `task_battery` on its own STM32 and
+the value travels via the **short-haul** path only:
+
+```
+Local STM32  →  UART  →  Local ESP32  →  BLE  →  Tablet
+(g_battery_pct)         (stores as local_batt_pct)
+```
+
+The local ESP32 therefore holds **two** battery values for the Tablet:
+
+| Field | Source |
+|-------|--------|
+| `local_batt_pct` | Own STM32 `g_battery_pct` via intra-board UART |
+| `remote_batt_pct` | Long-haul status beacon → own STM32 → intra-board UART |
+
+Both are exposed as separate fields in the BLE GATT characteristic so the Tablet
+can populate the Base and Rover battery slots in the status bar independently.
+
 ### Timing and fault tolerance
 
 - Transmitted every 10 s in the inter-epoch gap (RTCM is 1 Hz; ≥900 ms of dead air available).
