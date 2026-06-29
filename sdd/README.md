@@ -16,6 +16,10 @@ System-level design: unit roles, technology decisions, data flow, BLE protocols.
 
 Numbered feature specifications and UI screen specs.
 
+> **When adding a new spec file:** also add it to the `screens` array in
+> [`features/00000-Overview.html`](features/00000-Overview.html) so it appears
+> in the spec navigator.
+
 | Document | Contents |
 |---|---|
 | [features/00001-wifi-provisioning.md](features/00001-wifi-provisioning.md) | WiFi provisioning — all phases bench-verified |
@@ -26,7 +30,9 @@ Numbered feature specifications and UI screen specs.
 | [features/00003-BaseConfig-2-kbd.html](features/00003-BaseConfig-2-kbd.html) | Base Config — State 2 with virtual keyboard |
 | [features/00003-BaseConfig-3.html](features/00003-BaseConfig-3.html) | Base Config — State 3: connecting (spinner) |
 | [features/00003-BaseConfig-4.html](features/00003-BaseConfig-4.html) | Base Config — State 4: connection failed |
-| [features/00003-BaseConfig-SurveyIn.html](features/00003-BaseConfig-SurveyIn.html) | Base Config — Survey-in (progress ring, condition chips, live stats, cancel; 3 states) |
+| [features/00003-BaseConfig-SurveyIn-A.html](features/00003-BaseConfig-SurveyIn-A.html) | Base Config — Survey-in State A: Ready (editable settings, Start button) |
+| [features/00003-BaseConfig-SurveyIn.html](features/00003-BaseConfig-SurveyIn.html) | Base Config — Survey-in State B: In Progress (progress ring, condition chips, live stats, cancel) |
+| [features/00003-BaseConfig-SurveyIn-C.html](features/00003-BaseConfig-SurveyIn-C.html) | Base Config — Survey-in State C: Complete (full green ring, Begin RTCM Streaming button) |
 | [features/00003-BaseConfig-Streaming.html](features/00003-BaseConfig-Streaming.html) | Base Config — RTCM Data (broadcast stats, RTCM message activity, rover connection + LoRa link quality) |
 | [features/00003-BaseConfig-FixedPos.html](features/00003-BaseConfig-FixedPos.html) | Base Config — Fixed Position entry (monument/benchmark, OSGB36/WGS84) |
 | [features/00004-BaseSatelliteView-1.html](features/00004-BaseSatelliteView-1.html) | Base Satellite View — sky plot (az/el, GPS+GLONASS), CN0 bar chart, fix status |

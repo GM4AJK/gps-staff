@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff (tablet 7inch)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config — Survey-in screen: STATE A (Ready / Not Started)
+- Entry from: 00003-BaseConfig-0.html (Survey-in card, first visit or after cancel)
+- bg_color: 0xffffff
+- See 00003-BaseConfig-SurveyIn.html for full functional spec and all three states.
+
+### State A specifics
+- active=0, valid=0 (F9P not in SVIN mode).
+- Settings fields are EDITABLE — user sets duration and accuracy targets before starting.
+- Tapping a settings field opens the numeric virtual keyboard (same pattern as FixedPos).
+- "Start Survey-in" button sends SET_SURVEY_PARAMS then SURVEY_IN_COMMAND 0x01;
+  screen transitions immediately to State B.
+- ← back returns to BaseConfig-0 with no action.
+
+### LVGL implementation notes
+- Settings fields: lv_textarea (editable) in State A; switch to lv_label + lock icon
+  on transition to State B (lv_obj_add_state(ta, LV_STATE_DISABLED)).
+- Start button: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
+- Ring: lv_arc with value=0 (empty track shown, no progress).
+MD_COMMENT -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Base Config: Survey-in (State A)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #111;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #888;
+    }
+    .cond-chip {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px 16px; border-radius: 8px; border: 2px solid;
+      min-width: 160px; box-sizing: border-box;
+    }
+    .cond-chip-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .cond-chip-value { font-size: 16px; font-weight: 700; }
+    .cond-chip-sub   { font-size: 11px; margin-top: 2px; }
+    .cond-waiting    { border-color: #bbb; background: #f5f5f5; color: #888; }
+    .section-label   { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #999; margin: 0 0 8px 0; }
+    .stat-row        { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+    .stat-key        { font-size: 14px; color: #666; }
+    .stat-val        { font-size: 16px; font-weight: 700; color: #222; }
+    /* Editable setting field (State A only) */
+    .setting-field {
+      flex: 1; background: #fff; border: 2px solid #e0e0e0; border-radius: 6px;
+      padding: 10px 14px; display: flex; justify-content: space-between;
+      align-items: center; cursor: pointer; transition: border-color 0.15s;
+    }
+    .setting-field:hover { border-color: #2196F3; }
+    .setting-key   { font-size: 13px; color: #666; }
+    .setting-val   { font-size: 18px; font-weight: 700; color: #333; }
+    .setting-edit  { font-size: 16px; color: #bbb; }
+    /* Relative accuracy (always read-only) */
+    .setting-box-ro {
+      flex: 1; background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px;
+      padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;
+    }
+    /* Start button */
+    .btn-start-svin {
+      width: 100%; height: 56px;
+      background: #1565C0; color: white;
+      border: none; border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px; font-weight: 700; cursor: pointer;
+    }
+    .btn-start-svin:hover { background: #1976D2; }
+    .state-badge {
+      display: inline-block; padding: 3px 12px; border-radius: 12px;
+      font-size: 13px; font-weight: 700;
+      background: #ECEFF1; color: #607D8B;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: Survey-in (State A — Ready)</div>
+
+  <div style="
+    width: 1024px; height: 600px; background: white;
+    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #444; position: relative;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="display:flex; justify-content:flex-end; align-items:center;
+      flex-shrink:0; height:28px; padding:0 10px; background:#111;">
+      <span style="font-family:monospace; font-size:12px; color:#0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!-- HEADER -->
+    <div style="display:flex; align-items:center; flex-shrink:0;
+      height:52px; padding:0 16px; background:#222; gap:16px;">
+      <button style="background:none; border:none; color:white;
+        font-family:'Montserrat',sans-serif; font-size:24px; cursor:pointer; padding:0; line-height:1;">←</button>
+      <span style="font-size:20px; font-weight:700; color:white; flex:1;">Survey-in</span>
+      <span class="state-badge">Ready</span>
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex:1; display:flex; overflow:hidden;">
+
+      <!--
+        ## LEFT PANEL — Empty ring (not started)
+        Ring track shown grey, no progress arc.
+        Center shows "--:--" with target time below and "READY" label.
+        Both condition chips grey (waiting).
+      -->
+      <div style="
+        flex-shrink:0; width:460px; background:white;
+        border-right:1px solid #e0e0e0;
+        display:flex; flex-direction:column;
+        align-items:center; justify-content:center;
+        padding:12px 0; box-sizing:border-box;
+      ">
+        <svg width="340" height="340" viewBox="0 0 340 340"
+             style="font-family:'Montserrat',sans-serif; flex-shrink:0;">
+
+          <!-- Background track (grey) -->
+          <circle cx="170" cy="170" r="150"
+                  fill="none" stroke="#e0e0e0" stroke-width="22"/>
+
+          <!-- No progress arc in State A -->
+
+          <!-- Centre: ready state -->
+          <text x="170" y="155" text-anchor="middle"
+                font-size="48" font-weight="700" fill="#ccc">--:--</text>
+          <text x="170" y="190" text-anchor="middle"
+                font-size="16" fill="#bbb">target 5:00</text>
+          <text x="170" y="215" text-anchor="middle"
+                font-size="13" fill="#ccc" font-weight="700" letter-spacing="1">READY</text>
+
+        </svg>
+
+        <!-- Condition chips — both grey (not started) -->
+        <div style="display:flex; gap:12px; margin-top:16px; padding:0 16px;">
+          <div class="cond-chip cond-waiting">
+            <span class="cond-chip-label">⏱ Duration</span>
+            <span class="cond-chip-value">— / 5:00</span>
+            <span class="cond-chip-sub">Not started</span>
+          </div>
+          <div class="cond-chip cond-waiting">
+            <span class="cond-chip-label">◎ Absolute Accuracy</span>
+            <span class="cond-chip-value">—</span>
+            <span class="cond-chip-sub">Not started</span>
+          </div>
+        </div>
+
+      </div><!-- end left panel -->
+
+      <!--
+        ## RIGHT PANEL — Editable settings + Start button
+        ### Functional
+        - Settings fields are EDITABLE in State A. Tapping opens the numeric vkbd.
+          Duration: integer seconds (or mm:ss display, store as seconds).
+          Accuracy: decimal metres (store as mm integer for F9P).
+        - "Start Survey-in" sends SET_SURVEY_PARAMS (0xAD04) then
+          SURVEY_IN_COMMAND 0x01 (0xAD03). Screen transitions to State B immediately.
+        - ← back: returns to BaseConfig-0, no action, no confirmation needed
+          (nothing has started yet).
+        ### LVGL note
+        - lv_textarea for duration and accuracy fields; lv_obj_add_flag(field,
+          LV_OBJ_FLAG_CLICKABLE) — tap opens lv_keyboard at bottom of screen.
+        - Start button: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
+      -->
+      <div style="flex:1; background:white; padding:18px 20px;
+        box-sizing:border-box; display:flex; flex-direction:column; gap:14px;">
+
+        <!-- No accuracy box yet (nothing running) -->
+        <div style="
+          background:#f5f5f5; border:1px solid #e0e0e0; border-radius:8px;
+          padding:12px 16px; display:flex; align-items:center; gap:12px;
+        ">
+          <span style="font-size:28px; color:#bbb;">◎</span>
+          <span style="font-size:14px; color:#bbb;">
+            Position accuracy will appear here once survey-in starts.
+          </span>
+        </div>
+
+        <!-- Settings (EDITABLE in State A) -->
+        <div>
+          <p class="section-label">Settings
+            <span style="font-size:11px; color:#aaa; font-weight:400; margin-left:8px;">
+              tap to edit
+            </span>
+          </p>
+          <div style="display:flex; gap:10px;">
+            <!--
+              Duration field — tap opens numeric vkbd, enter seconds.
+              Display as mm:ss. Sensible range: 60–600 s.
+            -->
+            <div class="setting-field">
+              <div>
+                <div class="setting-key">Duration target</div>
+                <div class="setting-val">5:00 <span style="font-size:13px;color:#aaa;">(300 s)</span></div>
+              </div>
+              <span class="setting-edit">✎</span>
+            </div>
+            <!--
+              Absolute accuracy field — tap opens numeric vkbd, enter metres.
+              Stored as mm. Sensible range: 0.5–5.0 m.
+            -->
+            <div class="setting-field">
+              <div>
+                <div class="setting-key">Absolute accuracy target</div>
+                <div class="setting-val">3.0 m <span style="font-size:13px;color:#aaa;">(3000 mm)</span></div>
+              </div>
+              <span class="setting-edit">✎</span>
+            </div>
+            <!-- Relative accuracy — always read-only -->
+            <div class="setting-box-ro">
+              <div>
+                <div class="setting-key" style="color:#2e7d32;">Relative accuracy</div>
+                <div class="setting-val" style="color:#1b5e20;">Always cm
+                  <span style="font-size:13px; color:#4caf50; font-weight:400;">(RTK carrier-phase)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live stats — all blank -->
+        <div>
+          <p class="section-label">Live Statistics</p>
+          <div style="background:#f8f9fa; border:1px solid #e0e0e0; border-radius:6px; padding:10px 14px;">
+            <div class="stat-row">
+              <span class="stat-key">Observations accumulated</span>
+              <span class="stat-val" style="color:#ccc;">—</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-key">Elapsed</span>
+              <span class="stat-val" style="color:#ccc;">—</span>
+            </div>
+            <div class="stat-row" style="margin-bottom:0;">
+              <span class="stat-key">Est. time remaining</span>
+              <span class="stat-val" style="color:#ccc;">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1;"></div>
+
+        <!-- Start button -->
+        <button class="btn-start-svin">▶ &nbsp;Start Survey-in</button>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+</body>
+</html>

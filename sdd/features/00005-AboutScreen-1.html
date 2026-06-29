@@ -3,25 +3,39 @@
 # HTML SPEC: GPS Staff (tablet 7inch)
 - Target resolution: 1024x600 px
 - Target environment: ESP32-S3 LVGL 9.x
-- Layout style: Split — white left panel (wizard), dark right panel (product info)
+- Layout style: Full dark — single panel, wizard as small brand mark
 - Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
 
 ## About Screen
-- Left panel bg_color:  0xFFFFFF  (white — wizard silhouette is black on white)
-- Right panel bg_color: 0x141E2B  (dark navy, matching home screen)
+- bg_color: 0x141E2B  (dark navy — full screen, matching home screen)
 - Entry: settings/menu (TBD) — not yet wired into navigation
 
 ### Functional
 - Static screen — no BLE data required.
 - Version strings compiled in from firmware/esp32-tablet/main/version.h at build time.
 - ← back returns to previous screen.
-- Wizard image: images/gps-staff-logo-900x600.png (original project mascot).
+- Wizard image: images/gps-staff-logo-900x600.png  (120px wide, colour-inverted)
+
+### Wizard colour inversion — browser
+- CSS: filter:invert(1) + mix-blend-mode:screen
+- filter:invert(1) flips black wizard→white, white background→black.
+- mix-blend-mode:screen then makes the black background transparent against
+  the dark navy parent: screen(0, backdrop) = backdrop, screen(1, backdrop) = 1.
+- Result: white wizard, background dissolves into #141E2B. No pre-processed
+  image needed for the spec; looks correct in any browser.
+
+### Wizard colour inversion — LVGL
+- Use LVGLImage tool to produce a pre-inverted image (white wizard on black).
+- Apply lv_img_set_blend_mode(img, LV_BLEND_MODE_ADDITIVE):
+  additive blend adds black (0,0,0) as zero → effectively transparent;
+  white pixels add fully and appear white against the dark bg.
+- lv_img_set_zoom(img, …) to hit the 120px width target.
 
 ### LVGL implementation notes
-- Left panel: lv_obj white bg, lv_img centred (LV_ALIGN_CENTER) with object-fit contain.
-- Right panel: lv_obj bg = lv_color_hex(0x141E2B), all text lv_label.
-- Version grid: 2×2 lv_obj cells, fixed positions.
-- Divider lines: lv_line.
+- Single lv_obj, bg = lv_color_hex(0x141E2B).
+- Identity row: lv_img (wizard, 120px) + lv_label column, flex row, LV_FLEX_ALIGN_START.
+- Version grid: 2×2 lv_obj cells, lv_obj_set_grid_*().
+- Divider lines: lv_line or lv_obj with height=1, bg=rgba(255,255,255,0.06).
 MD_COMMENT -->
 <html lang="en">
 <head>
@@ -47,6 +61,7 @@ MD_COMMENT -->
 
   <div style="
     width: 1024px; height: 600px;
+    background: #141E2B;
     display: flex; flex-direction: column;
     overflow: hidden; box-shadow: 0 0 0 2px #333;
     font-family: 'Montserrat', sans-serif;
@@ -61,100 +76,96 @@ MD_COMMENT -->
       <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
     </div>
 
-    <!-- MAIN AREA — 572px (600 − 28 battery) -->
-    <div style="flex: 1; display: flex; overflow: hidden;">
+    <!-- MAIN AREA -->
+    <div style="
+      flex: 1; background: #141E2B;
+      padding: 24px 36px;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    ">
 
       <!--
-        ## LEFT PANEL — Wizard
-        White background so the black silhouette reads correctly.
-        Image: images/gps-staff-logo-900x600.png
-        object-fit: contain — show full wizard without cropping.
-        ### LVGL note
-        lv_img with LV_ALIGN_CENTER; scale to fit panel while preserving aspect ratio.
+        ## IDENTITY ROW — wizard mark + product name
+        Wizard: 120px wide, proportional height (900×600 source → 120×80px rendered).
+        filter:invert(1) + mix-blend-mode:screen produces white wizard on transparent bg.
+        See LVGL implementation notes above for the additive-blend equivalent.
       -->
-      <div style="
-        flex-shrink: 0; width: 400px;
-        background: #ffffff;
-        display: flex; align-items: center; justify-content: center;
-        border-right: 1px solid #e0e0e0;
-        overflow: hidden;
-      ">
+      <div style="display: flex; align-items: flex-start; gap: 18px; margin-bottom: 20px;">
+
         <img src="images/gps-staff-logo-900x600.png"
-             style="max-width: 100%; max-height: 100%; object-fit: contain; display: block;">
+             style="
+               width: 120px; height: auto; flex-shrink: 0; display: block;
+               filter: invert(1);
+               mix-blend-mode: screen;
+             ">
+
+        <div style="padding-top: 6px;">
+          <div style="font-size: 32px; font-weight: 700; color: #ECEFF1; line-height: 1; letter-spacing: 0.02em;">
+            GPS Staff
+          </div>
+          <div style="font-size: 12px; color: #546E7A; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 5px;">
+            RTK Survey Instrument
+          </div>
+        </div>
+
+      </div><!-- end identity row -->
+
+      <!-- VERSION GRID -->
+      <div style="
+        background: rgba(255,255,255,0.03); border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.06);
+        padding: 12px 16px; margin-bottom: 18px;
+      ">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 48px;">
+          <div>
+            <div style="font-size: 10px; color: #546E7A; text-transform: uppercase; letter-spacing: 0.08em;">Tablet firmware</div>
+            <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">v0.1.0</div>
+          </div>
+          <div>
+            <div style="font-size: 10px; color: #546E7A; text-transform: uppercase; letter-spacing: 0.08em;">PCB</div>
+            <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">v1.0</div>
+          </div>
+          <div>
+            <div style="font-size: 10px; color: #546E7A; text-transform: uppercase; letter-spacing: 0.08em;">GNSS</div>
+            <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">u-blox ZED-F9P-05B</div>
+          </div>
+          <div>
+            <div style="font-size: 10px; color: #546E7A; text-transform: uppercase; letter-spacing: 0.08em;">Radio</div>
+            <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">Semtech SX1262 · GFSK</div>
+          </div>
+        </div>
       </div>
 
-      <!-- RIGHT PANEL — About content -->
-      <div style="
-        flex: 1; background: #141E2B;
-        padding: 24px 28px;
-        display: flex; flex-direction: column;
-        overflow: hidden;
-      ">
+      <!-- DIVIDER -->
+      <div style="border-top: 1px solid rgba(255,255,255,0.06); margin-bottom: 16px;"></div>
 
-        <!-- Product identity -->
-        <div style="margin-bottom: 16px;">
-          <div style="font-size: 30px; font-weight: 700; color: #ECEFF1; line-height: 1;">GPS Staff</div>
-          <div style="font-size: 12px; color: #546E7A; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px;">RTK Survey Instrument</div>
+      <!-- WIZARD NOTE -->
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; font-weight: 700; color: #4527A0; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
+          ✦ &nbsp;The GPS Staff Wizard
         </div>
-
-        <!-- Version grid -->
-        <div style="
-          background: rgba(255,255,255,0.03); border-radius: 8px;
-          border: 1px solid rgba(255,255,255,0.06);
-          padding: 12px 16px; margin-bottom: 16px;
-        ">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px;">
-            <div>
-              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">Tablet firmware</div>
-              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">v0.1.0</div>
-            </div>
-            <div>
-              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">PCB</div>
-              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">v1.0</div>
-            </div>
-            <div>
-              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">GNSS</div>
-              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">u-blox ZED-F9P-05B</div>
-            </div>
-            <div>
-              <div style="font-size: 10px; color: #37474F; text-transform: uppercase; letter-spacing: 0.08em;">Radio</div>
-              <div style="font-size: 14px; font-weight: 700; color: #78909C; margin-top: 2px;">Semtech SX1262 · GFSK</div>
-            </div>
-          </div>
+        <div style="font-size: 13px; color: #78909C; line-height: 1.6;">
+          Original mascot of the project. Retired from the home screen in favour
+          of something more boardroom-appropriate. He refused to leave entirely.
+          His staff still points skyward. So does ours.
         </div>
+      </div>
 
-        <!-- Divider -->
-        <div style="border-top: 1px solid rgba(255,255,255,0.06); margin-bottom: 14px;"></div>
+      <!-- DIVIDER -->
+      <div style="border-top: 1px solid rgba(255,255,255,0.06); margin-bottom: 14px;"></div>
 
-        <!-- Wizard note -->
-        <div style="margin-bottom: 14px;">
-          <div style="font-size: 11px; font-weight: 700; color: #4527A0; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px;">
-            ✦ &nbsp;The GPS Staff Wizard
-          </div>
-          <div style="font-size: 13px; color: #455A64; line-height: 1.6;">
-            Original mascot of the project. Retired from the home screen in favour
-            of something more boardroom-appropriate. He refused to leave entirely.
-            His staff still points skyward. So does ours.
-          </div>
-        </div>
+      <!-- BUILT WITH -->
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div style="font-size: 10px; font-weight: 700; color: #546E7A; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Built with</div>
+        <div style="font-size: 12px; color: #607D8B;">ESP-IDF · LVGL 9.x · FreeRTOS · u-blox UBX · STM32 HAL</div>
+        <div style="font-size: 12px; color: #607D8B;">FatFS · SX1262 GFSK · OS Net NTRIP · ETSI EN 300 220</div>
+      </div>
 
-        <!-- Divider -->
-        <div style="border-top: 1px solid rgba(255,255,255,0.06); margin-bottom: 12px;"></div>
-
-        <!-- Built with -->
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-          <div style="font-size: 10px; font-weight: 700; color: #37474F; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;">Built with</div>
-          <div style="font-size: 12px; color: #37474F;">ESP-IDF · LVGL 9.x · FreeRTOS · u-blox UBX · STM32 HAL</div>
-          <div style="font-size: 12px; color: #37474F;">FatFS · SX1262 GFSK · OS Net NTRIP · ETSI EN 300 220</div>
-        </div>
-
-        <!-- Author / version pushed to bottom -->
-        <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end;">
-          <div style="font-size: 11px; color: #263238;">GM4AJK · 2026</div>
-          <div style="font-size: 10px; color: #1E2D3D; letter-spacing: 0.06em;">GPS STAFF · PCB v1.0 · fw 0.1.0</div>
-        </div>
-
-      </div><!-- end right panel -->
+      <!-- AUTHOR / VERSION — pushed to bottom -->
+      <div style="margin-top: auto; display: flex; justify-content: space-between; align-items: flex-end;">
+        <div style="font-size: 11px; color: #455A64;">GM4AJK · 2026</div>
+        <div style="font-size: 10px; color: #37474F; letter-spacing: 0.06em;">GPS STAFF · PCB v1.0 · fw 0.1.0</div>
+      </div>
 
     </div><!-- end main area -->
 
