@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<!--
+  GPS Staff — Screen Spec Overview
+  =================================
+  Development tool only — not a screen spec and not part of the LVGL firmware.
+  Open this file directly in a browser (file://) to navigate all screen specs.
+  All spec files live in the same directory; the iframe loads siblings by filename.
+  Works entirely offline — no server required.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Screen Spec Overview</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      display: flex; flex-direction: column;
+      height: 100vh; overflow: hidden;
+      background: #0D1520;
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    /* ── Title bar ─────────────────────────────────────────────── */
+    .titlebar {
+      flex-shrink: 0; height: 44px;
+      background: #0D1520;
+      border-bottom: 1px solid #1E2D3D;
+      display: flex; align-items: center;
+      padding: 0 16px; gap: 12px;
+    }
+    .titlebar-logo {
+      font-size: 15px; font-weight: 700; color: #ECEFF1;
+      letter-spacing: 0.04em;
+    }
+    .titlebar-sep { color: #263238; }
+    .titlebar-sub { font-size: 12px; color: #37474F; letter-spacing: 0.06em; text-transform: uppercase; }
+    .titlebar-count {
+      margin-left: auto; font-size: 11px; color: #37474F;
+    }
+
+    /* ── Main layout ───────────────────────────────────────────── */
+    .main { flex: 1; display: flex; overflow: hidden; }
+
+    /* ── Left nav ──────────────────────────────────────────────── */
+    .nav {
+      flex-shrink: 0; width: 240px;
+      background: #111820;
+      border-right: 1px solid #1E2D3D;
+      overflow-y: auto; overflow-x: hidden;
+      display: flex; flex-direction: column;
+    }
+    .nav::-webkit-scrollbar { width: 4px; }
+    .nav::-webkit-scrollbar-track { background: transparent; }
+    .nav::-webkit-scrollbar-thumb { background: #1E2D3D; border-radius: 2px; }
+
+    .nav-group-label {
+      padding: 14px 14px 6px;
+      font-size: 10px; font-weight: 700; color: #263238;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      flex-shrink: 0;
+    }
+
+    .nav-item {
+      padding: 9px 14px;
+      display: flex; align-items: flex-start; gap: 9px;
+      cursor: pointer; border-left: 3px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+      flex-shrink: 0;
+    }
+    .nav-item:hover { background: #161F2A; }
+    .nav-item.active {
+      background: #1A2640;
+      border-left-color: #2196F3;
+    }
+    .nav-chip {
+      flex-shrink: 0; margin-top: 1px;
+      font-size: 9px; font-weight: 700; color: #37474F;
+      background: #161F2A; border: 1px solid #1E2D3D;
+      border-radius: 3px; padding: 1px 5px;
+      font-family: monospace; letter-spacing: 0;
+    }
+    .nav-item.active .nav-chip { color: #546E7A; border-color: #263238; }
+    .nav-label {
+      font-size: 12px; color: #546E7A; line-height: 1.35;
+    }
+    .nav-item.active .nav-label { color: #90A4AE; font-weight: 600; }
+    .nav-sublabel {
+      font-size: 10px; color: #263238; margin-top: 1px;
+    }
+    .nav-item.active .nav-sublabel { color: #37474F; }
+
+    /* ── Iframe panel ──────────────────────────────────────────── */
+    .preview {
+      flex: 1; display: flex; flex-direction: column;
+      background: #0D1520; overflow: hidden;
+    }
+    .preview-bar {
+      flex-shrink: 0; height: 36px;
+      background: #111820; border-bottom: 1px solid #1E2D3D;
+      display: flex; align-items: center; padding: 0 14px; gap: 10px;
+    }
+    .preview-filename {
+      font-size: 12px; color: #37474F; font-family: monospace;
+    }
+    .preview-filename span { color: #546E7A; }
+    .preview-open {
+      margin-left: auto; font-size: 11px; color: #263238;
+      text-decoration: none; padding: 3px 10px;
+      border: 1px solid #1E2D3D; border-radius: 4px;
+      cursor: pointer; background: none;
+      font-family: 'Montserrat', sans-serif;
+    }
+    .preview-open:hover { color: #546E7A; border-color: #263238; }
+
+    iframe {
+      flex: 1; border: none; width: 100%; height: 100%;
+      background: #0D1520;
+    }
+
+    /* ── Empty state ───────────────────────────────────────────── */
+    .empty {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 10px;
+      color: #1E2D3D;
+    }
+    .empty-icon { font-size: 48px; }
+    .empty-text { font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <!-- Title bar -->
+  <div class="titlebar">
+    <span class="titlebar-logo">GPS Staff</span>
+    <span class="titlebar-sep">·</span>
+    <span class="titlebar-sub">Screen Spec Overview</span>
+    <span class="titlebar-count" id="screen-count"></span>
+  </div>
+
+  <div class="main">
+
+    <!-- Left nav -->
+    <nav class="nav" id="nav"></nav>
+
+    <!-- Preview panel -->
+    <div class="preview" id="preview">
+      <div class="preview-bar" id="preview-bar" style="display:none;">
+        <span class="preview-filename" id="preview-filename"></span>
+        <a class="preview-open" id="preview-open" target="_blank">Open in tab ↗</a>
+      </div>
+      <iframe id="frame" title="Screen preview" style="display:none;"></iframe>
+      <div class="empty" id="empty-state">
+        <div class="empty-icon">◎</div>
+        <div class="empty-text">Select a screen from the left</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const screens = [
+      {
+        group: 'System',
+        items: [
+          { file: '00002-HomeScreen.html',            chip: '00002', label: 'Home Screen',            sub: 'Mode select · dark theme' },
+          { file: '00005-AboutScreen-1.html',         chip: '00005', label: 'About',                  sub: 'Wizard · versions · credits' },
+        ]
+      },
+      {
+        group: 'Base Config',
+        items: [
+          { file: '00003-BaseConfig-0.html',          chip: '00003-0',   label: 'Mode Select',         sub: 'Survey-in · RTCM Data · Sat View' },
+          { file: '00003-BaseConfig-1.html',          chip: '00003-1',   label: 'WiFi Networks',       sub: 'AP list · connect' },
+          { file: '00003-BaseConfig-2.html',          chip: '00003-2',   label: 'Password Entry',      sub: 'Form · cancel' },
+          { file: '00003-BaseConfig-2-kbd.html',      chip: '00003-2k',  label: 'Password + Keyboard', sub: 'Slide-in vkbd · preview strip' },
+          { file: '00003-BaseConfig-3.html',          chip: '00003-3',   label: 'Connecting',          sub: 'Spinner state' },
+          { file: '00003-BaseConfig-4.html',          chip: '00003-4',   label: 'Connection Failed',   sub: 'Error state · retry' },
+          { file: '00003-BaseConfig-FixedPos.html',   chip: '00003-FP',  label: 'Fixed Position',      sub: 'Monument · OSGB36/WGS84 · vkbd' },
+          { file: '00003-BaseConfig-SurveyIn.html',   chip: '00003-SI',  label: 'Survey-in',           sub: 'Progress ring · 3 states' },
+          { file: '00003-BaseConfig-Streaming.html',  chip: '00003-ST',  label: 'RTCM Data',           sub: 'Broadcast stats · GFSK config' },
+        ]
+      },
+      {
+        group: 'Base Views',
+        items: [
+          { file: '00004-BaseSatelliteView-1.html',   chip: '00004-1',   label: 'Satellite View',      sub: 'Sky plot · CN0 bars · fix status' },
+        ]
+      },
+    ];
+
+    const nav     = document.getElementById('nav');
+    const frame   = document.getElementById('frame');
+    const bar     = document.getElementById('preview-bar');
+    const fname   = document.getElementById('preview-filename');
+    const fopen   = document.getElementById('preview-open');
+    const empty   = document.getElementById('empty-state');
+    const count   = document.getElementById('screen-count');
+
+    let activeEl  = null;
+    let totalItems = 0;
+
+    screens.forEach(group => {
+      const gl = document.createElement('div');
+      gl.className = 'nav-group-label';
+      gl.textContent = group.group;
+      nav.appendChild(gl);
+
+      group.items.forEach(item => {
+        totalItems++;
+        const el = document.createElement('div');
+        el.className = 'nav-item';
+        el.innerHTML = `
+          <span class="nav-chip">${item.chip}</span>
+          <div>
+            <div class="nav-label">${item.label}</div>
+            <div class="nav-sublabel">${item.sub}</div>
+          </div>`;
+        el.addEventListener('click', () => load(item.file, el));
+        nav.appendChild(el);
+      });
+    });
+
+    count.textContent = totalItems + ' screens';
+
+    function load(file, el) {
+      if (activeEl) activeEl.classList.remove('active');
+      el.classList.add('active');
+      activeEl = el;
+
+      frame.src = file;
+      frame.style.display = '';
+      bar.style.display   = '';
+      empty.style.display = 'none';
+
+      fname.innerHTML = '<span style="color:#263238">features/</span>' + file;
+      fopen.href = file;
+    }
+
+    // Auto-load home screen on open
+    const firstItem = nav.querySelector('.nav-item');
+    if (firstItem) firstItem.click();
+  </script>
+
+</body>
+</html>
