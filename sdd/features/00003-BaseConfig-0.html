@@ -15,7 +15,7 @@
   base position accuracy tier (None / Survey-in / Monument / NTRIP)
 - Next states:
   - Survey-in card → 00003-BaseConfig-SurveyIn.html (ToDo)
-  - RTCM Streaming card → 00003-BaseConfig-Streaming.html (ToDo)
+  - RTCM Data card → 00003-BaseConfig-Streaming.html (ToDo)
   - WiFi Settings → 00003-BaseConfig-1.html (existing WiFi config flow)
   - Fixed Position → 00003-BaseConfig-FixedPos.html
 - bg_color: 0xffffff
@@ -229,13 +229,13 @@
     <!--
       ## MODE CARDS — primary content, fills available space
       ### Functional
-      - Three cards side by side: Survey-in / RTCM Streaming / Satellite View
+      - Three cards side by side: Survey-in / RTCM Data / Satellite View
       - Each card shows a brief description and the last known status from BLE
       - Pressing Survey-in or Streaming card buttons enters that operating mode
       - Satellite View is read-only diagnostic — opens sky plot, does not change operating mode
       - Status is fetched once via BLE when this screen opens (same req/resp as Base Config State 1)
       - Survey-in card: button → 00003-BaseConfig-SurveyIn.html (ToDo)
-      - RTCM Streaming card: button → 00003-BaseConfig-Streaming.html (ToDo)
+      - RTCM Data card: button → 00003-BaseConfig-Streaming.html (ToDo)
       - Satellite View card: button → 00003-BaseConfig-SatView.html (ToDo)
     -->
     <div style="
@@ -273,10 +273,10 @@
       <!-- Divider -->
       <div style="width: 2px; background: #e0e0e0; margin: 0 0; flex-shrink: 0;"></div>
 
-      <!-- RTCM Streaming card -->
+      <!-- RTCM Data card -->
       <div class="mode-card">
         <div>
-          <p class="mode-card-title" style="color: #2E7D32;">⊙ RTCM Streaming</p>
+          <p class="mode-card-title" style="color: #2E7D32;">⊙ RTCM Data</p>
           <p class="mode-card-desc">
             The Base unit broadcasts RTCM correction data to the Rover over the
             LoRa radio link. Requires a completed survey-in or a known fixed position.
@@ -294,7 +294,7 @@
             Signal: <span>-78 dBm</span>
           </div>
         </div>
-        <button class="btn-mode btn-green">View Streaming →</button>
+        <button class="btn-mode btn-green">View RTCM Data →</button>
       </div>
 
       <!-- Divider -->
