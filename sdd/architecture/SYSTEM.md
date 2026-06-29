@@ -10,6 +10,8 @@ Centimetre-level relative accuracy is the target.
 
 ## System Diagram
 
+![System overview block diagram](system-overview.png)
+
 ```
 BASE STATION [identical PCB]          ROVER (staff/pole) [identical PCB]
 +-------------------------+           +-------------------------+

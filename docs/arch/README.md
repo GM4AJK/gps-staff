@@ -14,7 +14,8 @@ The target hardware is a unified STM32F765VIT6 PCB — **PCB v1.0 ordered
 development runs on three Nucleo boards as bench stand-ins.
 
 For system-level design decisions (component choices, data flow, unit roles)
-see [`sdd/architecture/SYSTEM.md`](../../sdd/architecture/SYSTEM.md).
+see [`sdd/architecture/SYSTEM.md`](../../sdd/architecture/SYSTEM.md), which
+includes the high-level block diagram ([system-overview.png](../../sdd/architecture/system-overview.png)).
 
 ---
 
