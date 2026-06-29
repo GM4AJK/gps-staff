@@ -170,6 +170,30 @@
     </div>
 
     <!--
+      ## HEADER BAR
+      ### Functional
+      - ← back button returns to State 1 (00003-BaseConfig-1.html), discarding password entry.
+      - Always visible above the keyboard — the primary Cancel route even when the keyboard is up.
+    -->
+    <div style="
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      flex-shrink: 0;
+      height: 52px;
+      padding: 0 16px;
+      background: #222;
+      gap: 16px;
+    ">
+      <button style="
+        background: none; border: none; color: white;
+        font-family: 'Montserrat', sans-serif; font-size: 24px;
+        cursor: pointer; padding: 0; line-height: 1;
+      ">←</button>
+      <span style="font-size: 20px; font-weight: 700; color: white;">Enter Password</span>
+    </div>
+
+    <!--
       ## Main Display Panel
     -->
     <div id="main-display-panel" style="
@@ -268,8 +292,7 @@
       - Slides up from bottom when password field is tapped.
       - Preview strip shows field label and current value — user sees what they are typing
         without the covered field being visible.
-      - ← Cancel navigates back to State 1 (discards password entry entirely) —
-        same action as the form-level Cancel, not just keyboard dismiss.
+      - Cancel dismisses the keyboard; ← in the header bar navigates back to State 1.
       - Connect ✓ sends SSID + password to Base via BLE, transitions to State 3.
       - LVGL: lv_keyboard_create(); lv_keyboard_set_textarea(kb, pwd_ta);
         lv_label above keyboard updated on LV_EVENT_FOCUSED / LV_EVENT_VALUE_CHANGED.
@@ -312,7 +335,7 @@
       <div class="kbd-row">
         <button class="key key-wide key-action">?123</button>
         <button class="key key-space">space</button>
-        <button class="key key-wide key-action" onclick="hideKbd()">← Cancel</button>
+        <button class="key key-wide key-action" onclick="hideKbd()">Cancel</button>
         <button class="key key-connect" onclick="hideKbd()">Connect ✓</button>
       </div>
     </div><!-- end keyboard -->
