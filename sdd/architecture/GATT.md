@@ -326,8 +326,8 @@ Tablet confirms the write by issuing a READ after ~200 ms and updating the displ
 ```
 Bytes  0–3   freq_hz    uint32   carrier frequency, Hz (e.g. 434000000 = 434.000 MHz)
 Byte   4     tx_power   int8     TX power, dBm. UI presents 6 fixed levels:
-                                 −17 (min/test), 0 (1 mW), +10 (10 mW),
-                                 +14 (25 mW), +17 (50 mW), +22 (158 mW, default).
+                                 −17 (min/test), 0 (1 mW, default), +10 (10 mW),
+                                 +14 (25 mW), +17 (50 mW), +22 (158 mW, max batt drain).
                                  Wire value is raw dBm int8; SX1262 PA_CONFIG limits apply.
 Bytes  5–8   bit_rate   uint32   GFSK bit rate, bps (e.g. 9600)
 Bytes  9–12  sync_word  uint32   sync word, big-endian

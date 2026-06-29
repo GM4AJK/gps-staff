@@ -391,7 +391,7 @@ MD_COMMENT -->
         <div class="gfsk-dropdown" id="pwr-field" onclick="togglePowerDropdown(event)">
           <div class="gfsk-field-text">
             <div class="gfsk-field-name">TX Power</div>
-            <div class="gfsk-field-value" id="pwr-display">+22 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; Maximum · max batt drain</span></div>
+            <div class="gfsk-field-value" id="pwr-display">0 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm &nbsp;·&nbsp; Low</span></div>
           </div>
           <div class="dropdown-chevron">▾</div>
           <div class="dropdown-options" id="pwr-options">
@@ -399,7 +399,7 @@ MD_COMMENT -->
               <span class="dropdown-opt-value">−17 dBm</span>
               <span class="dropdown-opt-label">Minimum (test only)</span>
             </div>
-            <div class="dropdown-option" onclick="selectPower(event, '0', 'Low')">
+            <div class="dropdown-option selected" onclick="selectPower(event, '0', 'Low')">
               <span class="dropdown-opt-value">0 dBm</span>
               <span class="dropdown-opt-label">Low &nbsp;· 1 mW</span>
             </div>
@@ -415,7 +415,7 @@ MD_COMMENT -->
               <span class="dropdown-opt-value">+17 dBm</span>
               <span class="dropdown-opt-label">Very High &nbsp;· 50 mW</span>
             </div>
-            <div class="dropdown-option selected" onclick="selectPower(event, '+22', 'Maximum')">
+            <div class="dropdown-option" onclick="selectPower(event, '+22', 'Maximum')">
               <span class="dropdown-opt-value">+22 dBm</span>
               <span class="dropdown-opt-label">Maximum &nbsp;· 158 mW &nbsp;· max batt drain</span>
             </div>
