@@ -353,8 +353,9 @@ MD_COMMENT -->
 
       <!--
         MODE 5 — Direct TCP
-        Base connects directly to Rover over internet via router port forward.
-        No relay service. Rover listens on a configured TCP port.
+        One device listens at home (router port forward); the other connects from the field.
+        Sub-selector determines which device is remote (the unattended listener).
+        No relay service. Lower latency than Mode 3.
       -->
       <div class="mode-card" id="card-5" onclick="selectMode(5)">
         <div class="mode-card-header">
@@ -362,13 +363,24 @@ MD_COMMENT -->
           <span class="mode-num">5</span>
           <span class="mode-name">Direct TCP</span>
           <div class="req-chips" style="margin: 0; flex-shrink: 0;">
-            <span class="chip chip-hotspot">Hotspot — Base</span>
-            <span class="chip chip-wifi">WiFi — Rover</span>
+            <span class="chip chip-wifi">WiFi — remote</span>
+            <span class="chip chip-hotspot">Hotspot — mobile</span>
             <span class="chip chip-portfwd">Port forward</span>
           </div>
         </div>
         <div class="mode-desc">
-          Base connects directly to Rover over internet via a router port forward. No relay service required.
+          One device listens at home via a router port forward; the other connects from the field. No relay required.
+        </div>
+        <div class="rf-selector" id="mode5-selector">
+          <div class="rf-selector-inner">
+            <div class="rf-label">Which device is on the remote network?</div>
+            <div class="rf-buttons">
+              <button class="rf-btn active" id="btn-rover-remote" onclick="selectRemote('rover', event)">Rover</button>
+              <button class="rf-btn"        id="btn-base-remote"  onclick="selectRemote('base',  event)">Base</button>
+            </div>
+            <div class="rf-note" id="note-rover-remote">Rover listens at home · Base + Tablet connect from field</div>
+            <div class="rf-note" id="note-base-remote"  style="display:none;">Base listens at home · Rover + Tablet connect from field</div>
+          </div>
         </div>
       </div>
 
@@ -394,8 +406,9 @@ MD_COMMENT -->
         - selectedMode  → static int stored, written to NVS on btn press
         - selectedRF    → shown/hidden lv_obj within card 1
     */
-    let selectedMode = 1;
-    let selectedRF   = 'gfsk';
+    let selectedMode   = 1;
+    let selectedRF     = 'gfsk';
+    let selectedRemote = 'rover';   // Mode 5: which device is the remote listener
 
     const modeNames = {
       1: 'Local RF',
@@ -409,25 +422,22 @@ MD_COMMENT -->
       selectedMode = n;
 
       for (let i = 1; i <= 5; i++) {
-        const card = document.getElementById('card-' + i);
-        card.classList.toggle('selected', i === n);
+        document.getElementById('card-' + i).classList.toggle('selected', i === n);
       }
 
-      // RF selector only visible for Mode 1
-      const rfSel = document.getElementById('rf-selector');
-      rfSel.classList.toggle('visible', n === 1);
+      // Sub-selectors: only show the one relevant to the selected mode
+      document.getElementById('rf-selector').classList.toggle('visible',    n === 1);
+      document.getElementById('mode5-selector').classList.toggle('visible', n === 5);
 
-      // Update header chip
       document.getElementById('current-chip').textContent =
         'Mode ' + n + ' — ' + modeNames[n];
 
-      // Update confirm button label
       document.getElementById('btn-confirm').textContent =
         'Confirm — Configure Mode ' + n + ' →';
     }
 
     function selectRF(mode, event) {
-      event.stopPropagation();   // don't re-trigger card click
+      event.stopPropagation();
       selectedRF = mode;
 
       document.getElementById('btn-gfsk').classList.toggle('active', mode === 'gfsk');
@@ -435,6 +445,17 @@ MD_COMMENT -->
 
       document.getElementById('note-gfsk').style.display = mode === 'gfsk' ? 'block' : 'none';
       document.getElementById('note-lora').style.display = mode === 'lora' ? 'block' : 'none';
+    }
+
+    function selectRemote(device, event) {
+      event.stopPropagation();
+      selectedRemote = device;
+
+      document.getElementById('btn-rover-remote').classList.toggle('active', device === 'rover');
+      document.getElementById('btn-base-remote').classList.toggle('active',  device === 'base');
+
+      document.getElementById('note-rover-remote').style.display = device === 'rover' ? 'block' : 'none';
+      document.getElementById('note-base-remote').style.display  = device === 'base'  ? 'block' : 'none';
     }
   </script>
 
