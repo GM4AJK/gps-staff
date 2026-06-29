@@ -27,3 +27,4 @@ Numbered feature specifications and UI screen specs.
 | [features/00003-BaseConfig-3.html](features/00003-BaseConfig-3.html) | Base Config — State 3: connecting (spinner) |
 | [features/00003-BaseConfig-4.html](features/00003-BaseConfig-4.html) | Base Config — State 4: connection failed |
 | [features/00003-BaseConfig-FixedPos.html](features/00003-BaseConfig-FixedPos.html) | Base Config — Fixed Position entry (monument/benchmark, OSGB36/WGS84) |
+| [features/00004-BaseSatelliteView-1.html](features/00004-BaseSatelliteView-1.html) | Base Satellite View — sky plot (az/el, GPS+GLONASS), CN0 bar chart, fix status |
