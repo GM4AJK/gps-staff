@@ -8,99 +8,96 @@
 
 ## Base Config — RTCM Data screen
 - Entry from: 00003-BaseConfig-0.html (RTCM Data card → "View RTCM Data →")
-- Shows live RTCM broadcast stats and rover connection status
-- Left panel:  RTCM message activity + broadcast statistics
-- Right panel: Rover connection card + LoRa link quality
+- Left panel:  RTCM broadcast statistics (what the Base is sending)
+- Right panel: GFSK radio configuration (editable)
 - bg_color: 0xffffff
 
-### Two display states (same screen URL, driven by BLE data on open)
+### Display states
 
-  STATE A — Streaming, rover responding (shown in this file):
-    Left panel live with packet rates and RTCM message activity.
-    Right panel shows rover card with RSSI, SNR, RTK fix confirmation.
+  STATE A — Streaming (shown in this file):
+    Left panel live with packet rates and message activity.
+    Right panel shows GFSK config; fields editable at any time (changes take effect
+    immediately — STM32 reconfigures SX1262 on next TX).
     Stop Streaming button available.
 
-  STATE B — Streaming, no rover seen yet:
-    Left panel identical — broadcast stats show RTCM going out.
-    Right panel shows "Waiting for rover…" placeholder instead of rover card.
-    Stop Streaming button available.
+  STATE B — Not streaming (no valid base position, or manually stopped):
+    Left panel shows idle stats (zero rates, chips grey).
+    Right panel GFSK config still editable (radio parameters persist).
+    Stop Streaming replaced by "Start Streaming →" (only if position held).
+    Should not normally be reached from BaseConfig-0 (RTCM Data card gated on
+    BASE_OPERATING_MODE ≥ 0x02), but handle gracefully.
 
-  STATE C — Not streaming (no valid base position, or streaming manually stopped):
-    Both panels show idle/grey state.
-    Left panel: "No active position — survey-in required" message.
-    Stop Streaming button replaced by "Start Streaming →" (only if position held).
-    This state should not normally be reachable from BaseConfig-0 (RTCM Data card
-    is only enabled when BASE_OPERATING_MODE ≥ 0x02), but handle it gracefully.
-
-  Streaming is automatic once survey-in completes (BASE_OPERATING_MODE = 0x02 or 0x04).
-  The user cannot start streaming from this screen — that happens automatically.
-  "Stop Streaming" is a manual override that sets BASE_OPERATING_MODE back to 0x02.
-
-  On open, read RTCM_STREAM_STATUS (0xAD07) + ROVER_LINK_STATUS (0xAD08) immediately
-  and render the correct state before the user sees stale content.
-
-### "Navigate away and return" / tablet power-cycle behaviour
-  The Base continues broadcasting RTCM regardless of tablet connection.
-  On EVERY fresh BLE connection the tablet performs the state-discovery sequence
-  (see GATT.md §0xAD00). If BASE_OPERATING_MODE = 0x04 (RTCM streaming active)
-  the tablet navigates here. Subscribe to both characteristics then immediately READ
-  them — do not wait for the first notification.
+  Streaming is automatic once survey-in completes (BASE_OPERATING_MODE = 0x02/0x04).
+  GFSK parameter changes apply immediately; no stream restart required unless
+  bit rate changes (STM32 drains current RTCM packet before reconfiguring).
 
 ### RTCM message types broadcast (GPS + GLONASS only)
-  1005  Base station ARP (antenna reference point)    0.2 Hz   every 5 s
-  1074  GPS MSM4 (pseudorange + carrier phase)        1 Hz     every 1 s
-  1084  GLONASS MSM4                                  1 Hz     every 1 s
-  These three are the minimum set for RTK. Approximate combined rate: 255–325 bytes/s.
-  RTCM source: F9P UART2, parsed and forwarded by Base STM32 → SX1262 LoRa TX.
+  1005  Base station ARP    0.2 Hz   ~21 bytes
+  1074  GPS MSM4            1 Hz     ~120 bytes
+  1084  GLONASS MSM4        1 Hz     ~100 bytes
+  Combined: ~255–325 bytes/s. At 9600 bps (1200 bytes/s) channel utilisation ≈ 27%.
 
-### BLE data requirements — NEW characteristics in GATT.md §0xAD00
+### GFSK parameter notes
 
-1. RTCM_STREAM_STATUS (0xAD07)  READ + NOTIFY (1 Hz while streaming)
-   Payload (14 bytes):
-     streaming   uint8    1 = actively broadcasting over LoRa
-     msg_mask    uint8    bit field: bit 0 = 1005, bit 1 = 1074, bit 2 = 1084
-                          set when that message type was seen in the last 2 s
-     byte_rate   uint16   bytes per second forwarded to LoRa (last 5 s average)
-     pkt_rate    uint8    RTCM packets per second (last 5 s average)
-     _pad        uint8    reserved, 0
-     total_pkts  uint32   total RTCM packets forwarded this session (since Base boot)
-     total_bytes uint32   total RTCM bytes forwarded this session
-   Source: Base STM32 counters, forwarded to ESP32 over UART, exposed via GATT.
+  KNOWN LIMITATION — GPS-synchronised collision:
+  The F9P outputs RTCM packets on the GPS timepulse (1 Hz, ~aligned to UTC second).
+  Two nearby base stations will therefore transmit simultaneously with GPS-clock
+  precision, causing repeated RF collisions regardless of sync word setting.
+  Sync word prevents a rover accepting data from the wrong base, but does NOT
+  prevent the RF collision. LoRa spread-spectrum would have been more
+  collision-tolerant; GFSK is used here for duty-cycle efficiency
+  (7–8× less airtime than LoRa for the same payload — critical under ETSI EN 300 220
+  10% duty cycle limit on the 433/434 MHz ISM band).
+  Mitigation for co-located bases: use different frequencies (separate channels).
 
-2. ROVER_LINK_STATUS (0xAD08)  NOTIFY (on change + 1 Hz while streaming)
-   One record per known rover (max 4). Each record is 8 bytes:
-     rover_id    uint8    arbitrary rover ID assigned by STM32 on first packet seen
-                          0xFF = placeholder when no rovers seen at all
-     rssi_rx     int8     RSSI of last packet received from rover, dBm (base RX side)
-     snr_rx      int8     SNR of last packet received from rover, dB × 4 (divide by 4)
-     fix_status  uint8    RTK fix status reported back by rover via GFSK back-channel:
-                            0x00 = no report yet  0x01 = no fix  0x02 = 3D fix
-                            0x03 = RTK float      0x04 = RTK fixed
-     last_seen   uint16   seconds since last packet received from this rover (0 = <1 s)
-     _pad        uint8    reserved, 0
-     _pad2       uint8    reserved, 0
-   Source: Base STM32 SX1262 RX side, RSSI/SNR from SX1262 GetPacketStatus(),
-   fix_status from rover back-channel GFSK packet, forwarded to ESP32.
-   If no rovers have been seen, a single record with rover_id=0xFF is sent.
+  Frequency deviation and RX bandwidth are derived from bit rate and shown read-only:
+    FreqDev = BitRate × 0.5   (modulation index β = 1.0, BT = 0.5 Gaussian filter)
+    RxBW    = next SX1262 BW step above (2 × FreqDev + BitRate)
+              e.g. BitRate=9600 → FreqDev=4800 → min BW=19200 → RxBW=19500 Hz
 
-3. RTCM_STREAM_COMMAND (0xAD09)  WRITE NO RESPONSE
-   0x01  Stop streaming    BASE_OPERATING_MODE → 0x02 (position held, not streaming)
-   0x02  Resume streaming  BASE_OPERATING_MODE → 0x04; ignored if no valid position held
+### BLE data requirements — NEW characteristic in GATT.md §0xAD00
+
+  GFSK_RADIO_CONFIG (0xAD0A)  READ + WRITE
+  Payload (18 bytes) — same layout for read response and write command:
+    Bytes  0–3   freq_hz    uint32   carrier frequency, Hz (e.g. 434000000)
+    Byte   4     tx_power   int8     TX power, dBm (−17 to +22)
+    Bytes  5–8   bit_rate   uint32   bit rate, bps (e.g. 9600)
+    Bytes  9–12  sync_word  uint32   sync word big-endian (e.g. 0x00906F26 for 3-byte word)
+    Bytes 13–14  freq_dev   uint16   frequency deviation, Hz (READ only — ignored on WRITE;
+                                     STM32 calculates as BitRate/2)
+    Bytes 15–18  rx_bw      uint32   RX bandwidth, Hz (READ only — ignored on WRITE;
+                                     STM32 picks nearest SX1262 step above 2×FreqDev+BitRate)
+  STM32 persists config to its own flash (not SD card) so radio params survive power cycle.
+  On WRITE, STM32 reconfigures SX1262 immediately; ACKs via READ returning new values.
+
+  RTCM_STREAM_STATUS (0xAD07)  READ + NOTIFY (1 Hz while streaming)
+    Byte  0     streaming   uint8   1 = actively broadcasting
+    Byte  1     msg_mask    uint8   bit 0=1005, bit 1=1074, bit 2=1084 (seen in last 2 s)
+    Bytes 2–3   byte_rate   uint16  bytes/sec to LoRa, 5 s average
+    Byte  4     pkt_rate    uint8   packets/sec, 5 s average
+    Byte  5     _pad        uint8   0
+    Bytes 6–9   total_pkts  uint32  packets since boot
+    Bytes 10–13 total_bytes uint32  bytes since boot
+
+  RTCM_STREAM_COMMAND (0xAD09)  WRITE NO RESPONSE
+    0x01  Stop streaming    (BASE_OPERATING_MODE → 0x02)
+    0x02  Resume streaming  (BASE_OPERATING_MODE → 0x04; ignored if no position held)
+
+### Virtual keyboard notes
+  Frequency, TX Power, Bit Rate: numeric keyboard (digits + decimal point + minus).
+  Sync Word: hex keyboard — digits 0–9 plus A–F keys replacing decimal/sign row.
+    Preview shows value with "0x" prefix: "0x906F26".
+    Input is always treated as hex digits; leading zeros stripped on confirm.
+    Max 8 hex digits (4 bytes / 32-bit sync word).
 
 ### LVGL implementation notes
-- Screen is two lv_obj panels in a row container, fixed widths.
-  Content height = 520 px (600 − 28 battery bar − 52 header).
-- Left panel stats (byte rate, packet rate, total counts): lv_label objects updated on
-  each RTCM_STREAM_STATUS notification.
-- RTCM message chips (1005, 1074, 1084): lv_obj with rounded border.
-  On each RTCM_STREAM_STATUS notify, flash to bright green if the corresponding
-  msg_mask bit is set; fade back to steady green after 1.5 s using lv_anim_t
-  (bg_color style animation). Inactive = grey border and text.
-- Rover card: one lv_obj per rover record. If rover_id == 0xFF show placeholder.
-- RSSI bar: manual lv_obj rectangle. Map −120 dBm (empty) to −60 dBm (full).
-  Use lv_obj_set_size() + lv_obj_set_pos() — not flex layout.
-- Fix status badge: lv_label with bg_color set by fix_status value.
-- Stop Streaming button: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
+  Editable field rows: lv_obj container with lv_label (field name) + lv_label (value).
+  Tap the row → send GFSK_RADIO_CONFIG READ → pre-populate keyboard with current value.
+  On keyboard confirm → write new value → send GFSK_RADIO_CONFIG WRITE → await READ ACK.
+  Read-only derived fields: recompute and update lv_label on any bit-rate change.
+  Vkbd: same slide-in pattern as other screens — lv_obj at bottom of screen,
+  lv_anim_t translate Y from screen_height to 0 on open.
+  Stop Streaming button: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
 MD_COMMENT -->
 <html lang="en">
 <head>
@@ -128,36 +125,99 @@ MD_COMMENT -->
       font-size: 13px; font-weight: 700;
     }
     .badge-streaming { background: #E8F5E9; color: #2E7D32; }
-    .badge-idle      { background: #ECEFF1; color: #607D8B; }
-    .fix-badge {
-      padding: 4px 10px; border-radius: 10px;
-      font-size: 12px; font-weight: 700;
+
+    /* ── RTCM message chips ── */
+    .msg-chip {
+      flex: 1; border-radius: 8px; padding: 10px 12px; border: 2px solid;
     }
-    .fix-rtk-fixed { background: #E8F5E9; color: #2E7D32; }
-    .fix-rtk-float { background: #FFF8E1; color: #E65100; }
-    .fix-no-fix    { background: #ECEFF1; color: #607D8B; }
+    .msg-chip.active   { background: #E8F5E9; border-color: #43A047; }
+    .msg-chip.inactive { background: #f5f5f5; border-color: #BDBDBD; }
+    .msg-id   { font-size: 20px; font-weight: 700; color: #1B5E20; }
+    .msg-chip.inactive .msg-id { color: #9E9E9E; }
+    .msg-desc { font-size: 11px; color: #757575; margin-top: 2px; }
+    .msg-rate { font-size: 11px; font-weight: 700; color: #43A047; margin-top: 4px; }
+    .msg-chip.inactive .msg-rate { color: #BDBDBD; }
+
+    /* ── Editable GFSK field rows ── */
+    .gfsk-field {
+      background: #f5f5f5; border-radius: 8px; padding: 10px 14px;
+      display: flex; align-items: center; cursor: pointer;
+      border: 1px solid #e0e0e0; gap: 10px;
+    }
+    .gfsk-field:hover { background: #EEEEEE; border-color: #BDBDBD; }
+    .gfsk-field-text { flex: 1; }
+    .gfsk-field-name  { font-size: 11px; color: #9E9E9E; margin-bottom: 2px; }
+    .gfsk-field-value { font-size: 20px; font-weight: 700; color: #212121; }
+    .gfsk-edit-icon   { font-size: 18px; color: #BDBDBD; flex-shrink: 0; }
+
+    /* ── Read-only derived fields ── */
+    .gfsk-derived {
+      background: #FAFAFA; border-radius: 8px; padding: 8px 14px;
+      border: 1px solid #EEEEEE;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .gfsk-derived-text { flex: 1; }
+    .gfsk-derived-name  { font-size: 11px; color: #BDBDBD; margin-bottom: 2px; }
+    .gfsk-derived-value { font-size: 16px; font-weight: 700; color: #9E9E9E; }
+    .gfsk-auto-tag {
+      font-size: 10px; font-weight: 700; color: #BDBDBD;
+      border: 1px solid #E0E0E0; border-radius: 4px;
+      padding: 2px 6px; flex-shrink: 0;
+    }
+
+    /* ── Virtual keyboard ── */
+    .kbd-container {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: #1e1e1e;
+      transform: translateY(100%);
+      transition: transform 0.22s ease;
+      z-index: 10;
+    }
+    .kbd-container.visible { transform: translateY(0); }
+
+    .kbd-preview {
+      background: #1a1a1a; border-bottom: 1px solid #333;
+      padding: 8px 14px; display: flex; align-items: baseline; gap: 10px;
+    }
+    .kbd-preview-label { font-size: 13px; color: #888; flex-shrink: 0; }
+    .kbd-preview-value { font-size: 24px; font-weight: 700; color: #fff; flex: 1; }
+    .kbd-preview-cursor {
+      display: inline-block; width: 2px; height: 26px;
+      background: #fff; vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .kbd-rows { padding: 6px 8px 8px; }
+    .kbd-row  { display: flex; gap: 6px; margin-bottom: 6px; justify-content: center; }
+    .kbd-key  {
+      flex: 1; max-width: 80px; height: 52px;
+      background: #2e2e2e; color: #fff; border: none; border-radius: 6px;
+      font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .kbd-key:hover    { background: #3a3a3a; }
+    .kbd-key.wide     { max-width: 120px; font-size: 14px; }
+    .kbd-key.action   { background: #37474F; font-size: 14px; max-width: 100px; }
+    .kbd-key.confirm  { background: #2E7D32; max-width: 120px; font-size: 14px; }
+    .kbd-key.hex      { color: #80CBC4; }
   </style>
 </head>
 <body>
 
-  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: RTCM Data (State A — Streaming, rover connected)</div>
+  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: RTCM Data (State A — Streaming)</div>
 
   <div style="
     width: 1024px; height: 600px;
-    background: white;
-    display: flex; flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 0 0 2px #444;
-    position: relative;
-    font-family: 'Montserrat', sans-serif;
+    background: white; display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: 0 0 0 2px #444;
+    position: relative; font-family: 'Montserrat', sans-serif;
   ">
 
     <!-- BATTERY BAR -->
     <div style="
-      display: flex; flex-direction: row;
-      justify-content: flex-end; align-items: center;
-      flex-shrink: 0; height: 28px; padding: 0 10px;
-      background: #111;
+      display: flex; justify-content: flex-end; align-items: center;
+      flex-shrink: 0; height: 28px; padding: 0 10px; background: #111;
     ">
       <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
     </div>
@@ -165,13 +225,12 @@ MD_COMMENT -->
     <!--
       ## HEADER BAR
       ### Functional
-      - ← returns to BaseConfig-0 without stopping streaming (streaming continues regardless).
-      - State badge: "● Streaming" green when active, "○ Idle" grey when not streaming.
+      - ← returns to BaseConfig-0; streaming continues regardless.
+      - State badge: "● Streaming" green while active, "○ Idle" grey when not streaming.
     -->
     <div style="
-      display: flex; flex-direction: row; align-items: center;
-      flex-shrink: 0; height: 52px; padding: 0 16px;
-      background: #222; gap: 16px;
+      display: flex; align-items: center; flex-shrink: 0;
+      height: 52px; padding: 0 16px; background: #222; gap: 16px;
     ">
       <button style="
         background: none; border: none; color: white;
@@ -183,28 +242,25 @@ MD_COMMENT -->
     </div>
 
     <!-- MAIN AREA — 520px (600 − 28 battery − 52 header) -->
-    <div style="flex: 1; display: flex; flex-direction: row; overflow: hidden;">
+    <div style="flex: 1; display: flex; overflow: hidden;">
 
       <!--
         ## LEFT PANEL — Broadcast statistics
         ### Functional
-        - Rate boxes update on each RTCM_STREAM_STATUS (0xAD07) notify (1 Hz).
-        - RTCM chips flash bright green when msg_mask bit toggles, fade back after 1.5 s.
-          Active (msg seen in last 2 s) = green border + green text.
-          Inactive (bit clear) = grey border + grey text.
+        - Rate boxes update on RTCM_STREAM_STATUS (0xAD07) notify at 1 Hz.
+        - Message chips: flash bright green when msg_mask bit set, fade to steady green after 1.5 s.
+          Grey border + grey text when bit clear (message not seen in last 2 s).
         - Session totals count from Base boot; reset on power cycle.
         ### LVGL note
-        - lv_label for all numeric values; update text on notify callback.
-        - Chip colour change: lv_obj_set_style_border_color() + lv_anim_t for fade.
+        - lv_label for all numeric values; updated on each notify callback.
+        - Chip flash: lv_obj_set_style_border_color() animated via lv_anim_t.
       -->
       <div style="
-        flex-shrink: 0; width: 430px;
-        border-right: 1px solid #e0e0e0;
+        flex-shrink: 0; width: 430px; border-right: 1px solid #e0e0e0;
         padding: 16px; display: flex; flex-direction: column; gap: 14px;
         overflow: hidden;
       ">
 
-        <!-- Broadcast rate -->
         <div>
           <div class="section-label">Broadcast rate</div>
           <div style="display: flex; gap: 10px;">
@@ -219,30 +275,27 @@ MD_COMMENT -->
           </div>
         </div>
 
-        <!-- RTCM message chips -->
         <div>
           <div class="section-label">RTCM messages active</div>
           <div style="display: flex; gap: 10px;">
-            <!-- Active chip (msg seen in last 2 s) -->
-            <div style="flex:1; border-radius:8px; padding:10px 12px; background:#E8F5E9; border:2px solid #43A047;">
-              <div style="font-size:20px; font-weight:700; color:#1B5E20;">1005</div>
-              <div style="font-size:11px; color:#757575; margin-top:2px;">Base ARP</div>
-              <div style="font-size:11px; font-weight:700; color:#43A047; margin-top:4px;">0.2 Hz</div>
+            <div class="msg-chip active">
+              <div class="msg-id">1005</div>
+              <div class="msg-desc">Base ARP</div>
+              <div class="msg-rate">0.2 Hz</div>
             </div>
-            <div style="flex:1; border-radius:8px; padding:10px 12px; background:#E8F5E9; border:2px solid #43A047;">
-              <div style="font-size:20px; font-weight:700; color:#1B5E20;">1074</div>
-              <div style="font-size:11px; color:#757575; margin-top:2px;">GPS MSM4</div>
-              <div style="font-size:11px; font-weight:700; color:#43A047; margin-top:4px;">1 Hz</div>
+            <div class="msg-chip active">
+              <div class="msg-id">1074</div>
+              <div class="msg-desc">GPS MSM4</div>
+              <div class="msg-rate">1 Hz</div>
             </div>
-            <div style="flex:1; border-radius:8px; padding:10px 12px; background:#E8F5E9; border:2px solid #43A047;">
-              <div style="font-size:20px; font-weight:700; color:#1B5E20;">1084</div>
-              <div style="font-size:11px; color:#757575; margin-top:2px;">GLO MSM4</div>
-              <div style="font-size:11px; font-weight:700; color:#43A047; margin-top:4px;">1 Hz</div>
+            <div class="msg-chip active">
+              <div class="msg-id">1084</div>
+              <div class="msg-desc">GLO MSM4</div>
+              <div class="msg-rate">1 Hz</div>
             </div>
           </div>
         </div>
 
-        <!-- Session totals -->
         <div>
           <div class="section-label">Session totals</div>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
@@ -260,94 +313,101 @@ MD_COMMENT -->
       </div><!-- end left panel -->
 
       <!--
-        ## RIGHT PANEL — Rover connection status
+        ## RIGHT PANEL — GFSK radio configuration
         ### Functional
-        - One rover card per record in ROVER_LINK_STATUS (0xAD08).
-          If rover_id == 0xFF: show "Waiting for rover…" placeholder instead.
-          Max 4 rover cards stacked vertically (each ~120 px tall).
-        - RSSI bar maps −120 dBm (empty) to −60 dBm (full):
-            fill% = (rssi − (−120)) / (−60 − (−120)) × 100
-        - Fix status badge colours:
-            RTK Fixed → green #E8F5E9 / #2E7D32
-            RTK Float → amber #FFF8E1 / #E65100
-            3D fix    → blue  #E3F2FD / #1565C0
-            No fix    → grey  #ECEFF1 / #607D8B
-        - Link quality colour thresholds (both RSSI and SNR):
-            Good:  RSSI > −95 dBm  and  SNR > 0 dB   → #2E7D32
-            Fair:  RSSI −95 to −110  or  SNR −5 to 0  → #E65100
-            Poor:  RSSI < −110 dBm  or  SNR < −5 dB   → #B71C1C
+        - Tap any editable field to open the virtual keyboard pre-populated with current value.
+        - Changes take effect immediately on confirm: tablet writes GFSK_RADIO_CONFIG (0xAD0A),
+          STM32 reconfigures SX1262 and ACKs via READ returning new values.
+        - Freq Deviation and RX Bandwidth are read-only, auto-calculated by STM32.
+          Tablet recomputes display values locally on bit rate change for instant feedback.
+        - KNOWN LIMITATION: GPS-synchronised RTCM burst timing means two nearby bases
+          transmit simultaneously. Sync word prevents a rover accepting the wrong base
+          but does NOT prevent RF collision. Use different frequencies for co-located bases.
         ### LVGL note
-        - Stop Streaming button: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
-          Do NOT rely on flex margin-top: auto — LVGL has no CSS flexbox.
+        - Editable rows: lv_obj containers; register LV_EVENT_CLICKED to open vkbd.
+        - Pre-populate keyboard: READ GFSK_RADIO_CONFIG on screen open, cache values.
+        - On confirm: WRITE new config, then READ back to confirm; update lv_label.
+        - Stop Streaming: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16).
       -->
       <div style="
         flex: 1; padding: 16px;
-        display: flex; flex-direction: column; gap: 14px;
+        display: flex; flex-direction: column; gap: 10px;
         overflow: hidden;
       ">
 
-        <!-- Rover card -->
-        <div>
-          <div class="section-label">Rover connection</div>
-          <div style="
-            background:#f5f5f5; border-radius:10px; padding:14px 16px;
-            border-left:4px solid #43A047;
-          ">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-              <div style="
-                width:36px; height:36px; background:#43A047; border-radius:8px;
-                display:flex; align-items:center; justify-content:center;
-                font-size:18px; color:#fff; flex-shrink:0;
-              ">⊛</div>
-              <div>
-                <div style="font-size:16px; font-weight:700; color:#212121;">Rover #1</div>
-                <div style="font-size:12px; color:#9E9E9E; margin-top:2px;">Last packet: 0.6 s ago</div>
-              </div>
-              <div class="fix-badge fix-rtk-fixed" style="margin-left:auto;">RTK Fixed</div>
+        <div class="section-label">GFSK Radio</div>
+
+        <!-- Frequency — numeric keyboard (MHz, 3 d.p.) -->
+        <div class="gfsk-field" onclick="showKbd('num', '434.000', 'Frequency (MHz)')">
+          <div class="gfsk-field-text">
+            <div class="gfsk-field-name">Frequency</div>
+            <div class="gfsk-field-value">434.000 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">MHz</span></div>
+          </div>
+          <div class="gfsk-edit-icon">✎</div>
+        </div>
+
+        <!-- TX Power — numeric keyboard (dBm, integer, −17 to +22) -->
+        <div class="gfsk-field" onclick="showKbd('num', '+22', 'TX Power (dBm, −17 to +22)')">
+          <div class="gfsk-field-text">
+            <div class="gfsk-field-name">TX Power</div>
+            <div class="gfsk-field-value">+22 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">dBm</span></div>
+          </div>
+          <div class="gfsk-edit-icon">✎</div>
+        </div>
+
+        <!-- Bit Rate — numeric keyboard (bps) -->
+        <div class="gfsk-field" onclick="showKbd('num', '9600', 'Bit Rate (bps)')">
+          <div class="gfsk-field-text">
+            <div class="gfsk-field-name">Bit Rate</div>
+            <div class="gfsk-field-value">9600 <span style="font-size:14px;color:#9E9E9E;font-weight:400;">bps</span></div>
+          </div>
+          <div class="gfsk-edit-icon">✎</div>
+        </div>
+
+        <!--
+          Sync Word — hex keyboard (0–9, A–F; max 4 bytes / 8 hex digits)
+          "0x" prefix displayed in preview but not entered.
+          ### Functional note
+          Sync word isolates this base from other nearby bases: a rover only accepts
+          packets whose sync word matches its own config. Does NOT prevent RF collision
+          between simultaneously-transmitting bases (see KNOWN LIMITATION above).
+          Both Base and Rover must share the same sync word.
+        -->
+        <div class="gfsk-field" onclick="showKbd('hex', '906F26', 'Sync Word (hex, max 4 bytes)')">
+          <div class="gfsk-field-text">
+            <div class="gfsk-field-name">Sync Word</div>
+            <div class="gfsk-field-value" style="font-family: monospace; letter-spacing: 0.05em;">
+              0x906F26
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
-              <div style="background:#fff; border-radius:6px; padding:8px 10px; border:1px solid #e0e0e0;">
-                <div style="font-size:18px; font-weight:700; color:#37474F;">−82</div>
-                <div style="font-size:11px; color:#9E9E9E; margin-top:2px;">RSSI (dBm)</div>
-                <!-- RSSI bar: (−82−(−120))/(60) = 63% -->
-                <div style="height:6px; background:#e0e0e0; border-radius:3px; margin-top:6px; overflow:hidden;">
-                  <div style="width:63%; height:100%; background:#43A047; border-radius:3px;"></div>
-                </div>
-              </div>
-              <div style="background:#fff; border-radius:6px; padding:8px 10px; border:1px solid #e0e0e0;">
-                <div style="font-size:18px; font-weight:700; color:#37474F;">+9.2</div>
-                <div style="font-size:11px; color:#9E9E9E; margin-top:2px;">SNR (dB)</div>
-              </div>
-              <div style="background:#fff; border-radius:6px; padding:8px 10px; border:1px solid #e0e0e0;">
-                <div style="font-size:18px; font-weight:700; color:#37474F;">847</div>
-                <div style="font-size:11px; color:#9E9E9E; margin-top:2px;">Pkts rcvd</div>
-              </div>
+          </div>
+          <div class="gfsk-edit-icon">✎</div>
+        </div>
+
+        <!-- Read-only derived values -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:2px;">
+          <div class="gfsk-derived">
+            <div class="gfsk-derived-text">
+              <div class="gfsk-derived-name">Freq Deviation</div>
+              <div class="gfsk-derived-value">4800 Hz</div>
             </div>
+            <div class="gfsk-auto-tag">AUTO</div>
+          </div>
+          <div class="gfsk-derived">
+            <div class="gfsk-derived-text">
+              <div class="gfsk-derived-name">RX Bandwidth</div>
+              <div class="gfsk-derived-value">19500 Hz</div>
+            </div>
+            <div class="gfsk-auto-tag">AUTO</div>
           </div>
         </div>
 
-        <!-- LoRa link quality -->
-        <div>
-          <div class="section-label">LoRa link quality (base RX)</div>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-            <div style="background:#f5f5f5; border-radius:6px; padding:8px 12px;">
-              <div style="font-size:20px; font-weight:700; color:#2E7D32;">−82 dBm</div>
-              <div style="font-size:11px; color:#9E9E9E; margin-top:2px;">Rover uplink RSSI</div>
-            </div>
-            <div style="background:#f5f5f5; border-radius:6px; padding:8px 12px;">
-              <div style="font-size:20px; font-weight:700; color:#2E7D32;">+9.2 dB</div>
-              <div style="font-size:11px; color:#9E9E9E; margin-top:2px;">Rover uplink SNR</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Stop Streaming button — LVGL: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16) -->
+        <!-- Stop Streaming — LVGL: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16) -->
         <div style="margin-top: auto;">
           <button style="
             width:100%; height:52px;
             background:#B71C1C; color:#fff; border:none; border-radius:8px;
             font-family:'Montserrat',sans-serif; font-size:16px; font-weight:700;
-            cursor:pointer; letter-spacing:0.03em;
+            cursor:pointer;
           ">Stop Streaming</button>
         </div>
 
@@ -355,7 +415,136 @@ MD_COMMENT -->
 
     </div><!-- end main area -->
 
+    <!-- ══ VIRTUAL KEYBOARD (slide in from bottom) ══════════════════
+         Position: absolute bottom:0 of the 1024×600 screen div.
+         Shown here in hidden state; .visible class slides it up.
+         Preview strip shows field label + current value + cursor.
+         Numeric mode: digits 0–9, decimal, ±, backspace, Cancel, Confirm.
+         Hex mode: digits 0–9, A–F, backspace, Cancel, Confirm.
+           Hex keys A–F shown in teal to distinguish from digits.
+           Preview prefixes value with "0x".
+    ══════════════════════════════════════════════════════════════ -->
+    <div class="kbd-container" id="kbd">
+
+      <div class="kbd-preview">
+        <span class="kbd-preview-label" id="kbd-label">Frequency (MHz)</span>
+        <span class="kbd-preview-value" id="kbd-value">434.000<span class="kbd-preview-cursor"></span></span>
+      </div>
+
+      <!-- Numeric keyboard rows (shown when mode='num') -->
+      <div id="kbd-num" class="kbd-rows">
+        <div class="kbd-row">
+          <button class="kbd-key" onclick="kbdAppend('7')">7</button>
+          <button class="kbd-key" onclick="kbdAppend('8')">8</button>
+          <button class="kbd-key" onclick="kbdAppend('9')">9</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key" onclick="kbdAppend('4')">4</button>
+          <button class="kbd-key" onclick="kbdAppend('5')">5</button>
+          <button class="kbd-key" onclick="kbdAppend('6')">6</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key" onclick="kbdAppend('1')">1</button>
+          <button class="kbd-key" onclick="kbdAppend('2')">2</button>
+          <button class="kbd-key" onclick="kbdAppend('3')">3</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key wide" onclick="kbdAppend('.')">.</button>
+          <button class="kbd-key" onclick="kbdAppend('0')">0</button>
+          <button class="kbd-key wide" onclick="kbdToggleSign()">±</button>
+          <button class="kbd-key action" onclick="kbdBackspace()">⌫</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key action wide" onclick="hideKbd()">Cancel</button>
+          <button class="kbd-key confirm wide" onclick="kbdConfirm()">Confirm ✓</button>
+        </div>
+      </div>
+
+      <!-- Hex keyboard rows (shown when mode='hex') -->
+      <div id="kbd-hex" class="kbd-rows" style="display:none;">
+        <div class="kbd-row">
+          <button class="kbd-key" onclick="kbdAppend('7')">7</button>
+          <button class="kbd-key" onclick="kbdAppend('8')">8</button>
+          <button class="kbd-key" onclick="kbdAppend('9')">9</button>
+          <button class="kbd-key hex" onclick="kbdAppend('A')">A</button>
+          <button class="kbd-key hex" onclick="kbdAppend('B')">B</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key" onclick="kbdAppend('4')">4</button>
+          <button class="kbd-key" onclick="kbdAppend('5')">5</button>
+          <button class="kbd-key" onclick="kbdAppend('6')">6</button>
+          <button class="kbd-key hex" onclick="kbdAppend('C')">C</button>
+          <button class="kbd-key hex" onclick="kbdAppend('D')">D</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key" onclick="kbdAppend('1')">1</button>
+          <button class="kbd-key" onclick="kbdAppend('2')">2</button>
+          <button class="kbd-key" onclick="kbdAppend('3')">3</button>
+          <button class="kbd-key hex" onclick="kbdAppend('E')">E</button>
+          <button class="kbd-key hex" onclick="kbdAppend('F')">F</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key wide" onclick="kbdAppend('0')">0</button>
+          <button class="kbd-key action" onclick="kbdBackspace()">⌫</button>
+        </div>
+        <div class="kbd-row">
+          <button class="kbd-key action wide" onclick="hideKbd()">Cancel</button>
+          <button class="kbd-key confirm wide" onclick="kbdConfirm()">Confirm ✓</button>
+        </div>
+      </div>
+
+    </div><!-- end kbd-container -->
+
   </div><!-- end 1024×600 screen -->
+
+  <script>
+    let kbdMode = 'num';
+    let kbdCurrent = '';
+
+    function showKbd(mode, current, label) {
+      kbdMode = mode;
+      kbdCurrent = current;
+      document.getElementById('kbd-label').textContent = label;
+      document.getElementById('kbd-value').innerHTML =
+        (mode === 'hex' ? '0x' : '') + current +
+        '<span class="kbd-preview-cursor"></span>';
+      document.getElementById('kbd-num').style.display = (mode === 'num') ? '' : 'none';
+      document.getElementById('kbd-hex').style.display = (mode === 'hex') ? '' : 'none';
+      document.getElementById('kbd').classList.add('visible');
+    }
+
+    function hideKbd() {
+      document.getElementById('kbd').classList.remove('visible');
+    }
+
+    function kbdAppend(c) {
+      if (kbdMode === 'hex' && kbdCurrent.replace(/^0x/,'').length >= 8) return;
+      kbdCurrent += c;
+      document.getElementById('kbd-value').innerHTML =
+        (kbdMode === 'hex' ? '0x' : '') + kbdCurrent +
+        '<span class="kbd-preview-cursor"></span>';
+    }
+
+    function kbdBackspace() {
+      kbdCurrent = kbdCurrent.slice(0, -1);
+      document.getElementById('kbd-value').innerHTML =
+        (kbdMode === 'hex' ? '0x' : '') + kbdCurrent +
+        '<span class="kbd-preview-cursor"></span>';
+    }
+
+    function kbdToggleSign() {
+      if (kbdCurrent.startsWith('-')) kbdCurrent = kbdCurrent.slice(1);
+      else kbdCurrent = '-' + kbdCurrent;
+      document.getElementById('kbd-value').innerHTML =
+        kbdCurrent + '<span class="kbd-preview-cursor"></span>';
+    }
+
+    function kbdConfirm() {
+      /* In LVGL: write GFSK_RADIO_CONFIG (0xAD0A) with updated field value,
+         then READ back to confirm and refresh display labels. */
+      hideKbd();
+    }
+  </script>
 
 </body>
 </html>
