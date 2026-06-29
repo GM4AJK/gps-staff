@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<!-- MD_COMMENT
+# HTML SPEC: GPS Staff (tablet 7inch)
+- Target resolution: 1024x600 px
+- Target environment: ESP32-S3 LVGL 9.x
+- Layout style: Flexbox-driven, light theme
+- Permitted font sizes: 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 36, 40, 44, 48
+
+## Base Config — Survey-in screen
+- Entry from: 00003-BaseConfig-0.html (Survey-in card → "Start Survey-in →" or "View Progress →")
+- bg_color: 0xffffff
+
+### Three display states (same screen URL, driven by BLE data on open)
+
+  STATE A — Ready (not started):
+    Settings are editable. Start button visible.
+    Both condition chips grey (not yet running).
+
+  STATE B — In progress (user may have navigated away and returned):
+    Settings locked (read-only). Progress ring animating.
+    Condition chips update live. Cancel button prominent.
+    THIS FILE SHOWS STATE B.
+
+  STATE C — Complete (active=0, valid=1):
+    Ring full green. Both chips green.
+    "Survey-in complete" banner.
+    "Begin RTCM Streaming →" button replaces Cancel.
+    Settings still visible (read-only).
+
+  On open, read SURVEY_IN_STATUS immediately (request/response or cached notify value)
+  and branch to the appropriate state before the user sees any flash of wrong content.
+
+### "Navigate away and return" behaviour
+  Survey-in runs entirely on the Base F9P — it continues with no interaction from the UI.
+  The Base STM32 polls UBX-NAV-SVIN and forwards the result via the SURVEY_IN_STATUS
+  BLE characteristic at 1 Hz. When the user returns to this screen from anywhere, the
+  screen opens into whichever state the live BLE data describes.
+
+  Important: the ← back button on this screen returns to BaseConfig-0 WITHOUT
+  cancelling the survey-in. The user may leave and come back freely.
+  Only the explicit "Cancel Survey-in" button stops it.
+
+### BaseConfig-0 behaviour while survey-in is active (active=1)
+  - Survey-in card:  button label changes to "View Progress →"; card border highlights blue.
+  - RTCM Data card:  disabled (greyed, opacity 0.4). Tooltip/status text: "Survey-in in progress —
+                     streaming requires a fixed position." Cannot be tapped.
+  - Satellite View card: remains enabled (informational, does not conflict).
+  On transition to valid=1, all three cards return to normal; RTCM Data enabled.
+
+### BLE data requirements — NEW characteristic required in GATT.md
+
+  SURVEY_IN_STATUS (read + notify, 1 Hz while active)
+  Payload (20 bytes):
+    active   uint8   1 = survey-in currently running on F9P
+    valid    uint8   1 = survey-in complete (both conditions met)
+    dur      uint32  elapsed duration, seconds (little-endian)
+    obs      uint32  number of position observations accumulated
+    meanAcc  uint32  current mean position accuracy, mm (little-endian)
+    minDur   uint16  configured target duration, seconds
+    minAcc   uint32  configured target accuracy, mm
+  Source: UBX-NAV-SVIN from Base F9P UART, parsed and forwarded by Base STM32.
+  minDur and minAcc are whatever the STM32 last wrote to the F9P via UBX-CFG-TMODE3
+  (or UBX-CFG-VALSET keys CFG-TMODE-SVIN_MIN_DUR / CFG-TMODE-SVIN_ACC_LIMIT).
+  The STM32 must echo the configured values back in this characteristic so the
+  handheld can show the correct targets even after a reconnect.
+
+  SURVEY_IN_COMMAND (write, no response)
+  Payload (1 byte):
+    0x01 = Start survey-in (with minDur/minAcc written by preceding SET_SURVEY_PARAMS)
+    0x02 = Cancel survey-in (sends UBX-CFG-TMODE3 mode=0 to F9P to exit SVIN mode)
+  Note: do not send Start if active=1 already. The STM32 should reject duplicate starts.
+
+  SET_SURVEY_PARAMS (write, no response) — sent before Start
+  Payload (6 bytes):
+    minDur   uint16  target duration, seconds (180–600 sensible range; F9P min = 1)
+    minAcc   uint32  target accuracy, mm (e.g. 3000 = 3.0 m; F9P default = 3000)
+
+### LVGL implementation notes
+
+  Progress ring:
+  - Use lv_arc (LVGL built-in) — this is exactly the right widget.
+      lv_arc_set_range(arc, 0, 100);
+      lv_arc_set_value(arc, elapsed_pct);   // 0-100
+      lv_arc_set_bg_angles(arc, 0, 360);    // full circle background track
+      lv_arc_set_angles(arc, 270, 270 + elapsed_pct * 360 / 100); // sweep from top
+    Set arc indicator colour blue (#2196F3) while in progress, green (#43A047) when complete.
+  - Overlay two lv_label objects centred on the arc for elapsed time (large) and
+    "of mm:ss" (small below it). Use lv_obj_align(label, LV_ALIGN_CENTER, 0, offset).
+  - Do NOT attempt to position these with CSS margin/flex — use lv_obj_align().
+
+  Condition chips:
+  - Two lv_obj containers side by side with lv_label children.
+  - Recolour border and text on each SURVEY_IN_STATUS notification:
+      Time chip:     blue (#2196F3) while dur < minDur, green (#43A047) when met
+      Accuracy chip: green (#43A047) when meanAcc ≤ minAcc, amber (#E65100) when not yet met
+  - Do NOT render these below the arc using CSS margin-top — compute y explicitly:
+      chip_y = arc_center_y + arc_radius + arc_stroke_width/2 + 16
+
+  Settings fields (State A: editable; States B/C: read-only):
+  - Use lv_textarea for editable fields; lv_label for read-only display.
+  - Lock fields on Start: lv_obj_add_state(ta, LV_STATE_DISABLED).
+
+  Cancel / Complete buttons:
+  - State B: lv_btn red (#D32F2F), label "✕ Cancel Survey-in"
+  - State C: lv_btn green (#43A047), label "Begin RTCM Streaming →"
+  - Position with lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16) on right panel — do NOT
+    rely on flexbox to push it to the bottom.
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPS Staff — Base Config: Survey-in</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 20px;
+      background: #111;
+      display: flex; flex-direction: column; align-items: center;
+      font-family: 'Montserrat', sans-serif;
+      color: #333;
+    }
+    .label {
+      margin-bottom: 8px; font-size: 12px;
+      letter-spacing: 1px; text-transform: uppercase; color: #888;
+    }
+    /* Condition chips */
+    .cond-chip {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8px 16px; border-radius: 8px; border: 2px solid;
+      min-width: 160px; box-sizing: border-box;
+    }
+    .cond-chip-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; margin-bottom: 4px;
+    }
+    .cond-chip-value { font-size: 16px; font-weight: 700; }
+    .cond-chip-sub   { font-size: 11px; margin-top: 2px; }
+    /* chip colours */
+    .cond-inprogress { border-color: #2196F3; background: #E3F2FD;
+                       color: #1565C0; }
+    .cond-met        { border-color: #43A047; background: #E8F5E9;
+                       color: #1B5E20; }
+    .cond-waiting    { border-color: #bbb;    background: #f5f5f5;
+                       color: #888; }
+    /* Right panel sections */
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: #999; margin: 0 0 8px 0;
+    }
+    .stat-row {
+      display: flex; flex-direction: row;
+      justify-content: space-between; align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .stat-key   { font-size: 14px; color: #666; }
+    .stat-val   { font-size: 16px; font-weight: 700; color: #222; }
+    /* Settings row */
+    .setting-box {
+      background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 6px;
+      padding: 10px 14px;
+      display: flex; flex-direction: row;
+      justify-content: space-between; align-items: center;
+    }
+    .setting-key { font-size: 13px; color: #666; }
+    .setting-val { font-size: 18px; font-weight: 700; color: #333; }
+    .setting-locked { font-size: 11px; color: #aaa; margin-top: 2px; }
+    /* Accuracy accent */
+    .acc-box {
+      background: #E8F5E9; border: 2px solid #43A047;
+      border-radius: 8px; padding: 12px 16px;
+    }
+    /* Cancel button */
+    .btn-cancel-svin {
+      width: 100%; height: 56px;
+      background: #D32F2F; color: white;
+      border: none; border-radius: 8px;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px; font-weight: 700;
+      cursor: pointer;
+    }
+    /* State badge in header */
+    .state-badge {
+      display: inline-block; padding: 3px 12px; border-radius: 12px;
+      font-size: 13px; font-weight: 700;
+      background: #fff8e1; color: #e65100;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="label">Handheld Tablet — 1024 × 600 — Base Config: Survey-in (State B — In Progress)</div>
+
+  <div style="
+    width: 1024px; height: 600px;
+    background: white;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 0 0 2px #444;
+    position: relative;
+  ">
+
+    <!-- BATTERY BAR -->
+    <div style="
+      display: flex; flex-direction: row;
+      justify-content: flex-end; align-items: center;
+      flex-shrink: 0; height: 28px; padding: 0 10px;
+      background: #111;
+    ">
+      <span style="font-family: monospace; font-size: 12px; color: #0f0;">▐███░▌ 78%</span>
+    </div>
+
+    <!--
+      ## HEADER BAR
+      ### Functional
+      - ← returns to BaseConfig-0 WITHOUT cancelling survey-in (survey continues on F9P).
+      - State badge updates with live status:
+          "● In Progress" amber  (active=1, valid=0)
+          "✓ Complete"    green  (active=0, valid=1)
+          "Ready"         grey   (active=0, valid=0, not started)
+    -->
+    <div style="
+      display: flex; flex-direction: row; align-items: center;
+      flex-shrink: 0; height: 52px; padding: 0 16px;
+      background: #222; gap: 16px;
+    ">
+      <button style="
+        background: none; border: none; color: white;
+        font-family: 'Montserrat', sans-serif; font-size: 24px;
+        cursor: pointer; padding: 0; line-height: 1;
+      ">←</button>
+      <span style="font-size: 20px; font-weight: 700; color: white; flex: 1;">Survey-in</span>
+      <!-- State badge — colour changes with state -->
+      <span class="state-badge">● In Progress</span>
+      <!-- State C: <span class="state-badge" style="background:#e8f5e9;color:#1b5e20;">✓ Complete</span> -->
+    </div>
+
+    <!-- MAIN AREA -->
+    <div style="flex: 1; display: flex; flex-direction: row; overflow: hidden;">
+
+      <!--
+        ## LEFT PANEL — Progress ring
+        ### Functional
+        - Ring sweeps clockwise from top; shows elapsed / target duration.
+        - Colour: blue (#2196F3) while in progress, turns green (#43A047) on complete.
+        - LVGL: lv_arc widget — see implementation notes in file header.
+          Do NOT try to replicate the SVG dashoffset trick; use lv_arc_set_angles().
+        - Elapsed time text and target time text overlaid on ring centre via lv_label.
+        - Condition chips below ring update live from SURVEY_IN_STATUS notify.
+
+        Current mock state:
+          Elapsed: 4 min 23 s = 263 s
+          Target:  5 min 00 s = 300 s
+          Progress: 263/300 = 87.7%
+          Ring circumference (r=150): 2π×150 ≈ 942 px
+          dashoffset = 942 × (1 − 0.877) ≈ 116 px
+      -->
+      <div style="
+        flex-shrink: 0; width: 460px;
+        background: white;
+        border-right: 1px solid #e0e0e0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        padding: 12px 0;
+        box-sizing: border-box;
+      ">
+        <!-- Progress ring SVG -->
+        <svg width="340" height="340" viewBox="0 0 340 340"
+             style="font-family: 'Montserrat', sans-serif; flex-shrink: 0;">
+
+          <!-- Background track -->
+          <circle cx="170" cy="170" r="150"
+                  fill="none" stroke="#e0e0e0" stroke-width="22"/>
+
+          <!-- Progress arc — sweeps clockwise from top
+               State B (in progress): blue
+               State C (complete):    green #43A047 with dashoffset=0 -->
+          <circle cx="170" cy="170" r="150"
+                  fill="none" stroke="#2196F3" stroke-width="22"
+                  stroke-linecap="round"
+                  stroke-dasharray="942" stroke-dashoffset="116"
+                  transform="rotate(-90 170 170)"/>
+
+          <!-- Elapsed time — large, centre -->
+          <text x="170" y="155" text-anchor="middle"
+                font-size="52" font-weight="700" fill="#222">4:23</text>
+
+          <!-- "of mm:ss" sub-label -->
+          <text x="170" y="190" text-anchor="middle"
+                font-size="16" fill="#999">of 5:00</text>
+
+          <!-- "elapsed" label -->
+          <text x="170" y="215" text-anchor="middle"
+                font-size="13" fill="#bbb" font-weight="700"
+                letter-spacing="1">ELAPSED</text>
+
+        </svg>
+
+        <!--
+          ## CONDITION CHIPS
+          Both conditions must be green for survey-in to complete.
+          Time chip:     blue = in progress, green = duration met
+          Accuracy chip: green = accuracy met, amber = not yet met
+          Update live on each SURVEY_IN_STATUS BLE notification.
+        -->
+        <div style="
+          display: flex; flex-direction: row; gap: 12px;
+          margin-top: 16px; padding: 0 16px;
+        ">
+          <!-- Time condition — currently in progress -->
+          <div class="cond-chip cond-inprogress">
+            <span class="cond-chip-label">⏱ Duration</span>
+            <span class="cond-chip-value">4:23 / 5:00</span>
+            <span class="cond-chip-sub">37 s remaining</span>
+          </div>
+
+          <!-- Accuracy condition — already met -->
+          <div class="cond-chip cond-met">
+            <span class="cond-chip-label">✓ Accuracy</span>
+            <span class="cond-chip-value">±0.8 m</span>
+            <span class="cond-chip-sub">target ≤ 3.0 m — met</span>
+          </div>
+        </div>
+
+      </div><!-- end left panel -->
+
+      <!--
+        ## RIGHT PANEL — Stats, settings, cancel
+        ### Functional
+        - Accuracy box: green when meanAcc ≤ minAcc, amber when not yet met.
+        - Settings boxes: editable in State A (not started), locked (read-only) in States B/C.
+          Lock indicator shown in State B/C.
+        - Observations and estimated remaining time update from SURVEY_IN_STATUS.
+        - Est. remaining = max(minDur − dur, 0) s — note: accuracy may already be met but
+          survey-in cannot complete until duration condition is also satisfied.
+        - Cancel button: sends SURVEY_IN_COMMAND 0x02, then returns to BaseConfig-0.
+          In State C (complete): button becomes "Begin RTCM Streaming →" (green),
+          navigates to 00003-BaseConfig-Streaming.html (ToDo).
+      -->
+      <div style="
+        flex: 1;
+        background: white;
+        padding: 18px 20px;
+        box-sizing: border-box;
+        display: flex; flex-direction: column;
+        gap: 14px;
+      ">
+
+        <!-- Current accuracy (accent) -->
+        <div class="acc-box">
+          <p class="section-label" style="color:#2e7d32; margin-bottom:6px;">Current Position Accuracy</p>
+          <div style="display:flex; flex-direction:row; align-items:baseline; gap:16px;">
+            <span style="font-size:36px; font-weight:700; color:#1b5e20;">±0.8 m</span>
+            <span style="font-size:14px; color:#4caf50;">✓ Target met (≤ 3.0 m)</span>
+          </div>
+          <!-- Amber when not yet met:
+          <span style="font-size:36px; font-weight:700; color:#e65100;">±4.2 m</span>
+          <span style="font-size:14px; color:#e65100;">⏳ Target: ≤ 3.0 m</span>
+          -->
+        </div>
+
+        <!-- Settings (locked during State B) -->
+        <div>
+          <p class="section-label">Settings
+            <span style="font-size:11px; color:#bbb; font-weight:400; margin-left:8px;">
+              🔒 locked while survey-in is active
+            </span>
+          </p>
+          <div style="display:flex; flex-direction:row; gap:10px;">
+            <div class="setting-box" style="flex:1;">
+              <div>
+                <div class="setting-key">Duration target</div>
+                <div class="setting-val">5:00 <span style="font-size:13px;color:#aaa;">(300 s)</span></div>
+              </div>
+            </div>
+            <div class="setting-box" style="flex:1;">
+              <div>
+                <div class="setting-key">Accuracy target</div>
+                <div class="setting-val">3.0 m <span style="font-size:13px;color:#aaa;">(3000 mm)</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live stats -->
+        <div>
+          <p class="section-label">Live Statistics</p>
+          <div style="
+            background: #f8f9fa; border: 1px solid #e0e0e0;
+            border-radius: 6px; padding: 10px 14px;
+          ">
+            <div class="stat-row">
+              <span class="stat-key">Observations accumulated</span>
+              <span class="stat-val">1,245</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-key">Elapsed</span>
+              <span class="stat-val">4 min 23 s</span>
+            </div>
+            <div class="stat-row" style="margin-bottom:0;">
+              <span class="stat-key">Est. time remaining</span>
+              <span class="stat-val">~37 s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spacer pushes cancel to bottom -->
+        <div style="flex: 1;"></div>
+
+        <!--
+          Cancel button — State B only.
+          Sends SURVEY_IN_COMMAND 0x02 then returns to BaseConfig-0.
+          In State C replace with green "Begin RTCM Streaming →" button.
+          In LVGL: lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -16) — do not
+          rely on flex spacer above to push this down.
+        -->
+        <button class="btn-cancel-svin">✕  Cancel Survey-in</button>
+
+      </div><!-- end right panel -->
+
+    </div><!-- end main area -->
+
+  </div><!-- end screen -->
+
+</body>
+</html>
