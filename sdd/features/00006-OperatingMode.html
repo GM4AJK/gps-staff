@@ -6,57 +6,56 @@
 - Entry: Home Screen — "Operating Mode" chip/button
 
 ## Purpose
-Top-level system configuration. Selects one of five operating modes that
-determines how the Base and Rover communicate and where corrections come from.
-Must be configured before entering Base Config or Rover Config — the mode
-controls which config screens are relevant on each device.
+Top-level system configuration. Selects one of six operating modes.
+Sub-options (RF mode, remote device, RF broadcast toggle) are NOT configured
+here — they live on each mode's dedicated config screen.
 
-## Five operating modes
+## Six operating modes
 
-| # | Name               | Corrections source          | Link              |
-|---|--------------------|-----------------------------|-------------------|
-| 1 | Local RF Link      | Base survey-in → Rover RF   | GFSK or LoRa      |
-| 2 | Rover NTRIP Direct | NTRIP caster → Rover WiFi   | Internet (Rover)  |
-| 3 | Base via Relay     | Base → relay caster → Rover | Internet both     |
-| 4 | Dual NTRIP         | NTRIP caster → each device  | Internet both     |
-| 5 | Direct TCP         | Base → Rover via internet   | Internet both     |
+| # | Name                | Corrections source           | Link              |
+|---|---------------------|------------------------------|-------------------|
+| 1 | Local RF Link       | Base survey-in → Rover RF    | GFSK or LoRa      |
+| 2 | Rover NTRIP Direct  | NTRIP caster → Rover WiFi    | Internet (Rover)  |
+| 3 | Base via Relay      | Base → relay caster → Rover  | Internet both     |
+| 4 | Dual NTRIP          | NTRIP caster → each device   | Internet both     |
+| 5 | Direct TCP          | Base → Rover via internet    | Internet both     |
+| 6 | Fixed Base Station  | Permanent Base → NTRIP 24/7  | Fixed WiFi + opt RF |
 
-## Mode 1 — Local RF Link
-- Base performs survey-in at benchmark; broadcasts RTCM over GFSK or LoRa.
-- RF mode sub-option (GFSK / LoRa) shown when Mode 1 is selected.
-  - GFSK: higher throughput, shorter range (~100m bench-verified; outdoor TBD).
-  - LoRa: longer range, lower throughput — preferred for marginal line-of-sight.
-- No internet required.
-- Configure flow: RF mode → Base Config (survey-in, fixed pos) → Rover Config.
+## Mode descriptions
 
-## Mode 2 — Rover NTRIP Direct
-- Rover connects to an NTRIP caster (e.g. OS Net) over WiFi/internet.
-- Base device not used in corrections chain.
-- Configure flow: NTRIP client credentials on Rover.
+### Mode 1 — Local RF Link
+Base performs survey-in at benchmark; broadcasts RTCM over GFSK or LoRa.
+RF mode (GFSK/LoRa) configured on Base Config screen. No internet required.
 
-## Mode 3 — Base via Relay Caster
-- Base (mobile hotspot) streams RTCM to a relay caster (e.g. rtk2go.com).
-- Rover (home WiFi) connects to same caster as NTRIP client.
-- Configure flow: Base — caster credentials + mountpoint; Rover — NTRIP client.
+### Mode 2 — Rover NTRIP Direct
+Rover connects to NTRIP caster (e.g. OS Net) over WiFi. Base not involved.
 
-## Mode 4 — Dual NTRIP Independent
-- Base and Rover each connect independently to a CORS NTRIP service.
-- Both converge on the same reference frame without a direct link.
-- Configure flow: NTRIP client credentials on both devices.
+### Mode 3 — Base via Relay Caster
+Base (mobile hotspot) streams RTCM to relay caster (e.g. rtk2go.com).
+Rover (home WiFi) pulls corrections from same caster as NTRIP client.
 
-## Mode 5 — Direct TCP (router port forward)
-- Rover listens on a TCP port exposed via home router port forward.
-- Base (mobile hotspot) connects directly to the Rover's router hostname + port.
-- No relay service required; lower latency than Mode 3.
-- Configure flow: Rover — listen port; Base — remote address + port.
+### Mode 4 — Dual NTRIP Independent
+Base and Rover each connect independently to a CORS NTRIP service.
+No direct link between devices.
+
+### Mode 5 — Direct TCP (router port forward)
+One device listens on a TCP port exposed via home router port forward.
+The other connects from the field on a mobile hotspot. No relay required.
+Which device is the remote listener is configured on each device's config screen.
+
+### Mode 6 — Fixed Base Station
+Permanently installed Base at a known, accurately surveyed position.
+Streams RTCM to NTRIP caster continuously (24/7). Optionally also broadcasts
+RTCM over RF link simultaneously. Configured once, then headless.
+RF broadcast toggle is on the Base Config screen for this mode.
 
 ## LVGL implementation notes
-- Mode selector: lv_list or custom lv_obj cards; radio-group behaviour
-  (selecting one deselects others). Store selected mode in NVS on Confirm.
-- Mode 1 RF sub-selector: lv_obj with lv_btnmatrix (GFSK | LoRa) —
-  animate in/out with lv_anim on selected card height.
-- Confirm button: lv_btn aligned LV_ALIGN_BOTTOM_MID, always visible.
+- Mode cards: lv_obj radio-group, selecting one deselects others.
+  Store selected mode in NVS as OPERATING_MODE on Confirm button press.
+- Confirm button: lv_btn, LV_ALIGN_BOTTOM_MID, always visible.
 - Current mode chip in header: lv_label updated on selection change.
+- No sub-selectors on this screen — all mode-specific options live on
+  each mode's config screen (navigated to via Confirm button).
 MD_COMMENT -->
 <html lang="en">
 <head>
@@ -81,7 +80,7 @@ MD_COMMENT -->
       border-left: 3px solid transparent;
       border-radius: 8px;
       background: rgba(255,255,255,0.02);
-      padding: 12px 16px 12px 14px;
+      padding: 9px 16px 9px 14px;
       cursor: pointer;
       transition: background 0.12s, border-left-color 0.12s;
       display: flex; flex-direction: column; gap: 0;
@@ -97,16 +96,13 @@ MD_COMMENT -->
       display: flex; align-items: center; gap: 12px;
     }
 
-    /* Radio dot */
     .radio-dot {
       flex-shrink: 0; width: 16px; height: 16px;
       border-radius: 50%; border: 2px solid #37474F;
       display: flex; align-items: center; justify-content: center;
       transition: border-color 0.12s;
     }
-    .mode-card.selected .radio-dot {
-      border-color: #2196F3;
-    }
+    .mode-card.selected .radio-dot { border-color: #2196F3; }
     .radio-dot::after {
       content: ''; width: 7px; height: 7px;
       border-radius: 50%; background: #2196F3;
@@ -114,20 +110,16 @@ MD_COMMENT -->
     }
     .mode-card.selected .radio-dot::after { opacity: 1; }
 
-    /* Mode number badge */
     .mode-num {
       flex-shrink: 0;
       font-size: 10px; font-weight: 700;
       color: #37474F; background: #161F2A;
       border: 1px solid #1E2D3D; border-radius: 4px;
       padding: 2px 7px; font-family: monospace;
-      min-width: 28px; text-align: center;
+      min-width: 24px; text-align: center;
     }
-    .mode-card.selected .mode-num {
-      color: #546E7A; border-color: #263238;
-    }
+    .mode-card.selected .mode-num { color: #546E7A; border-color: #263238; }
 
-    /* Name + description */
     .mode-name {
       font-size: 14px; font-weight: 700; color: #78909C;
       flex: 1; line-height: 1.2;
@@ -135,20 +127,21 @@ MD_COMMENT -->
     .mode-card.selected .mode-name { color: #90CAF9; }
 
     .mode-desc {
-      font-size: 11px; color: #37474F; margin-top: 5px;
-      margin-left: 28px; line-height: 1.5;
+      font-size: 11px; color: #37474F;
+      margin-top: 4px; margin-left: 28px; line-height: 1.5;
     }
     .mode-card.selected .mode-desc { color: #546E7A; }
 
     /* Requirement chips */
     .req-chips {
-      display: flex; flex-wrap: wrap; gap: 5px;
-      margin-top: 7px; margin-left: 28px;
+      display: flex; flex-wrap: nowrap; gap: 5px;
+      flex-shrink: 0;
     }
     .chip {
       font-size: 9px; font-weight: 700;
       padding: 2px 7px; border-radius: 10px;
       text-transform: uppercase; letter-spacing: 0.04em;
+      white-space: nowrap;
     }
     .chip-rf       { background: #1B2631; color: #546E7A; border: 1px solid #263238; }
     .chip-wifi     { background: #0D2137; color: #64B5F6; border: 1px solid #1565C0; }
@@ -157,43 +150,7 @@ MD_COMMENT -->
     .chip-relay    { background: #2D1A00; color: #FFA726; border: 1px solid #BF360C; }
     .chip-portfwd  { background: #1A0A2E; color: #CE93D8; border: 1px solid #4A148C; }
     .chip-hotspot  { background: #00251A; color: #4DB6AC; border: 1px solid #00695C; }
-
-    /* ── RF sub-selector (Mode 1 only) ──────────────────────────── */
-    .rf-selector {
-      margin-top: 10px; margin-left: 28px;
-      overflow: hidden;
-      max-height: 0; opacity: 0;
-      transition: max-height 0.2s ease, opacity 0.15s ease;
-    }
-    .rf-selector.visible {
-      max-height: 80px; opacity: 1;
-    }
-    .rf-selector-inner {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 6px; padding: 9px 12px;
-    }
-    .rf-label {
-      font-size: 10px; font-weight: 700; color: #37474F;
-      text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px;
-    }
-    .rf-buttons { display: flex; gap: 8px; }
-    .rf-btn {
-      font-family: 'Montserrat', sans-serif;
-      font-size: 12px; font-weight: 700;
-      padding: 5px 18px; border-radius: 5px; cursor: pointer;
-      border: 1px solid #263238; background: transparent;
-      color: #37474F; transition: all 0.1s;
-    }
-    .rf-btn:hover { background: rgba(255,255,255,0.05); }
-    .rf-btn.active {
-      background: #1565C0; border-color: #1976D2; color: #E3F2FD;
-    }
-    .rf-note {
-      font-size: 10px; color: #263238; margin-top: 6px;
-    }
-    .rf-note.gfsk-note { display: block; }
-    .rf-note.lora-note { display: none; }
+    .chip-fixed    { background: #1A2010; color: #AED581; border: 1px solid #558B2F; }
 
     /* ── Confirm button ──────────────────────────────────────────── */
     .btn-confirm {
@@ -235,16 +192,11 @@ MD_COMMENT -->
     ">
       <button style="
         background: none; border: none; color: #546E7A;
-        font-family: 'Montserrat', sans-serif;
         font-size: 22px; cursor: pointer; padding: 0; line-height: 1;
       ">←</button>
       <span style="font-size: 18px; font-weight: 700; color: #ECEFF1; flex: 1;">
         Operating Mode
       </span>
-      <!--
-        Current mode chip — updates as user selects.
-        LVGL: lv_label in a styled lv_obj container; update text on selection change.
-      -->
       <div id="current-chip" style="
         font-size: 11px; font-weight: 700;
         background: #1A2640; color: #64B5F6;
@@ -253,140 +205,108 @@ MD_COMMENT -->
       ">Mode 1 — Local RF</div>
     </div>
 
-    <!-- MAIN AREA -->
+    <!-- MAIN AREA — cards list, slightly scrollable if needed -->
     <div style="
       flex: 1; overflow-y: auto; overflow-x: hidden;
-      padding: 14px 24px 14px 24px;
-      display: flex; flex-direction: column; gap: 8px;
+      padding: 10px 24px;
+      display: flex; flex-direction: column; gap: 6px;
     ">
 
-      <!--
-        MODE 1 — Local RF Link
-        RF sub-selector expands when this mode is selected.
-        Default RF mode: GFSK. LoRa available for longer range / marginal LoS.
-      -->
+      <!-- MODE 1 — Local RF Link -->
       <div class="mode-card selected" id="card-1" onclick="selectMode(1)">
         <div class="mode-card-header">
           <div class="radio-dot"></div>
           <span class="mode-num">1</span>
           <span class="mode-name">Local RF Link</span>
-          <div class="req-chips" style="margin: 0; flex-shrink: 0;">
+          <div class="req-chips">
             <span class="chip chip-rf">RF only</span>
             <span class="chip chip-rf">No internet</span>
           </div>
         </div>
-        <div class="mode-desc">
-          Base at benchmark performs survey-in and broadcasts RTCM corrections to Rover over radio.
-        </div>
-        <div class="rf-selector visible" id="rf-selector">
-          <div class="rf-selector-inner">
-            <div class="rf-label">RF Mode</div>
-            <div class="rf-buttons">
-              <button class="rf-btn active" id="btn-gfsk" onclick="selectRF('gfsk', event)">GFSK</button>
-              <button class="rf-btn"        id="btn-lora" onclick="selectRF('lora',  event)">LoRa</button>
-            </div>
-            <div class="rf-note gfsk-note" id="note-gfsk">Higher throughput · use when link is strong</div>
-            <div class="rf-note lora-note" id="note-lora">Longer range · use for marginal line-of-sight</div>
-          </div>
-        </div>
+        <div class="mode-desc">Base at benchmark surveys-in and broadcasts RTCM to Rover over radio. RF mode configured in Base Config.</div>
       </div>
 
-      <!--
-        MODE 2 — Rover NTRIP Direct
-        Rover connects to NTRIP caster independently. Base not involved.
-      -->
+      <!-- MODE 2 — Rover NTRIP Direct -->
       <div class="mode-card" id="card-2" onclick="selectMode(2)">
         <div class="mode-card-header">
           <div class="radio-dot"></div>
           <span class="mode-num">2</span>
           <span class="mode-name">Rover NTRIP Direct</span>
-          <div class="req-chips" style="margin: 0; flex-shrink: 0;">
+          <div class="req-chips">
             <span class="chip chip-wifi">WiFi — Rover</span>
-            <span class="chip chip-internet">Internet</span>
             <span class="chip chip-ntrip">NTRIP account</span>
           </div>
         </div>
-        <div class="mode-desc">
-          Rover connects to an internet NTRIP caster (e.g. OS Net) for corrections. Base not required.
-        </div>
+        <div class="mode-desc">Rover connects to an internet NTRIP caster (e.g. OS Net) for corrections. Base not required.</div>
       </div>
 
-      <!--
-        MODE 3 — Base via Relay Caster
-        Base (mobile hotspot) streams to relay caster. Rover pulls from same caster.
-      -->
+      <!-- MODE 3 — Base via Relay Caster -->
       <div class="mode-card" id="card-3" onclick="selectMode(3)">
         <div class="mode-card-header">
           <div class="radio-dot"></div>
           <span class="mode-num">3</span>
           <span class="mode-name">Base via Relay Caster</span>
-          <div class="req-chips" style="margin: 0; flex-shrink: 0;">
+          <div class="req-chips">
             <span class="chip chip-hotspot">Hotspot — Base</span>
             <span class="chip chip-wifi">WiFi — Rover</span>
             <span class="chip chip-relay">Relay caster</span>
           </div>
         </div>
-        <div class="mode-desc">
-          Base streams RTCM to a relay caster. Rover pulls corrections from the same caster over internet.
-        </div>
+        <div class="mode-desc">Base streams RTCM to a relay caster. Rover pulls corrections from the same caster over internet.</div>
       </div>
 
-      <!--
-        MODE 4 — Dual NTRIP Independent
-        Both devices connect to a CORS NTRIP service independently.
-      -->
+      <!-- MODE 4 — Dual NTRIP Independent -->
       <div class="mode-card" id="card-4" onclick="selectMode(4)">
         <div class="mode-card-header">
           <div class="radio-dot"></div>
           <span class="mode-num">4</span>
           <span class="mode-name">Dual NTRIP Independent</span>
-          <div class="req-chips" style="margin: 0; flex-shrink: 0;">
+          <div class="req-chips">
             <span class="chip chip-wifi">WiFi — both</span>
-            <span class="chip chip-internet">Internet</span>
             <span class="chip chip-ntrip">NTRIP account</span>
           </div>
         </div>
-        <div class="mode-desc">
-          Base and Rover each connect independently to the same CORS NTRIP service. No direct link between devices.
-        </div>
+        <div class="mode-desc">Base and Rover each connect independently to the same CORS NTRIP service. No direct device link.</div>
       </div>
 
-      <!--
-        MODE 5 — Direct TCP
-        One device listens at home (router port forward); the other connects from the field.
-        Sub-selector determines which device is remote (the unattended listener).
-        No relay service. Lower latency than Mode 3.
-      -->
+      <!-- MODE 5 — Direct TCP -->
       <div class="mode-card" id="card-5" onclick="selectMode(5)">
         <div class="mode-card-header">
           <div class="radio-dot"></div>
           <span class="mode-num">5</span>
           <span class="mode-name">Direct TCP</span>
-          <div class="req-chips" style="margin: 0; flex-shrink: 0;">
+          <div class="req-chips">
             <span class="chip chip-wifi">WiFi — remote</span>
             <span class="chip chip-hotspot">Hotspot — mobile</span>
             <span class="chip chip-portfwd">Port forward</span>
           </div>
         </div>
-        <div class="mode-desc">
-          One device listens at home via a router port forward; the other connects from the field. No relay required.
-        </div>
-        <div class="rf-selector" id="mode5-selector">
-          <div class="rf-selector-inner">
-            <div class="rf-label">Which device is on the remote network?</div>
-            <div class="rf-buttons">
-              <button class="rf-btn active" id="btn-rover-remote" onclick="selectRemote('rover', event)">Rover</button>
-              <button class="rf-btn"        id="btn-base-remote"  onclick="selectRemote('base',  event)">Base</button>
-            </div>
-            <div class="rf-note" id="note-rover-remote">Rover listens at home · Base + Tablet connect from field</div>
-            <div class="rf-note" id="note-base-remote"  style="display:none;">Base listens at home · Rover + Tablet connect from field</div>
+        <div class="mode-desc">One device listens at home via a router port forward; the other connects from the field. No relay required.</div>
+      </div>
+
+      <!--
+        MODE 6 — Fixed Base Station
+        Permanent install at a known surveyed CP. Streams NTRIP 24/7.
+        Optional concurrent RF broadcast configured on Base Config screen.
+      -->
+      <div class="mode-card" id="card-6" onclick="selectMode(6)">
+        <div class="mode-card-header">
+          <div class="radio-dot"></div>
+          <span class="mode-num">6</span>
+          <span class="mode-name">Fixed Base Station</span>
+          <div class="req-chips">
+            <span class="chip chip-fixed">Fixed install</span>
+            <span class="chip chip-wifi">WiFi — mains</span>
+            <span class="chip chip-ntrip">NTRIP stream</span>
+            <span class="chip chip-rf">RF optional</span>
           </div>
         </div>
+        <div class="mode-desc">Permanent Base at a known surveyed position. Streams RTCM to NTRIP caster 24/7. Optional concurrent RF broadcast.</div>
       </div>
 
     </div><!-- end main area -->
 
-    <!-- CONFIRM BUTTON — sticky at bottom -->
+    <!-- CONFIRM BUTTON -->
     <div style="padding: 12px 24px; flex-shrink: 0; background: #141E2B; border-top: 1px solid #1E2D3D;">
       <button class="btn-confirm" id="btn-confirm">
         Confirm — Configure Mode 1 →
@@ -396,19 +316,7 @@ MD_COMMENT -->
   </div><!-- end screen -->
 
   <script>
-    /*
-      State
-      -----
-      selectedMode: 1–5 (persisted to NVS as OPERATING_MODE on Confirm)
-      selectedRF:   'gfsk' | 'lora' (persisted to NVS as RF_MODE on Confirm)
-
-      LVGL equivalent:
-        - selectedMode  → static int stored, written to NVS on btn press
-        - selectedRF    → shown/hidden lv_obj within card 1
-    */
-    let selectedMode   = 1;
-    let selectedRF     = 'gfsk';
-    let selectedRemote = 'rover';   // Mode 5: which device is the remote listener
+    let selectedMode = 1;
 
     const modeNames = {
       1: 'Local RF',
@@ -416,46 +324,21 @@ MD_COMMENT -->
       3: 'Base via Relay',
       4: 'Dual NTRIP',
       5: 'Direct TCP',
+      6: 'Fixed Base',
     };
 
     function selectMode(n) {
       selectedMode = n;
 
-      for (let i = 1; i <= 5; i++) {
+      for (let i = 1; i <= 6; i++) {
         document.getElementById('card-' + i).classList.toggle('selected', i === n);
       }
-
-      // Sub-selectors: only show the one relevant to the selected mode
-      document.getElementById('rf-selector').classList.toggle('visible',    n === 1);
-      document.getElementById('mode5-selector').classList.toggle('visible', n === 5);
 
       document.getElementById('current-chip').textContent =
         'Mode ' + n + ' — ' + modeNames[n];
 
       document.getElementById('btn-confirm').textContent =
         'Confirm — Configure Mode ' + n + ' →';
-    }
-
-    function selectRF(mode, event) {
-      event.stopPropagation();
-      selectedRF = mode;
-
-      document.getElementById('btn-gfsk').classList.toggle('active', mode === 'gfsk');
-      document.getElementById('btn-lora').classList.toggle('active', mode === 'lora');
-
-      document.getElementById('note-gfsk').style.display = mode === 'gfsk' ? 'block' : 'none';
-      document.getElementById('note-lora').style.display = mode === 'lora' ? 'block' : 'none';
-    }
-
-    function selectRemote(device, event) {
-      event.stopPropagation();
-      selectedRemote = device;
-
-      document.getElementById('btn-rover-remote').classList.toggle('active', device === 'rover');
-      document.getElementById('btn-base-remote').classList.toggle('active',  device === 'base');
-
-      document.getElementById('note-rover-remote').style.display = device === 'rover' ? 'block' : 'none';
-      document.getElementById('note-base-remote').style.display  = device === 'base'  ? 'block' : 'none';
     }
   </script>
 
