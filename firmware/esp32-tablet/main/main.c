@@ -1,4 +1,3 @@
-#include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -6,6 +5,7 @@
 #include "lvgl.h"
 #include "bsp.h"
 #include "theme.h"
+#include "screen_home.h"
 
 static const char *TAG = "main";
 
@@ -15,6 +15,7 @@ static const char *TAG = "main";
 
 static void lvgl_tick_cb(void *arg)
 {
+    (void)arg;
     lv_tick_inc(LVGL_TICK_MS);
 }
 
@@ -32,6 +33,7 @@ static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px
 
 static void lvgl_task(void *arg)
 {
+    (void)arg;
     while (1) {
         uint32_t delay = lv_timer_handler();
         if (delay > 100) delay = 100;
@@ -39,57 +41,26 @@ static void lvgl_task(void *arg)
     }
 }
 
-// ── First-light screen ────────────────────────────────────────────────────────
+// ── Touch input device ────────────────────────────────────────────────────────
 
 static esp_lcd_touch_handle_t s_touch;
-static lv_obj_t *s_touch_label;
 
-static void touch_read_cb(lv_timer_t *timer)
+static void touch_input_cb(lv_indev_t *indev, lv_indev_data_t *data)
 {
-    (void)timer;
+    (void)indev;
     esp_lcd_touch_read_data(s_touch);
 
-    uint16_t x, y, strength;
-    uint8_t  cnt = 0;
-    bool     pressed = esp_lcd_touch_get_coordinates(s_touch, &x, &y, &strength, &cnt, 1);
+    esp_lcd_touch_point_data_t pt;
+    uint8_t cnt = 0;
+    esp_err_t ret = esp_lcd_touch_get_data(s_touch, &pt, &cnt, 1);
 
-    char buf[48];
-    if (pressed && cnt > 0)
-        snprintf(buf, sizeof(buf), "Touch  x=%4u  y=%4u", x, y);
-    else
-        snprintf(buf, sizeof(buf), "Touch  ---");
-    lv_label_set_text(s_touch_label, buf);
-}
-
-static void build_first_light_screen(const app_theme_t *t)
-{
-    lv_obj_t *scr = lv_scr_act();
-    lv_obj_set_style_bg_color(scr, tc(t->bg_primary), LV_PART_MAIN);
-    lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
-
-    // Title
-    lv_obj_t *title = lv_label_create(scr);
-    lv_label_set_text(title, "GPS Staff");
-    lv_obj_set_style_text_color(title, tc(t->text_primary), LV_PART_MAIN);
-    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_PART_MAIN);
-    lv_obj_align(title, LV_ALIGN_CENTER, 0, -60);
-
-    // Subtitle
-    lv_obj_t *sub = lv_label_create(scr);
-    lv_label_set_text(sub, "First Light");
-    lv_obj_set_style_text_color(sub, tc(t->text_muted), LV_PART_MAIN);
-    lv_obj_set_style_text_font(sub, &lv_font_montserrat_16, LV_PART_MAIN);
-    lv_obj_align(sub, LV_ALIGN_CENTER, 0, -20);
-
-    // Touch readout
-    s_touch_label = lv_label_create(scr);
-    lv_label_set_text(s_touch_label, "Touch  ---");
-    lv_obj_set_style_text_color(s_touch_label, tc(t->accent), LV_PART_MAIN);
-    lv_obj_set_style_text_font(s_touch_label, &lv_font_montserrat_20, LV_PART_MAIN);
-    lv_obj_align(s_touch_label, LV_ALIGN_CENTER, 0, 40);
-
-    // Poll touch every 50 ms via LVGL timer
-    lv_timer_create(touch_read_cb, 50, NULL);
+    if (ret == ESP_OK && cnt > 0) {
+        data->point.x = (int32_t)pt.x;
+        data->point.y = (int32_t)pt.y;
+        data->state   = LV_INDEV_STATE_PRESSED;
+    } else {
+        data->state = LV_INDEV_STATE_RELEASED;
+    }
 }
 
 // ── app_main ──────────────────────────────────────────────────────────────────
@@ -102,7 +73,7 @@ void app_main(void)
     esp_lcd_panel_handle_t panel;
     ESP_ERROR_CHECK(bsp_init(&panel, &s_touch));
 
-    // ── Get the PSRAM framebuffer from the RGB panel driver ────────────────
+    // ── PSRAM framebuffer ─────────────────────────────────────────────────
     void *fb = NULL;
     ESP_ERROR_CHECK(bsp_lcd_get_frame_buffer(panel, &fb));
     ESP_LOGI(TAG, "Framebuffer at %p (%u bytes)",
@@ -127,8 +98,14 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_timer_create(&tick_args, &tick_timer));
     ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, LVGL_TICK_MS * 1000));
 
-    // ── Build first-light UI ───────────────────────────────────────────────
-    build_first_light_screen(&theme_dark);
+    // ── Touch input device ─────────────────────────────────────────────────
+    lv_indev_t *indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, touch_input_cb);
+
+    // ── Build and load Home Screen ─────────────────────────────────────────
+    lv_obj_t *home = screen_home_create(&theme_dark);
+    lv_scr_load(home);
 
     // ── LVGL handler task ─────────────────────────────────────────────────
     xTaskCreate(lvgl_task, "lvgl", 8192, NULL, 5, NULL);

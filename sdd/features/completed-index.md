@@ -12,21 +12,29 @@ Tracks implementation status per spec file. Updated as each screen is built.
 
 ## 00002 — Home Screen
 
-**Status:** `[ ]` Not started
+**Status:** `[~]` Partial — layout complete, all live data is `[F]` placeholder
 
-### To implement
-- [ ] Dark theme layout, status bar, hero section
-- [ ] Base card — navigates to 00003-BaseConfig-0
-- [ ] Rover card — disabled/greyed (no Rover UI yet)
-- [ ] Operating Mode chip — navigates to 00006
-- [ ] BLE connection dots (green/amber/grey)
-- [ ] Version string (build-time constant)
+### Implemented
+- [x] Dark theme layout (flex column, 1024×600)
+- [x] Status bar (28px, bg_secondary)
+- [x] Hero section — GNSS icon (arc+line primitives), "GPS Staff" title, tagline
+- [x] Base card — styled with left accent border, bullets, "Configure Base" button
+- [x] Rover card — dimmed/disabled, "Coming soon" badge, non-clickable
+- [x] BLE connection dot — grey (never connected) placeholder
+- [x] Version strip (bottom, "GPS STAFF · PCB v1.0 · fw 0.1.0")
+- [x] Touch input wired to LVGL pointer input device (click events work)
 
-### Status bar (all screens)
-- [ ] Left: Base battery % via BLE — `[F]` fake until BLE + beacon live
-- [ ] Left: Rover battery % via BLE — `[F]` fake until BLE + beacon live
-- [ ] Right: GPS UTC date/time from Rover F9P — `[F]` fake until F9P + BLE live
-- [ ] Right: Tablet battery % from onboard monitor
+### Fake data `[F]` — revisit when hardware live
+- `[F]` Base battery % — placeholder "Base: --%" until BLE beacon live
+- `[F]` Rover battery % — placeholder "Rover: --%" until BLE beacon live
+- `[F]` GPS UTC date/time — "----/--/-- --:--:--" until Rover F9P + BLE live
+- `[F]` Tablet battery % — placeholder "--%", needs ESP32 ADC read
+- `[F]` BLE dot colour — grey; update to green/amber on BLE connect/disconnect event
+- `[F]` "Configure Base" navigation — logs intent, no target screen yet
+
+### Not yet implemented
+- [ ] Operating Mode chip (navigates to 00006)
+- [ ] Status bar battery bar-graph (`▐███░▌`) — needs RobotoMono or custom font with block chars
 
 ---
 
@@ -307,4 +315,4 @@ Tracks implementation status per spec file. Updated as each screen is built.
 
 ---
 
-*Last updated: 2026-06-30*
+*Last updated: 2026-06-30 — Home screen impl (PR #266)*
