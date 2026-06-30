@@ -3,6 +3,7 @@ idf_component_register(
         "screen_home.c"
         "screen_base_config.c"
         "screen_wifi_networks.c"
+        "screen_password_entry.c"
     INCLUDE_DIRS "."
     REQUIRES lvgl__lvgl theme log
 )
