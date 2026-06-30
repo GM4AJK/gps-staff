@@ -5,10 +5,16 @@ static const char *TAG = "screen_base_cfg";
 
 // Back-navigation target (set after both screens are created in main)
 static lv_obj_t *s_nav_back = NULL;
+static lv_obj_t *s_nav_wifi = NULL;
 
 void screen_base_config_set_nav_back(lv_obj_t *home_scr)
 {
     s_nav_back = home_scr;
+}
+
+void screen_base_config_set_nav_wifi(lv_obj_t *wifi_scr)
+{
+    s_nav_wifi = wifi_scr;
 }
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -97,8 +103,8 @@ static void on_sat_clicked(lv_event_t *e)
 static void on_wifi_clicked(lv_event_t *e)
 {
     (void)e;
-    ESP_LOGI(TAG, "Navigate → WiFi Settings");
-    // TODO: lv_scr_load(screen_base_wifi_create())
+    ESP_LOGI(TAG, "Navigate → WiFi Networks");
+    if (s_nav_wifi) lv_scr_load(s_nav_wifi);
 }
 
 static void on_fixedpos_clicked(lv_event_t *e)
