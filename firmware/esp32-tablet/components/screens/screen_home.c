@@ -3,6 +3,13 @@
 
 static const char *TAG = "screen_home";
 
+static lv_obj_t *s_nav_base = NULL;
+
+void screen_home_set_nav_base(lv_obj_t *base_config_scr)
+{
+	s_nav_base = base_config_scr;
+}
+
 // ── Layout constants ──────────────────────────────────────────────────────────
 
 #define STATUS_BAR_H    28
@@ -257,9 +264,9 @@ static void add_ble_dot(lv_obj_t *parent, const char *status_text, lv_color_t do
 
 static void on_base_card_clicked(lv_event_t *e)
 {
-    (void)e;
-    ESP_LOGI(TAG, "Base card tapped → navigate to Base Config");
-    // TODO: lv_scr_load(screen_base_config_create(&theme_dark))
+	(void)e;
+	ESP_LOGI(TAG, "Base card tapped → navigate to Base Config");
+	if (s_nav_base) lv_scr_load(s_nav_base);
 }
 
 static lv_obj_t *build_base_card(lv_obj_t *parent, const app_theme_t *t)

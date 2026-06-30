@@ -6,6 +6,7 @@
 #include "bsp.h"
 #include "theme.h"
 #include "screen_home.h"
+#include "screen_base_config.h"
 
 static const char *TAG = "main";
 
@@ -103,8 +104,14 @@ void app_main(void)
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(indev, touch_input_cb);
 
-    // ── Build and load Home Screen ─────────────────────────────────────────
-    lv_obj_t *home = screen_home_create(&theme_dark);
+    // ── Build screens (all at boot, in PSRAM) ─────────────────────────────
+    lv_obj_t *home        = screen_home_create(&theme_dark);
+    lv_obj_t *base_config = screen_base_config_create(&theme_dark);
+
+    // Wire up navigation
+    screen_home_set_nav_base(base_config);
+    screen_base_config_set_nav_back(home);
+
     lv_scr_load(home);
 
     // ── LVGL handler task ─────────────────────────────────────────────────
