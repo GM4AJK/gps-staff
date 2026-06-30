@@ -7,6 +7,7 @@
 #include "theme.h"
 #include "screen_home.h"
 #include "screen_base_config.h"
+#include "screen_wifi_networks.h"
 
 static const char *TAG = "main";
 
@@ -105,12 +106,15 @@ void app_main(void)
     lv_indev_set_read_cb(indev, touch_input_cb);
 
     // ── Build screens (all at boot, in PSRAM) ─────────────────────────────
-    lv_obj_t *home        = screen_home_create(&theme_dark);
-    lv_obj_t *base_config = screen_base_config_create(&theme_dark);
+    lv_obj_t *home         = screen_home_create(&theme_dark);
+    lv_obj_t *base_config  = screen_base_config_create(&theme_dark);
+    lv_obj_t *wifi_networks = screen_wifi_networks_create(&theme_dark);
 
     // Wire up navigation
     screen_home_set_nav_base(base_config);
     screen_base_config_set_nav_back(home);
+    screen_base_config_set_nav_wifi(wifi_networks);
+    screen_wifi_networks_set_nav_back(base_config);
 
     lv_scr_load(home);
 
