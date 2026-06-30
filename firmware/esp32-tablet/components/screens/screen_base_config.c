@@ -333,7 +333,7 @@ static void build_cards_area(lv_obj_t *parent)
 
     // Survey-in card — [F] status until F9P + BLE live
     build_mode_card(area,
-        "\xE2\x8A\x95 Survey-in",          // ⊕ U+2295
+        "Survey-in",
         lv_color_hex(COL_SURVEYIN_TITLE),
         "The Base unit surveys its own position by averaging GNSS measurements "
         "over time. When the target accuracy is reached it locks its position "
@@ -347,7 +347,7 @@ static void build_cards_area(lv_obj_t *parent)
 
     // RTCM Data card — [F] status until SX1262 + BLE live
     build_mode_card(area,
-        "\xE2\x8A\x99 RTCM Data",          // ⊙ U+2299
+        "RTCM Data",
         lv_color_hex(COL_RTCM_TITLE),
         "The Base unit broadcasts RTCM correction data to the Rover over the "
         "LoRa radio link. Requires a completed survey-in or a known fixed position.",
@@ -360,7 +360,7 @@ static void build_cards_area(lv_obj_t *parent)
 
     // Satellite View card — [F] status until F9P + BLE live
     build_mode_card(area,
-        "\xE2\x97\x8E Satellite View",      // ◎ U+25CE
+        "Satellite View",
         lv_color_hex(COL_SAT_TITLE),
         "Live sky plot from the Base GNSS receiver — satellite positions, "
         "signal strength and fix quality. Use this to verify sky visibility "
@@ -410,11 +410,7 @@ static void build_config_btn(lv_obj_t *parent,
     lv_obj_set_style_text_color(text_lbl, lv_color_hex(0x444444), LV_PART_MAIN);
 
     if (is_todo) {
-        lv_obj_t *todo_lbl = lv_label_create(btn);
-        lv_label_set_text(todo_lbl, "(ToDo)");
-        lv_obj_set_style_text_font(todo_lbl, &lv_font_montserrat_12, LV_PART_MAIN);
-        lv_obj_set_style_text_color(todo_lbl, lv_color_hex(0xAAAAAA), LV_PART_MAIN);
-        lv_obj_set_style_opa(btn, 160, LV_PART_MAIN); // dim
+        lv_obj_set_style_opa(btn, 160, LV_PART_MAIN); // dim to indicate not yet available
     }
 }
 
