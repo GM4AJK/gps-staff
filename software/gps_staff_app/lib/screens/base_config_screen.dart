@@ -155,9 +155,8 @@ class _ModeCards extends StatelessWidget {
               title: 'Survey-in',
               titleColor: kSurveyInColor,
               description:
-                  'The Base unit surveys its own position by averaging GNSS '
-                  'measurements over time. When the target accuracy is reached '
-                  'it locks its position and begins streaming RTCM corrections.',
+                  'Average GNSS measurements over time to lock the base '
+                  'position, then stream RTCM corrections.',
               statusText:
                   'Last survey: Complete  ·  Accuracy: ±0.8 m  ·  2026-06-25',
               buttonLabel: 'Start Survey-in →',
@@ -171,9 +170,8 @@ class _ModeCards extends StatelessWidget {
               title: 'RTCM Data',
               titleColor: kRtcmColor,
               description:
-                  'The Base unit broadcasts RTCM correction data to the Rover '
-                  'over the LoRa radio link. Requires a completed survey-in or '
-                  'a known fixed position.',
+                  'Broadcast RTCM corrections to the Rover over the LoRa '
+                  'radio link. Requires a completed survey-in or fixed position.',
               statusText:
                   'Status: Streaming  ·  Rovers: 1 connected  ·  Signal: −78 dBm',
               buttonLabel: 'View RTCM Data →',
@@ -187,10 +185,8 @@ class _ModeCards extends StatelessWidget {
               title: 'Satellite View',
               titleColor: kSatColor,
               description:
-                  'Live sky plot from the Base GNSS receiver — satellite '
-                  'positions, signal strength and fix quality. Use this to '
-                  'verify sky visibility and signal health before starting a '
-                  'survey-in.',
+                  'Sky plot, signal strength and fix quality from the Base '
+                  'GNSS receiver. Check sky visibility before a survey-in.',
               statusText:
                   'Sats: 14 (GPS 9 · GLO 5)  ·  Fix: RTK Fixed  ·  PDOP: 1.2',
               buttonLabel: 'View Satellites →',
