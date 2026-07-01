@@ -3,17 +3,11 @@
 
 static const char *TAG = "screen_wifi";
 
-static lv_obj_t *s_nav_back     = NULL;
-static lv_obj_t *s_nav_password = NULL;
+static lv_obj_t *s_nav_back = NULL;
 
 void screen_wifi_networks_set_nav_back(lv_obj_t *base_config_scr)
 {
 	s_nav_back = base_config_scr;
-}
-
-void screen_wifi_networks_set_nav_password(lv_obj_t *pwd_scr)
-{
-	s_nav_password = pwd_scr;
 }
 
 // ── Layout constants ──────────────────────────────────────────────────────────
@@ -87,8 +81,7 @@ static void on_forget_clicked(lv_event_t *e)
 static void on_connect_other_clicked(lv_event_t *e)
 {
 	(void)e;
-	ESP_LOGI(TAG, "Connect other → Password Entry");
-	if (s_nav_password) lv_scr_load(s_nav_password);
+	ESP_LOGI(TAG, "Connect other → Password Entry [F]");
 }
 
 static void on_scan_clicked(lv_event_t *e)
