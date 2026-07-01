@@ -7,6 +7,7 @@ import 'wifi_networks_screen.dart';
 import 'fixed_position_screen.dart';
 import 'survey_in_screen.dart';
 import 'rtcm_streaming_screen.dart';
+import 'satellite_view_screen.dart';
 
 enum PositionState { none, surveyIn, monument, ntrip }
 
@@ -196,7 +197,7 @@ class _ModeCards extends StatelessWidget {
                   'Sats: 14 (GPS 9 · GLO 5)  ·  Fix: RTK Fixed  ·  PDOP: 1.2',
               buttonLabel: 'View Satellites →',
               buttonColor: kBtnPurple,
-              onPressed: () {},
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SatelliteViewScreen())),
             ),
           ),
         ],

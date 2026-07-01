@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
 import 'base_config_screen.dart';
+import 'rover_config_screen.dart';
+import 'operating_mode_screen.dart';
+import 'about_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -32,7 +35,13 @@ class HomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 20),
-                  const Expanded(child: _RoverCard()),
+                  Expanded(
+                    child: _RoverCard(
+                      onTap: () => Navigator.push(context,
+                          MaterialPageRoute(
+                              builder: (_) => const RoverConfigScreen())),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -206,22 +215,23 @@ class _BaseCard extends StatelessWidget {
 // ── Rover card ────────────────────────────────────────────────────────────────
 
 class _RoverCard extends StatelessWidget {
-  const _RoverCard();
+  const _RoverCard({required this.onTap});
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Opacity(
-      opacity: 0.55,
+    return GestureDetector(
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: kBgCardDis,
+          color: kBgCard,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _LeftAccent(color: kTextDim),
+            _LeftAccent(color: kGreen),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 20, 22, 18),
@@ -229,35 +239,18 @@ class _RoverCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _CardHeader(
-                      iconBg: kBgCardDisEl,
-                      iconFg: kTextMuted,
+                      iconBg: const Color(0xFF1B5E20),
+                      iconFg: const Color(0xFFA5D6A7),
                       icon: '⊛',
                       title: 'Rover',
-                      titleColor: kTextSub,
                       subtitle: 'Mobile receiver · RTK fix',
-                      subtitleColor: kTextDim,
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: kBgCardDisEl,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'Coming soon',
-                          style: GoogleFonts.montserrat(
-                            fontSize: 11,
-                            color: const Color(0xFF455A64),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
+                      trailing: const _ConnectionDot(connected: false),
                     ),
                     const SizedBox(height: 14),
                     Expanded(
                       child: _Bullets(
-                        dotColor: kTextDim,
-                        textColor: kTextDim,
+                        dotColor: kGreen,
+                        textColor: kTextMuted,
                         items: const [
                           'Receive RTCM corrections from Base over GFSK',
                           'Achieve RTK fixed solution — centimetre accuracy',
@@ -266,7 +259,7 @@ class _RoverCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _DisabledButton(label: 'Not yet available'),
+                    _ActionButton(label: 'Configure Rover →', onPressed: onTap),
                   ],
                 ),
               ),
@@ -501,14 +494,34 @@ class _VersionStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 24,
+      height: 28,
       color: kBgStatus,
       padding: const EdgeInsets.symmetric(horizontal: 18),
-      alignment: Alignment.centerRight,
-      child: Text(
-        'GPS STAFF · PCB v1.0 · fw 0.1.0',
-        style: GoogleFonts.montserrat(
-            fontSize: 10, color: kTextVersion, letterSpacing: 0.6),
+      child: Row(
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(
+                    builder: (_) => const OperatingModeScreen())),
+            child: Text(
+              'Mode 1 — Local RF  ›',
+              style: GoogleFonts.montserrat(
+                  fontSize: 10,
+                  color: const Color(0xFF546E7A),
+                  letterSpacing: 0.4),
+            ),
+          ),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => Navigator.push(context,
+                MaterialPageRoute(builder: (_) => const AboutScreen())),
+            child: Text(
+              'GPS STAFF · PCB v1.0 · fw 0.1.0  ›',
+              style: GoogleFonts.montserrat(
+                  fontSize: 10, color: kTextVersion, letterSpacing: 0.6),
+            ),
+          ),
+        ],
       ),
     );
   }
