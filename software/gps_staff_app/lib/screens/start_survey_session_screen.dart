@@ -271,7 +271,7 @@ class _LeftPanel extends StatelessWidget {
 								),
 								const TextSpan(text: 'File: '),
 								TextSpan(
-									text: 'survey_004.log\n',
+									text: 'survey_004.csv\n',
 									style: GoogleFonts.montserrat(
 										fontSize: 13,
 										color: const Color(0xFF555555),
@@ -391,7 +391,7 @@ class _RightPanel extends StatelessWidget {
 				children: [
 					_FieldWrap(
 						label: 'Filename',
-						sublabel: '— .log extension added automatically',
+						sublabel: '— .csv extension added automatically',
 						child: GestureDetector(
 							onTap: onFilenameEdit,
 							child: Container(
@@ -427,7 +427,7 @@ class _RightPanel extends StatelessWidget {
 														borderRadius:
 																BorderRadius.circular(4),
 													),
-													child: Text('.log',
+													child: Text('.csv',
 															style: GoogleFonts.montserrat(
 																fontSize: 12,
 																fontWeight: FontWeight.w700,
