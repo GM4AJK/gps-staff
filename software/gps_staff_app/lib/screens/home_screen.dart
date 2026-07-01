@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
+import 'base_config_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -23,9 +24,11 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _BaseCard(
-                      onTap: () {
-                        // TODO: navigate to Base Config screen
-                      },
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const BaseConfigScreen()),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 20),

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
 import '../widgets/app_header_bar.dart';
+import 'password_entry_screen.dart';
 
 enum _NetState { connected, inRange, outOfRange }
 
@@ -172,8 +173,8 @@ class _RightPanel extends StatelessWidget {
               label: 'Other Networks',
               trailing: _ScanButton(onPressed: () {}),
             ),
-            _OtherNetRow(ssid: 'SKYxxxx1', meta: 'Ch 12 · −79 dBm'),
-            _OtherNetRow(ssid: 'SKYxxxx2', meta: 'Ch 2 · −89 dBm'),
+            _OtherNetRow(ssid: 'SKYxxxx1', meta: 'Ch 12 · −79 dBm', channel: 12),
+            _OtherNetRow(ssid: 'SKYxxxx2', meta: 'Ch 2 · −89 dBm', channel: 2),
           ],
         ),
       ),
@@ -321,9 +322,10 @@ class _RememberedRow extends StatelessWidget {
 }
 
 class _OtherNetRow extends StatelessWidget {
-  const _OtherNetRow({required this.ssid, required this.meta});
+  const _OtherNetRow({required this.ssid, required this.meta, required this.channel});
   final String ssid;
   final String meta;
+  final int channel;
 
   @override
   Widget build(BuildContext context) {
@@ -352,7 +354,15 @@ class _OtherNetRow extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           _NetButton(
-              label: 'Connect', bg: kBlueAccent, onPressed: () {}),
+              label: 'Connect',
+              bg: kBlueAccent,
+              onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PasswordEntryScreen(
+                          ssid: ssid, channel: channel),
+                    ),
+                  )),
         ],
       ),
     );

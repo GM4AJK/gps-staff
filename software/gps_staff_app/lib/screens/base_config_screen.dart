@@ -4,6 +4,9 @@ import '../theme.dart';
 import '../widgets/status_bar.dart';
 import '../widgets/app_header_bar.dart';
 import 'wifi_networks_screen.dart';
+import 'fixed_position_screen.dart';
+import 'survey_in_screen.dart';
+import 'rtcm_streaming_screen.dart';
 
 enum PositionState { none, surveyIn, monument, ntrip }
 
@@ -163,7 +166,7 @@ class _ModeCards extends StatelessWidget {
                   'Last survey: Complete  ·  Accuracy: ±0.8 m  ·  2026-06-25',
               buttonLabel: 'Start Survey-in →',
               buttonColor: kBtnBlue,
-              onPressed: () {},
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SurveyInScreen())),
             ),
           ),
           Container(width: 2, color: kLightBorder),
@@ -178,7 +181,7 @@ class _ModeCards extends StatelessWidget {
                   'Status: Streaming  ·  Rovers: 1 connected  ·  Signal: −78 dBm',
               buttonLabel: 'View RTCM Data →',
               buttonColor: kBtnGreen,
-              onPressed: () {},
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RtcmStreamingScreen())),
             ),
           ),
           Container(width: 2, color: kLightBorder),
@@ -316,7 +319,7 @@ class _ConfigStrip extends StatelessWidget {
               onPressed: null),
           const SizedBox(width: 12),
           _ConfigButton(
-              icon: Icons.location_on, label: 'Fixed Position', onPressed: () {}),
+              icon: Icons.location_on, label: 'Fixed Position', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FixedPositionScreen()))),
         ],
       ),
     );
