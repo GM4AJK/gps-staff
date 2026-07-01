@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
+import '../widgets/app_header_bar.dart';
+import 'wifi_networks_screen.dart';
 
 enum PositionState { none, surveyIn, monument, ntrip }
 
@@ -16,7 +18,7 @@ class BaseConfigScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const StatusBar(),
-          _HeaderBar(onBack: () => Navigator.pop(context)),
+          AppHeaderBar(title: 'Base Configuration', onBack: () => Navigator.pop(context)),
           _PositionBanner(
             state: PositionState.surveyIn,
             label: 'Survey-in  ±0.8 m',
@@ -305,7 +307,7 @@ class _ConfigStrip extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 6, 14, 6),
       child: Row(
         children: [
-          _ConfigButton(icon: Icons.wifi, label: 'WiFi Settings', onPressed: () {}),
+          _ConfigButton(icon: Icons.wifi, label: 'WiFi Settings', onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WifiNetworksScreen()))),
           const SizedBox(width: 12),
           _ConfigButton(
               icon: Icons.cell_tower,
