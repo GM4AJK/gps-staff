@@ -65,6 +65,59 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 			_FixState.rtkFix => (lat: '57.1234567°', lon: '−2.3456789°', height: '143.421 m', hacc: '8 mm', vacc: '12 mm', sats: '18'),
 		};
 
+	Future<void> _confirmEndSession(BuildContext context) async {
+		final confirmed = await showDialog<bool>(
+			context: context,
+			builder: (ctx) => AlertDialog(
+				backgroundColor: const Color(0xFF1A2030),
+				shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+				title: Text('End Session?',
+						style: GoogleFonts.montserrat(
+								fontSize: 18,
+								fontWeight: FontWeight.w700,
+								color: const Color(0xFFECEFF1))),
+				content: Text(
+					'This will close the session and return to the home screen. '
+					'Captured points have already been written to the SD card.',
+					style: GoogleFonts.montserrat(
+							fontSize: 13,
+							color: const Color(0xFF78909C),
+							height: 1.6),
+				),
+				actions: [
+					ElevatedButton(
+						onPressed: () => Navigator.pop(ctx, false),
+						style: ElevatedButton.styleFrom(
+							backgroundColor: const Color(0xFF2E7D32),
+							foregroundColor: Colors.white,
+							elevation: 0,
+							shape: RoundedRectangleBorder(
+									borderRadius: BorderRadius.circular(6)),
+						),
+						child: Text('Keep Going',
+								style: GoogleFonts.montserrat(
+										fontWeight: FontWeight.w700)),
+					),
+					const SizedBox(width: 16),
+					ElevatedButton(
+						onPressed: () => Navigator.pop(ctx, true),
+						style: ElevatedButton.styleFrom(
+							backgroundColor: const Color(0xFFC62828),
+							foregroundColor: Colors.white,
+							elevation: 0,
+							shape: RoundedRectangleBorder(
+									borderRadius: BorderRadius.circular(6)),
+						),
+						child: Text('End Session',
+								style: GoogleFonts.montserrat(
+										fontWeight: FontWeight.w700)),
+					),
+				],
+			),
+		);
+		if (confirmed == true && context.mounted) Navigator.pop(context);
+	}
+
 	@override
 	Widget build(BuildContext context) {
 		final fix = _fixData;
@@ -87,7 +140,6 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 						elapsed: '00:12:34',
 						pointCount: _points.length,
 						onBack: () => Navigator.pop(context),
-						onEndSession: () => Navigator.pop(context),
 					),
 					Expanded(
 						child: Row(
@@ -97,6 +149,7 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 									sessionTitle: widget.sessionTitle,
 									pos: pos,
 									fixState: _fixState,
+									onEndSession: () => _confirmEndSession(context),
 								),
 								Expanded(
 									child: _RightPanel(
@@ -178,14 +231,12 @@ class _SessionHeader extends StatelessWidget {
 		required this.elapsed,
 		required this.pointCount,
 		required this.onBack,
-		required this.onEndSession,
 	});
 
 	final String sessionName;
 	final String elapsed;
 	final int pointCount;
 	final VoidCallback onBack;
-	final VoidCallback onEndSession;
 
 	@override
 	Widget build(BuildContext context) {
@@ -239,23 +290,6 @@ class _SessionHeader extends StatelessWidget {
 									color: kTextMuted),
 						),
 					),
-					const SizedBox(width: 10),
-					OutlinedButton(
-						onPressed: onEndSession,
-						style: OutlinedButton.styleFrom(
-							foregroundColor: kTextMuted,
-							side: const BorderSide(color: Color(0xFF37474F)),
-							padding: const EdgeInsets.symmetric(
-									horizontal: 12, vertical: 5),
-							minimumSize: Size.zero,
-							tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-							shape: RoundedRectangleBorder(
-									borderRadius: BorderRadius.circular(5)),
-						),
-						child: Text('End Session',
-								style: GoogleFonts.montserrat(
-										fontSize: 11, fontWeight: FontWeight.w700)),
-					),
 				],
 			),
 		);
@@ -269,11 +303,13 @@ class _LeftPanel extends StatelessWidget {
 		required this.sessionTitle,
 		required this.pos,
 		required this.fixState,
+		required this.onEndSession,
 	});
 
 	final String sessionTitle;
 	final ({String lat, String lon, String height, String hacc, String vacc, String sats}) pos;
 	final _FixState fixState;
+	final VoidCallback onEndSession;
 
 	Color get _accColor => switch (fixState) {
 		_FixState.rtkFix => const Color(0xFF66BB6A),
@@ -291,26 +327,50 @@ class _LeftPanel extends StatelessWidget {
 			),
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
-				mainAxisAlignment: MainAxisAlignment.center,
 				children: [
-					_CoordBlock(label: 'Session', value: sessionTitle, large: false),
-					const SizedBox(height: 18),
-					_CoordBlock(label: 'Pole height', value: '1.80 m', large: false),
-					const SizedBox(height: 18),
-					_CoordBlock(label: 'Latitude', value: pos.lat),
-					const SizedBox(height: 14),
-					_CoordBlock(label: 'Longitude', value: pos.lon),
-					const SizedBox(height: 14),
-					_CoordBlock(label: 'Height (MSL)', value: pos.height),
-					const SizedBox(height: 16),
-					Row(
-						children: [
-							_AccBlock(label: 'hAcc', value: pos.hacc, color: _accColor),
-							const SizedBox(width: 24),
-							_AccBlock(label: 'vAcc', value: pos.vacc, color: _accColor),
-							const Spacer(),
-							_AccBlock(label: 'Satellites', value: pos.sats, color: kTextSub),
-						],
+					SizedBox(
+						width: double.infinity,
+						height: 52,
+						child: ElevatedButton(
+							onPressed: onEndSession,
+							style: ElevatedButton.styleFrom(
+								backgroundColor: const Color(0xFFC62828),
+								foregroundColor: Colors.white,
+								elevation: 0,
+								shape: RoundedRectangleBorder(
+										borderRadius: BorderRadius.circular(8)),
+							),
+							child: Text('End Session',
+									style: GoogleFonts.montserrat(
+											fontSize: 15, fontWeight: FontWeight.w700)),
+						),
+					),
+					Expanded(
+						child: Column(
+							crossAxisAlignment: CrossAxisAlignment.start,
+							mainAxisAlignment: MainAxisAlignment.center,
+							children: [
+								_CoordBlock(label: 'Session', value: sessionTitle, large: false),
+								const SizedBox(height: 18),
+								_CoordBlock(label: 'Pole height', value: '1.80 m', large: false),
+								const SizedBox(height: 18),
+								_CoordBlock(label: 'Latitude', value: pos.lat),
+								const SizedBox(height: 14),
+								_CoordBlock(label: 'Longitude', value: pos.lon),
+								const SizedBox(height: 14),
+								_CoordBlock(label: 'Height (MSL)', value: pos.height),
+								const SizedBox(height: 16),
+								Row(
+									children: [
+										_AccBlock(label: 'hAcc', value: pos.hacc, color: _accColor),
+										const SizedBox(width: 24),
+										_AccBlock(label: 'vAcc', value: pos.vacc, color: _accColor),
+										const Spacer(),
+										_AccBlock(label: 'Satellites', value: pos.sats, color: kTextSub),
+									],
+								),
+							],
+						),
 					),
 				],
 			),

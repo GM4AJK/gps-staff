@@ -555,32 +555,19 @@ class _TxPowerField extends StatelessWidget {
       initialValue: selected,
       onSelected: onChanged,
       offset: const Offset(0, 52),
+      color: kLightBg,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       itemBuilder: (_) => [
         for (int i = 0; i < _txPowerOptions.length; i++)
           PopupMenuItem<int>(
             value: i,
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 80,
-                  child: Text(
-                    '${_txPowerOptions[i].dBm >= 0 ? '+' : ''}${_txPowerOptions[i].dBm} dBm',
-                    style: GoogleFonts.montserrat(
-                        fontSize: 18, fontWeight: FontWeight.w700,
-                        color: i == selected
-                            ? const Color(0xFF2E7D32)
-                            : const Color(0xFF212121)),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(_txPowerOptions[i].label,
-                    style: GoogleFonts.montserrat(
-                        fontSize: 13,
-                        color: i == selected
-                            ? const Color(0xFF43A047)
-                            : const Color(0xFF9E9E9E))),
-              ],
+            child: Text(
+              '${_txPowerOptions[i].dBm >= 0 ? '+' : ''}${_txPowerOptions[i].dBm} dBm',
+              style: GoogleFonts.montserrat(
+                  fontSize: 18, fontWeight: FontWeight.w700,
+                  color: i == selected
+                      ? const Color(0xFF2E7D32)
+                      : const Color(0xFF212121)),
             ),
           ),
       ],
@@ -601,7 +588,7 @@ class _TxPowerField extends StatelessWidget {
                       style: GoogleFonts.montserrat(
                           fontSize: 11, color: const Color(0xFF9E9E9E))),
                   const SizedBox(height: 2),
-                  Text('$displayVal dBm  ·  ${opt.label}',
+                  Text('$displayVal dBm',
                       style: GoogleFonts.montserrat(
                           fontSize: 20, fontWeight: FontWeight.w700,
                           color: const Color(0xFF212121))),
@@ -692,9 +679,11 @@ Future<String?> _showNumericDialog({
   return showDialog<String>(
     context: context,
     builder: (_) => AlertDialog(
+      backgroundColor: kLightBg,
       title: Text(title,
           style: GoogleFonts.montserrat(
-              fontSize: 18, fontWeight: FontWeight.w700)),
+              fontSize: 18, fontWeight: FontWeight.w700,
+              color: kLightText)),
       content: TextField(
         controller: ctrl,
         autofocus: true,
@@ -716,7 +705,7 @@ Future<String?> _showNumericDialog({
         TextButton(
           onPressed: () => Navigator.pop(context),
           child: Text('Cancel',
-              style: GoogleFonts.montserrat(color: const Color(0xFF757575))),
+              style: GoogleFonts.montserrat(color: kLightTextMuted)),
         ),
         ElevatedButton(
           onPressed: () => Navigator.pop(context, ctrl.text),
