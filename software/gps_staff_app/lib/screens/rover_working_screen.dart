@@ -73,6 +73,7 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 
 		return Scaffold(
 			backgroundColor: kBgHome,
+      resizeToAvoidBottomInset: false,
 			body: Column(
 				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
@@ -200,9 +201,13 @@ class _SessionHeader extends StatelessWidget {
 				children: [
 					GestureDetector(
 						onTap: onBack,
-						child: Text('←',
-								style: GoogleFonts.montserrat(
-										fontSize: 20, color: kTextDim, height: 1)),
+						behavior: HitTestBehavior.opaque,
+						child: Padding(
+							padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+							child: Text('←',
+									style: GoogleFonts.montserrat(
+											fontSize: 20, color: kTextDim, height: 1)),
+						),
 					),
 					const SizedBox(width: 12),
 					Expanded(

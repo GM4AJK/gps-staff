@@ -18,6 +18,7 @@ class _UsbStorageActiveScreenState extends State<UsbStorageActiveScreen> {
 	Widget build(BuildContext context) {
 		return Scaffold(
 			backgroundColor: kBgHome,
+      resizeToAvoidBottomInset: false,
 			body: Column(
 				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [

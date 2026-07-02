@@ -23,6 +23,7 @@ class _StartSurveySessionScreenState
 	Widget build(BuildContext context) {
 		return Scaffold(
 			backgroundColor: kLightBg,
+			resizeToAvoidBottomInset: false,
 			body: Column(
 				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
@@ -160,11 +161,15 @@ class _Header extends StatelessWidget {
 				children: [
 					GestureDetector(
 						onTap: onBack,
-						child: Text('←',
-								style: GoogleFonts.montserrat(
-										fontSize: 24,
-										color: const Color(0xFFAAAAAA),
-										height: 1)),
+						behavior: HitTestBehavior.opaque,
+						child: Padding(
+							padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+							child: Text('←',
+									style: GoogleFonts.montserrat(
+											fontSize: 24,
+											color: const Color(0xFFAAAAAA),
+											height: 1)),
+						),
 					),
 					const SizedBox(width: 14),
 					Text('New Survey Session',
@@ -198,6 +203,11 @@ class _LeftPanel extends StatelessWidget {
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
+					Expanded(
+						child: SingleChildScrollView(
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
 					_SectionLabel('SD Card'),
 					const SizedBox(height: 10),
 					Container(
@@ -290,7 +300,10 @@ class _LeftPanel extends StatelessWidget {
 							],
 						),
 					),
-					const Spacer(),
+								],
+							),
+						),
+					),
 
 					if (!sdPresent)
 						Container(
@@ -389,6 +402,11 @@ class _RightPanel extends StatelessWidget {
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
+					Expanded(
+						child: SingleChildScrollView(
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
 					_FieldWrap(
 						label: 'Filename',
 						sublabel: '— .csv extension added automatically',
@@ -468,7 +486,6 @@ class _RightPanel extends StatelessWidget {
 					_FieldWrap(
 						label: 'Description',
 						sublabel: '— optional',
-						expand: true,
 						child: GestureDetector(
 							onTap: onDescEdit,
 							child: _FieldBox(
@@ -478,6 +495,10 @@ class _RightPanel extends StatelessWidget {
 								placeholder:
 										'Base setup, weather conditions, point identifiers…',
 								multiLine: true,
+							),
+						),
+					),
+								],
 							),
 						),
 					),
