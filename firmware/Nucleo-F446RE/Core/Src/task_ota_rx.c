@@ -76,14 +76,14 @@ static void ota_rx_task(void *arg)
 			if (snr_neg) snr_centi = -snr_centi;
 
 			display_clear();
-			display_va_string(0, 0,  &font5x7, "RSSI: %ddBm", (int)ota_rx.last_rssi);
-			display_va_string(0, 10, &font5x7, "SNR: %s%d.%02ddB",
+			display_va_string(0, 0,  &ssd130x_font5x7, "RSSI: %ddBm", (int)ota_rx.last_rssi);
+			display_va_string(0, 10, &ssd130x_font5x7, "SNR: %s%d.%02ddB",
 			                  snr_neg ? "-" : "", snr_centi / 100, snr_centi % 100);
 			display_flush();
 		} else {
 			logger_log("ota_rx: no packets for 5s\r\n");
 			display_clear();
-			display_string(0, 0, &font5x7, "No signal");
+			display_string(0, 0, &ssd130x_font5x7, "No signal");
 			display_flush();
 		}
 	}

@@ -7,6 +7,7 @@
 #include "semphr.h"
 #include "task.h"
 #include "main.h"
+#include "ssd130x.h"
 
 #define DISPLAY_TEXT_LEN  64
 #define DISPLAY_QUEUE_LEN  8
@@ -23,7 +24,7 @@ typedef struct {
 		struct {
 			int16_t x;
 			int16_t y;
-			const ssd1309_font_t *font;
+			const ssd130x_font_t *font;
 			char text[DISPLAY_TEXT_LEN];
 		} string;
 	};
@@ -32,15 +33,15 @@ typedef struct {
 extern SemaphoreHandle_t hi2c1_mutex;
 
 static QueueHandle_t display_queue;
-static ssd1309_t oled;
+static ssd130x_t oled;
 
 static void display_task(void *arg)
 {
 	(void)arg;
 
-	ssd1309_init(&oled, &hi2c1, 0x3C, -1, -1);
+	ssd130x_init(&oled, &hi2c1, 0x3C, SSD130X_CHIP_SSD1306, true, -1, -1);
 	xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
-	ssd1309_bringup(&oled);
+	ssd130x_bringup(&oled);
 	xSemaphoreGive(hi2c1_mutex);
 
 	display_msg_t msg;
@@ -50,16 +51,16 @@ static void display_task(void *arg)
 
 		switch (msg.type) {
 		case DISPLAY_CLEAR:
-			ssd1309_clear(&oled);
+			ssd130x_clear(&oled);
 			break;
 		case DISPLAY_STRING:
-			ssd1309_draw_string(&oled, msg.string.font,
+			ssd130x_draw_string(&oled, msg.string.font,
 				msg.string.x, msg.string.y,
-				msg.string.text, SSD1309_COLOR_ON);
+				msg.string.text, SSD130X_COLOR_ON);
 			break;
 		case DISPLAY_FLUSH:
 			xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
-			ssd1309_flush(&oled);
+			ssd130x_flush(&oled);
 			xSemaphoreGive(hi2c1_mutex);
 			break;
 		}
@@ -79,7 +80,7 @@ void display_clear(void)
 	xQueueSend(display_queue, &msg, 0);
 }
 
-void display_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char *str)
+void display_string(int16_t x, int16_t y, const ssd130x_font_t *font, const char *str)
 {
 	display_msg_t msg = { .type = DISPLAY_STRING };
 	msg.string.x    = x;
@@ -90,7 +91,7 @@ void display_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char
 	xQueueSend(display_queue, &msg, 0);
 }
 
-void display_va_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char *fmt, ...)
+void display_va_string(int16_t x, int16_t y, const ssd130x_font_t *font, const char *fmt, ...)
 {
 	display_msg_t msg = { .type = DISPLAY_STRING };
 	msg.string.x    = x;
