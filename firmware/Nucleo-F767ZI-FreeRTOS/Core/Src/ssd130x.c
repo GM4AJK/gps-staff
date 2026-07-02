@@ -16,8 +16,10 @@
 #define SSD130X_CMD_SET_MULTIPLEX         0xA8
 #define SSD130X_CMD_SET_DISPLAY_OFFSET    0xD3
 #define SSD130X_CMD_SET_START_LINE        0x40
-#define SSD130X_CMD_SEGMENT_REMAP         0xA1
-#define SSD130X_CMD_COM_SCAN_DEC          0xC8
+#define SSD130X_CMD_SEGMENT_REMAP         0xA1	/* columns mirrored (normal mount) */
+#define SSD130X_CMD_SEGMENT_REMAP_NORMAL  0xA0	/* columns not mirrored (rotated 180°) */
+#define SSD130X_CMD_COM_SCAN_DEC          0xC8	/* rows bottom-to-top (normal mount) */
+#define SSD130X_CMD_COM_SCAN_INC          0xC0	/* rows top-to-bottom (rotated 180°) */
 #define SSD130X_CMD_SET_COM_PINS          0xDA
 #define SSD130X_CMD_SET_CONTRAST          0x81
 #define SSD130X_CMD_SET_PRECHARGE         0xD9
@@ -418,12 +420,14 @@ void ssd130x_init(
 	I2C_HandleTypeDef *in_port,
 	uint16_t in_address,
 	ssd130x_chip_t chip,
+	bool rotate_180,
 	int16_t in_height,
 	int16_t in_width)
 {
 	p->port = in_port;
 	p->address = in_address;
 	p->chip = chip;
+	p->rotate_180 = rotate_180;
 	p->height = (in_height < 0) ? 64 : in_height;
 	p->width = (in_width < 0) ? 128 : in_width;
 	memset(p->buffer, 0x00, sizeof(p->buffer));
@@ -440,8 +444,8 @@ HAL_StatusTypeDef ssd130x_bringup(ssd130x_t *p)
 		SSD130X_CMD_SET_MULTIPLEX, (uint8_t)(p->height - 1),
 		SSD130X_CMD_SET_DISPLAY_OFFSET, 0x00,
 		SSD130X_CMD_SET_START_LINE,
-		SSD130X_CMD_SEGMENT_REMAP,
-		SSD130X_CMD_COM_SCAN_DEC,
+		p->rotate_180 ? SSD130X_CMD_SEGMENT_REMAP_NORMAL : SSD130X_CMD_SEGMENT_REMAP,
+		p->rotate_180 ? SSD130X_CMD_COM_SCAN_INC        : SSD130X_CMD_COM_SCAN_DEC,
 		SSD130X_CMD_SET_COM_PINS, 0x12,
 		SSD130X_CMD_SET_CONTRAST, 0x8F,
 		SSD130X_CMD_SET_PRECHARGE, 0xF1,

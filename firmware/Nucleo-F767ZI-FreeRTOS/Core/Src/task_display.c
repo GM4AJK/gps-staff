@@ -38,7 +38,7 @@ static void display_task(void *arg)
 {
 	(void)arg;
 
-	ssd130x_init(&oled, &hi2c1, 0x3C, SSD130X_CHIP_SSD1306, -1, -1);
+	ssd130x_init(&oled, &hi2c1, 0x3C, SSD130X_CHIP_SSD1306, true, -1, -1);
 	xSemaphoreTake(hi2c1_mutex, portMAX_DELAY);
 	HAL_StatusTypeDef bringup_status = ssd130x_bringup(&oled);
 	xSemaphoreGive(hi2c1_mutex);

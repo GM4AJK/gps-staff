@@ -26,6 +26,7 @@ typedef struct {
 	int16_t height;
 	int16_t width;
 	ssd130x_chip_t chip;
+	bool rotate_180;
 	uint8_t buffer[SSD130X_FB_SIZE];
 	bool dirty;
 } ssd130x_t;
@@ -54,6 +55,7 @@ void ssd130x_init(
 	I2C_HandleTypeDef *in_port,
 	uint16_t in_address,
 	ssd130x_chip_t chip,
+	bool rotate_180,
 	int16_t in_height,
 	int16_t in_width
 );
