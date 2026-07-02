@@ -398,7 +398,7 @@ class _FormField extends StatelessWidget {
       style: GoogleFonts.montserrat(fontSize: 18, color: kLightText),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.montserrat(color: const Color(0xFFCCCCCC)),
+        hintStyle: GoogleFonts.montserrat(color: kLightTextMuted),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
