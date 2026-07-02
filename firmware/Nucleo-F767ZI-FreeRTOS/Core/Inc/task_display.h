@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stdarg.h>
-#include "ssd1309.h"
+#include "ssd130x.h"
 
 /**
  * display_init
@@ -33,7 +33,7 @@ void display_clear(void);
  * Call display_flush() to push the framebuffer to the panel. For formatted
  * output, snprintf into a local buffer first then pass the result here.
  */
-void display_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char *str);
+void display_string(int16_t x, int16_t y, const ssd130x_font_t *font, const char *str);
 
 /**
  * display_va_string
@@ -47,7 +47,7 @@ void display_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char
  * stack — convenient for debug output but carries additional stack cost.
  * Prefer display_string() with a caller-side snprintf() in production tasks.
  */
-void display_va_string(int16_t x, int16_t y, const ssd1309_font_t *font, const char *fmt, ...);
+void display_va_string(int16_t x, int16_t y, const ssd130x_font_t *font, const char *fmt, ...);
 
 /**
  * display_flush

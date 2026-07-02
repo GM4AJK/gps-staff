@@ -263,7 +263,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.Timing = 0x6000030D;
+  hi2c1.Init.Timing = 0x20404768;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
   hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
@@ -692,7 +692,7 @@ void StartDefaultTask(void *argument)
              configTOTAL_HEAP_SIZE);
 
   display_clear();
-  display_string(0, 0, &font5x7, "F767ZI FreeRTOS");
+  display_string(0, 0, &ssd130x_font5x7, "F767ZI FreeRTOS");
   display_flush();
 
   static ili9341_t lcd;
