@@ -20,6 +20,7 @@ class _Mode5RemoteListenerScreenState
 	Widget build(BuildContext context) {
 		return Scaffold(
 			backgroundColor: kLightBg,
+      resizeToAvoidBottomInset: false,
 			body: Column(
 				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
@@ -106,9 +107,13 @@ class _Header extends StatelessWidget {
 				children: [
 					GestureDetector(
 						onTap: onBack,
-						child: Text('←',
-								style: GoogleFonts.montserrat(
-										fontSize: 24, color: Colors.white, height: 1)),
+						behavior: HitTestBehavior.opaque,
+						child: Padding(
+							padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+							child: Text('←',
+									style: GoogleFonts.montserrat(
+											fontSize: 24, color: Colors.white, height: 1)),
+						),
 					),
 					const SizedBox(width: 16),
 					Expanded(
@@ -339,127 +344,135 @@ class _RightPanel extends StatelessWidget {
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
-					_SectionLabel('Listen Port'),
-					const SizedBox(height: 10),
-					GestureDetector(
-						onTap: onPortEdit,
-						child: Container(
-							decoration: BoxDecoration(
-								color: Colors.white,
-								border: Border.all(
-										color: const Color(0xFFE0E0E0), width: 2),
-								borderRadius: BorderRadius.circular(6),
-							),
-							padding: const EdgeInsets.symmetric(
-									horizontal: 14, vertical: 10),
-							child: Row(
-								mainAxisAlignment:
-										MainAxisAlignment.spaceBetween,
+					Expanded(
+						child: SingleChildScrollView(
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
 								children: [
-									Column(
-										crossAxisAlignment:
-												CrossAxisAlignment.start,
-										children: [
-											Text(
-												'TCP port this device listens on',
-												style: GoogleFonts.montserrat(
-														fontSize: 12,
-														color: const Color(0xFFAAAAAA)),
+									_SectionLabel('Listen Port'),
+									const SizedBox(height: 10),
+									GestureDetector(
+										onTap: onPortEdit,
+										child: Container(
+											decoration: BoxDecoration(
+												color: Colors.white,
+												border: Border.all(
+														color: const Color(0xFFE0E0E0), width: 2),
+												borderRadius: BorderRadius.circular(6),
 											),
-											const SizedBox(height: 4),
-											Text(
-												listenPort,
-												style: GoogleFonts.montserrat(
-													fontSize: 22,
-													fontWeight: FontWeight.w700,
-													color: kLightText,
-													fontFeatures: const [
-														FontFeature.tabularFigures()
-													],
-												),
+											padding: const EdgeInsets.symmetric(
+													horizontal: 14, vertical: 10),
+											child: Row(
+												mainAxisAlignment:
+														MainAxisAlignment.spaceBetween,
+												children: [
+													Column(
+														crossAxisAlignment:
+																CrossAxisAlignment.start,
+														children: [
+															Text(
+																'TCP port this device listens on',
+																style: GoogleFonts.montserrat(
+																		fontSize: 12,
+																		color: const Color(0xFFAAAAAA)),
+															),
+															const SizedBox(height: 4),
+															Text(
+																listenPort,
+																style: GoogleFonts.montserrat(
+																	fontSize: 22,
+																	fontWeight: FontWeight.w700,
+																	color: kLightText,
+																	fontFeatures: const [
+																		FontFeature.tabularFigures()
+																	],
+																),
+															),
+														],
+													),
+													Text('✎',
+															style: TextStyle(
+																	fontSize: 16,
+																	color: const Color(0xFFBBBBBB))),
+												],
 											),
-										],
-									),
-									Text('✎',
-											style: TextStyle(
-													fontSize: 16,
-													color: const Color(0xFFBBBBBB))),
-								],
-							),
-						),
-					),
-					const SizedBox(height: 8),
-					Container(
-						decoration: BoxDecoration(
-							color: const Color(0xFFFAFAFA),
-							border: Border.all(color: const Color(0xFFEFEFEF)),
-							borderRadius: BorderRadius.circular(6),
-						),
-						padding: const EdgeInsets.all(10),
-						child: RichText(
-							text: TextSpan(
-								style: GoogleFonts.montserrat(
-										fontSize: 11,
-										color: const Color(0xFFAAAAAA),
-										height: 1.6),
-								children: [
-									TextSpan(
-										text: 'Router setup: ',
-										style: GoogleFonts.montserrat(
-											fontSize: 11,
-											fontWeight: FontWeight.w700,
-											color: const Color(0xFF888888),
 										),
 									),
-									const TextSpan(
-										text:
-												'Forward this port on your home router to this device\'s local IP address. '
-												'The mobile device connects using your router\'s external hostname and this port number.',
+									const SizedBox(height: 8),
+									Container(
+										decoration: BoxDecoration(
+											color: const Color(0xFFFAFAFA),
+											border: Border.all(color: const Color(0xFFEFEFEF)),
+											borderRadius: BorderRadius.circular(6),
+										),
+										padding: const EdgeInsets.all(10),
+										child: RichText(
+											text: TextSpan(
+												style: GoogleFonts.montserrat(
+														fontSize: 11,
+														color: const Color(0xFFAAAAAA),
+														height: 1.6),
+												children: [
+													TextSpan(
+														text: 'Router setup: ',
+														style: GoogleFonts.montserrat(
+															fontSize: 11,
+															fontWeight: FontWeight.w700,
+															color: const Color(0xFF888888),
+														),
+													),
+													const TextSpan(
+														text:
+																'Forward this port on your home router to this device\'s local IP address. '
+																'The mobile device connects using your router\'s external hostname and this port number.',
+													),
+												],
+											),
+										),
+									),
+									const SizedBox(height: 18),
+
+									_SectionLabel('System Mode'),
+									const SizedBox(height: 10),
+									Container(
+										decoration: BoxDecoration(
+											color: const Color(0xFFF5F5F5),
+											border: Border.all(color: const Color(0xFFE0E0E0)),
+											borderRadius: BorderRadius.circular(6),
+										),
+										padding: const EdgeInsets.symmetric(
+												horizontal: 14, vertical: 10),
+										child: Row(
+											mainAxisAlignment:
+													MainAxisAlignment.spaceBetween,
+											children: [
+												Column(
+													crossAxisAlignment:
+															CrossAxisAlignment.start,
+													children: [
+														Text('Mode 5 — Direct TCP',
+																style: GoogleFonts.montserrat(
+																		fontSize: 13,
+																		color: const Color(0xFF888888))),
+														Text('This device: remote listener',
+																style: GoogleFonts.montserrat(
+																		fontSize: 11,
+																		color: const Color(0xFFBBBBBB))),
+													],
+												),
+												Text('Change ›',
+														style: GoogleFonts.montserrat(
+																fontSize: 11,
+																color: const Color(0xFFBBBBBB))),
+											],
+										),
 									),
 								],
 							),
 						),
 					),
-					const SizedBox(height: 18),
 
-					_SectionLabel('System Mode'),
-					const SizedBox(height: 10),
-					Container(
-						decoration: BoxDecoration(
-							color: const Color(0xFFF5F5F5),
-							border: Border.all(color: const Color(0xFFE0E0E0)),
-							borderRadius: BorderRadius.circular(6),
-						),
-						padding: const EdgeInsets.symmetric(
-								horizontal: 14, vertical: 10),
-						child: Row(
-							mainAxisAlignment:
-									MainAxisAlignment.spaceBetween,
-							children: [
-								Column(
-									crossAxisAlignment:
-											CrossAxisAlignment.start,
-									children: [
-										Text('Mode 5 — Direct TCP',
-												style: GoogleFonts.montserrat(
-														fontSize: 13,
-														color: const Color(0xFF888888))),
-										Text('This device: remote listener',
-												style: GoogleFonts.montserrat(
-														fontSize: 11,
-														color: const Color(0xFFBBBBBB))),
-									],
-								),
-								Text('Change ›',
-										style: GoogleFonts.montserrat(
-												fontSize: 11,
-												color: const Color(0xFFBBBBBB))),
-							],
-						),
-					),
-
-					const Spacer(),
-
+					const SizedBox(height: 12),
 					Row(
 						children: [
 							Text('State:',

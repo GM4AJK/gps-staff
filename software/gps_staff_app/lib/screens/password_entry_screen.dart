@@ -42,7 +42,7 @@ class _PasswordEntryScreenState extends State<PasswordEntryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kLightBg,
-      resizeToAvoidBottomInset: true,
+      resizeToAvoidBottomInset: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -217,11 +217,11 @@ class _RightPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             'Enter Password',
@@ -255,7 +255,7 @@ class _RightPanel extends StatelessWidget {
                   obscureText: obscure,
                   enabled: !connecting,
                   autofocus: true,
-                  style: GoogleFonts.montserrat(fontSize: 20),
+                  style: GoogleFonts.montserrat(fontSize: 20, color: kLightText),
                   decoration: InputDecoration(
                     hintText: 'Enter password…',
                     hintStyle: GoogleFonts.montserrat(

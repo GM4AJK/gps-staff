@@ -88,10 +88,10 @@ class _TiersPanel extends StatelessWidget {
         border: Border(right: BorderSide(color: Color(0xFFCCCCCC))),
       ),
       padding: const EdgeInsets.all(20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Text(
             'Position Accuracy Tiers',
             style: GoogleFonts.montserrat(
@@ -130,6 +130,7 @@ class _TiersPanel extends StatelessWidget {
             dim: true,
           ),
         ],
+        ),
       ),
     );
   }
@@ -394,7 +395,7 @@ class _FormField extends StatelessWidget {
       keyboardType: numeric
           ? TextInputType.numberWithOptions(decimal: true, signed: signed)
           : TextInputType.text,
-      style: GoogleFonts.montserrat(fontSize: 18),
+      style: GoogleFonts.montserrat(fontSize: 18, color: kLightText),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: GoogleFonts.montserrat(color: const Color(0xFFCCCCCC)),

@@ -23,6 +23,7 @@ class _Mode5MobileConnectorScreenState
 	Widget build(BuildContext context) {
 		return Scaffold(
 			backgroundColor: kLightBg,
+      resizeToAvoidBottomInset: false,
 			body: Column(
 				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
@@ -125,9 +126,13 @@ class _Header extends StatelessWidget {
 				children: [
 					GestureDetector(
 						onTap: onBack,
-						child: Text('←',
-								style: GoogleFonts.montserrat(
-										fontSize: 24, color: Colors.white, height: 1)),
+						behavior: HitTestBehavior.opaque,
+						child: Padding(
+							padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+							child: Text('←',
+									style: GoogleFonts.montserrat(
+											fontSize: 24, color: Colors.white, height: 1)),
+						),
 					),
 					const SizedBox(width: 16),
 					Expanded(

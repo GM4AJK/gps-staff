@@ -51,6 +51,7 @@ class _SurveyInScreenState extends State<SurveyInScreen> {
 
     return Scaffold(
       backgroundColor: kLightBg,
+      resizeToAvoidBottomInset: false,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -64,9 +65,13 @@ class _SurveyInScreenState extends State<SurveyInScreen> {
               children: [
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: Text('←',
-                      style: GoogleFonts.montserrat(
-                          fontSize: 24, color: Colors.white, height: 1)),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Text('←',
+                        style: GoogleFonts.montserrat(
+                            fontSize: 24, color: Colors.white, height: 1)),
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
