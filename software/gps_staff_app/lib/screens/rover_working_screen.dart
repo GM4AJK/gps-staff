@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/ostn15.dart';
 import '../theme.dart';
 
 enum _FixState { noFix, rtkFloat, rtkFix }
+
+// Mock RTK-Fix position (N 56° 19′ 26.903072″, W 2° 45′ 15.532837″, h 111.163 m)
+const _kMockLat = 56.0 + 19.0 / 60.0 + 26.903072 / 3600.0;
+const _kMockLon = -(2.0 + 45.0 / 60.0 + 15.532837 / 3600.0);
+const _kMockH   = 111.163;
 
 class RoverWorkingScreen extends StatefulWidget {
 	const RoverWorkingScreen({
@@ -20,11 +26,25 @@ class RoverWorkingScreen extends StatefulWidget {
 
 class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 	_FixState _fixState = _FixState.rtkFix;
+	final String _trf = 'ETRS89';
+	bool _ostn15Avail = false;
+
 	final List<_CapturedPoint> _points = const [
 		_CapturedPoint(id: 'P001', label: 'P001', lat: '57.1234562°', lon: '−2.3456784°', height: '143.418 m', hacc: '9', vacc: '13'),
 		_CapturedPoint(id: 'P002', label: 'BM-A', lat: '57.1234455°', lon: '−2.3456901°', height: '143.409 m', hacc: '7', vacc: '11', labelHighlight: true),
 		_CapturedPoint(id: 'P003', label: 'P003', lat: '57.1234678°', lon: '−2.3456712°', height: '143.424 m', hacc: '8', vacc: '12'),
 	];
+
+	@override
+	void initState() {
+		super.initState();
+		Ostn15Service.instance.load().then((ok) {
+			if (mounted) setState(() => _ostn15Avail = ok);
+		});
+	}
+
+	String get _nextPointId =>
+			'P${(_points.length + 1).toString().padLeft(3, '0')}';
 
 	({Color bg, Color border, Color label, Color textColor, String text,
 		String hacc, Color haccColor}) get _fixData => switch (_fixState) {
@@ -59,9 +79,16 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 
 	({String lat, String lon, String height, String hacc, String vacc, String sats}) get _posData =>
 		switch (_fixState) {
-			_FixState.noFix => (lat: '—', lon: '—', height: '—', hacc: '— mm', vacc: '— mm', sats: '—'),
+			_FixState.noFix    => (lat: '—', lon: '—', height: '—', hacc: '— mm', vacc: '— mm', sats: '—'),
 			_FixState.rtkFloat => (lat: '57.1234498°', lon: '−2.3456721°', height: '143.318 m', hacc: '142 mm', vacc: '190 mm', sats: '16'),
-			_FixState.rtkFix => (lat: '57.1234567°', lon: '−2.3456789°', height: '143.421 m', hacc: '8 mm', vacc: '12 mm', sats: '18'),
+			_FixState.rtkFix   => (
+				lat:    'N 56° 19′ 26.903072″',
+				lon:    'W  2° 45′ 15.532837″',
+				height: '111.163 m',
+				hacc:   '8 mm',
+				vacc:   '12 mm',
+				sats:   '18',
+			),
 		};
 
 	Future<void> _confirmEndSession(BuildContext context) async {
@@ -117,6 +144,27 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 		if (confirmed == true && context.mounted) Navigator.pop(context);
 	}
 
+	Future<void> _showCaptureDialog(BuildContext context) async {
+		final osgb = _ostn15Avail
+				? Ostn15Service.instance.transform(_kMockLat, _kMockLon, _kMockH)
+				: null;
+
+		if (!context.mounted) return;
+
+		final confirmed = await showDialog<bool>(
+			context: context,
+			builder: (_) => _CaptureDialog(
+				pointId:     _nextPointId,
+				trf:         _trf,
+				osgb:        osgb,
+			),
+		);
+
+		if (confirmed == true) {
+			// TODO: write point to session log on SD card
+		}
+	}
+
 	@override
 	Widget build(BuildContext context) {
 		final fix = _fixData;
@@ -149,6 +197,8 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 									pos: pos,
 									fixState: _fixState,
 									onEndSession: () => _confirmEndSession(context),
+									trf: _trf,
+									ostn15Avail: _ostn15Avail,
 								),
 								Expanded(
 									child: _RightPanel(
@@ -158,6 +208,7 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 												setState(() => _fixState = s),
 										points: _points,
 										canCapture: canCapture,
+										onCapture: () => _showCaptureDialog(context),
 									),
 								),
 							],
@@ -303,17 +354,21 @@ class _LeftPanel extends StatelessWidget {
 		required this.pos,
 		required this.fixState,
 		required this.onEndSession,
+		required this.trf,
+		required this.ostn15Avail,
 	});
 
 	final String sessionTitle;
 	final ({String lat, String lon, String height, String hacc, String vacc, String sats}) pos;
 	final _FixState fixState;
 	final VoidCallback onEndSession;
+	final String trf;
+	final bool ostn15Avail;
 
 	Color get _accColor => switch (fixState) {
-		_FixState.rtkFix => const Color(0xFF66BB6A),
+		_FixState.rtkFix   => const Color(0xFF66BB6A),
 		_FixState.rtkFloat => const Color(0xFFFFA726),
-		_FixState.noFix => const Color(0xFF78909C),
+		_FixState.noFix    => const Color(0xFF78909C),
 	};
 
 	@override
@@ -350,14 +405,43 @@ class _LeftPanel extends StatelessWidget {
 							mainAxisAlignment: MainAxisAlignment.center,
 							children: [
 								_CoordBlock(label: 'Session', value: sessionTitle, large: false),
-								const SizedBox(height: 18),
+								const SizedBox(height: 14),
 								_CoordBlock(label: 'Pole height', value: '1.80 m', large: false),
+								const SizedBox(height: 14),
+								// TRF / OSTN15 availability
+								Column(
+									crossAxisAlignment: CrossAxisAlignment.start,
+									children: [
+										Text(
+											'TRF',
+											style: GoogleFonts.montserrat(
+												fontSize: 10,
+												fontWeight: FontWeight.w700,
+												letterSpacing: 1.2,
+												color: kTextDim,
+											),
+										),
+										const SizedBox(height: 4),
+										Row(
+											children: [
+												_TrfChip(trf),
+												if (ostn15Avail) ...[
+													const SizedBox(width: 6),
+													const _Ostn15Chip(),
+												],
+											],
+										),
+									],
+								),
 								const SizedBox(height: 18),
 								_CoordBlock(label: 'Latitude', value: pos.lat),
 								const SizedBox(height: 14),
 								_CoordBlock(label: 'Longitude', value: pos.lon),
 								const SizedBox(height: 14),
-								_CoordBlock(label: 'Height (MSL)', value: pos.height),
+								_CoordBlock(
+									label: trf == 'ETRS89' ? 'Ellipsoid Height' : 'Height',
+									value: pos.height,
+								),
 								const SizedBox(height: 16),
 								Row(
 									children: [
@@ -372,6 +456,55 @@ class _LeftPanel extends StatelessWidget {
 						),
 					),
 				],
+			),
+		);
+	}
+}
+
+class _TrfChip extends StatelessWidget {
+	const _TrfChip(this.trf);
+	final String trf;
+
+	@override
+	Widget build(BuildContext context) {
+		return Container(
+			padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+			decoration: BoxDecoration(
+				color: const Color(0xFF0D1B2A),
+				border: Border.all(color: const Color(0xFF1565C0)),
+				borderRadius: BorderRadius.circular(4),
+			),
+			child: Text(
+				trf,
+				style: GoogleFonts.montserrat(
+					fontSize: 12,
+					fontWeight: FontWeight.w700,
+					color: const Color(0xFF64B5F6),
+				),
+			),
+		);
+	}
+}
+
+class _Ostn15Chip extends StatelessWidget {
+	const _Ostn15Chip();
+
+	@override
+	Widget build(BuildContext context) {
+		return Container(
+			padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+			decoration: BoxDecoration(
+				color: const Color(0xFF0A1F0A),
+				border: Border.all(color: const Color(0xFF2E7D32)),
+				borderRadius: BorderRadius.circular(4),
+			),
+			child: Text(
+				'OSTN15 ✓',
+				style: GoogleFonts.montserrat(
+					fontSize: 12,
+					fontWeight: FontWeight.w700,
+					color: const Color(0xFF66BB6A),
+				),
 			),
 		);
 	}
@@ -403,7 +536,7 @@ class _CoordBlock extends StatelessWidget {
 					style: large
 							? const TextStyle(
 									fontFamily: 'monospace',
-									fontSize: 26,
+									fontSize: 22,
 									fontWeight: FontWeight.w700,
 									color: Color(0xFFECEFF1),
 									letterSpacing: 0.52,
@@ -461,6 +594,7 @@ class _RightPanel extends StatelessWidget {
 		required this.onFixChange,
 		required this.points,
 		required this.canCapture,
+		required this.onCapture,
 	});
 
 	final ({Color bg, Color border, Color label, Color textColor, String text, String hacc, Color haccColor}) fix;
@@ -468,6 +602,7 @@ class _RightPanel extends StatelessWidget {
 	final ValueChanged<_FixState> onFixChange;
 	final List<_CapturedPoint> points;
 	final bool canCapture;
+	final VoidCallback onCapture;
 
 	@override
 	Widget build(BuildContext context) {
@@ -636,7 +771,7 @@ class _RightPanel extends StatelessWidget {
 					SizedBox(
 						height: 52,
 						child: ElevatedButton(
-							onPressed: canCapture ? () {} : null,
+							onPressed: canCapture ? onCapture : null,
 							style: ElevatedButton.styleFrom(
 								backgroundColor: canCapture
 										? const Color(0xFF2E7D32)
@@ -831,6 +966,188 @@ class _MonoCell extends StatelessWidget {
 		);
 	}
 }
+
+// ── Capture confirmation dialog ───────────────────────────────────────────────
+
+class _CaptureDialog extends StatelessWidget {
+	const _CaptureDialog({
+		required this.pointId,
+		required this.trf,
+		required this.osgb,
+	});
+
+	final String pointId;
+	final String trf;
+	final Ostn15Result? osgb;
+
+	@override
+	Widget build(BuildContext context) {
+		return AlertDialog(
+			backgroundColor: kBgStatus,
+			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+			titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+			contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+			actionsPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+			title: Row(
+				mainAxisAlignment: MainAxisAlignment.spaceBetween,
+				children: [
+					Text(
+						'Capture Point',
+						style: GoogleFonts.montserrat(
+							fontSize: 18,
+							fontWeight: FontWeight.w700,
+							color: const Color(0xFFECEFF1),
+						),
+					),
+					Container(
+						padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+						decoration: BoxDecoration(
+							color: const Color(0xFF1A2640),
+							border: Border.all(color: const Color(0xFF1E2D3D)),
+							borderRadius: BorderRadius.circular(4),
+						),
+						child: Text(
+							pointId,
+							style: const TextStyle(
+								fontFamily: 'monospace',
+								fontSize: 14,
+								fontWeight: FontWeight.w700,
+								color: Color(0xFF64B5F6),
+							),
+						),
+					),
+				],
+			),
+			content: SizedBox(
+				width: 460,
+				child: Column(
+					mainAxisSize: MainAxisSize.min,
+					crossAxisAlignment: CrossAxisAlignment.start,
+					children: [
+						_DialogSection(
+							header: trf,
+							headerColor: const Color(0xFF64B5F6),
+							rows: const [
+								('LATITUDE',         'N 56° 19′ 26.903072″'),
+								('LONGITUDE',        'W  2° 45′ 15.532837″'),
+								('ELLIPSOID HEIGHT', '111.163 m'),
+							],
+						),
+						if (osgb != null) ...[
+							const SizedBox(height: 14),
+							_DialogSection(
+								header: 'OSGB36 / ODN  ·  OSTN15·OSGM15',
+								headerColor: const Color(0xFF66BB6A),
+								rows: [
+									('EASTING',      '${osgb!.osgbEasting.toStringAsFixed(3)} m'),
+									('NORTHING',     '${osgb!.osgbNorthing.toStringAsFixed(3)} m'),
+									('HEIGHT (ODN)', '${osgb!.odnHeight.toStringAsFixed(3)} m'),
+								],
+							),
+						],
+					],
+				),
+			),
+			actions: [
+				TextButton(
+					onPressed: () => Navigator.pop(context, false),
+					child: Text(
+						'Cancel',
+						style: GoogleFonts.montserrat(color: kTextMuted),
+					),
+				),
+				const SizedBox(width: 8),
+				ElevatedButton(
+					onPressed: () => Navigator.pop(context, true),
+					style: ElevatedButton.styleFrom(
+						backgroundColor: const Color(0xFF2E7D32),
+						foregroundColor: Colors.white,
+						elevation: 0,
+						shape: RoundedRectangleBorder(
+								borderRadius: BorderRadius.circular(6)),
+					),
+					child: Text(
+						'Capture →',
+						style: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
+					),
+				),
+			],
+		);
+	}
+}
+
+class _DialogSection extends StatelessWidget {
+	const _DialogSection({
+		required this.header,
+		required this.headerColor,
+		required this.rows,
+	});
+
+	final String header;
+	final Color headerColor;
+	final List<(String, String)> rows;
+
+	@override
+	Widget build(BuildContext context) {
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				Text(
+					header,
+					style: GoogleFonts.montserrat(
+						fontSize: 10,
+						fontWeight: FontWeight.w700,
+						letterSpacing: 1.2,
+						color: headerColor,
+					),
+				),
+				const SizedBox(height: 6),
+				Container(
+					padding: const EdgeInsets.fromLTRB(14, 10, 14, 2),
+					decoration: BoxDecoration(
+						color: const Color(0xFF0D1B2A),
+						border: Border.all(color: const Color(0xFF1E2D3D)),
+						borderRadius: BorderRadius.circular(6),
+					),
+					child: Column(
+						children: [
+							for (final (i, row) in rows.indexed)
+								Padding(
+									padding: EdgeInsets.only(
+											bottom: i < rows.length - 1 ? 10 : 8),
+									child: Row(
+										mainAxisAlignment: MainAxisAlignment.spaceBetween,
+										children: [
+											Text(
+												row.$1,
+												style: GoogleFonts.montserrat(
+													fontSize: 10,
+													fontWeight: FontWeight.w700,
+													letterSpacing: 1.0,
+													color: kTextDim,
+												),
+											),
+											Text(
+												row.$2,
+												style: const TextStyle(
+													fontFamily: 'monospace',
+													fontSize: 15,
+													fontWeight: FontWeight.w700,
+													color: Color(0xFFECEFF1),
+												),
+											),
+										],
+									),
+								),
+						],
+					),
+				),
+			],
+		);
+	}
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
 
 class _CapturedPoint {
 	const _CapturedPoint({
