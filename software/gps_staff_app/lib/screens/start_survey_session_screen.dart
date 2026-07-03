@@ -162,13 +162,16 @@ class _Header extends StatelessWidget {
 					GestureDetector(
 						onTap: onBack,
 						behavior: HitTestBehavior.opaque,
-						child: Padding(
-							padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-							child: Text('←',
-									style: GoogleFonts.montserrat(
-											fontSize: 24,
-											color: const Color(0xFFAAAAAA),
-											height: 1)),
+						child: SizedBox(
+							width: 64,
+							height: 52,
+							child: Center(
+								child: Text('←',
+										style: GoogleFonts.montserrat(
+												fontSize: 24,
+												color: const Color(0xFFAAAAAA),
+												height: 1)),
+							),
 						),
 					),
 					const SizedBox(width: 14),
@@ -503,29 +506,33 @@ class _RightPanel extends StatelessWidget {
 						),
 					),
 
-					SizedBox(
-						width: double.infinity,
-						height: 52,
-						child: ElevatedButton(
-							onPressed: onStart,
-							style: ElevatedButton.styleFrom(
-								backgroundColor: onStart != null
-										? const Color(0xFF2E7D32)
-										: const Color(0xFFBDBDBD),
-								foregroundColor: Colors.white,
-								elevation: 0,
-								shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(8)),
+					Row(
+						children: [
+							Expanded(
+								child: ElevatedButton(
+									onPressed: onStart,
+									style: ElevatedButton.styleFrom(
+										backgroundColor: onStart != null
+												? const Color(0xFF2E7D32)
+												: const Color(0xFFBDBDBD),
+										foregroundColor: Colors.white,
+										elevation: 0,
+										minimumSize: const Size(double.infinity, 52),
+										tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+										shape: RoundedRectangleBorder(
+												borderRadius: BorderRadius.circular(8)),
+									),
+									child: Text(
+										onStart != null
+												? 'Start Session →'
+												: 'SD Card Required',
+										style: GoogleFonts.montserrat(
+												fontSize: 16,
+												fontWeight: FontWeight.w700),
+									),
+								),
 							),
-							child: Text(
-								onStart != null
-										? 'Start Session →'
-										: 'SD Card Required',
-								style: GoogleFonts.montserrat(
-										fontSize: 16,
-										fontWeight: FontWeight.w700),
-							),
-						),
+						],
 					),
 				],
 			),
