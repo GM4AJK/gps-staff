@@ -7,8 +7,24 @@ import 'rover_config_screen.dart';
 import 'operating_mode_screen.dart';
 import 'about_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedMode = 1;
+
+  Future<void> _openModeSelect() async {
+    final result = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+          builder: (_) => OperatingModeScreen(initialMode: _selectedMode)),
+    );
+    if (result != null && mounted) setState(() => _selectedMode = result);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +63,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-          const _VersionStrip(),
+          _VersionStrip(selectedMode: _selectedMode, onModeTap: _openModeSelect),
         ],
       ),
     );
@@ -433,24 +449,26 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: kBlueButton,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8)),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.montserrat(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.45),
+    return GestureDetector(
+      onTap: onPressed,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: double.infinity,
+        height: 80,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            color: kBlueButton,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.montserrat(
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                color: Colors.white),
+          ),
         ),
       ),
     );
@@ -488,7 +506,18 @@ class _DisabledButton extends StatelessWidget {
 // ── Version strip ─────────────────────────────────────────────────────────────
 
 class _VersionStrip extends StatelessWidget {
-  const _VersionStrip();
+  const _VersionStrip({required this.selectedMode, required this.onModeTap});
+  final int selectedMode;
+  final VoidCallback onModeTap;
+
+  static const _labels = {
+    1: 'Local RF',
+    2: 'Rover NTRIP',
+    3: 'Base via Relay',
+    4: 'Dual NTRIP',
+    5: 'Direct TCP',
+    6: 'Fixed Base',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -500,15 +529,13 @@ class _VersionStrip extends StatelessWidget {
         children: [
           GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: () => Navigator.push(context,
-                MaterialPageRoute(
-                    builder: (_) => const OperatingModeScreen())),
+            onTap: onModeTap,
             child: SizedBox(
               height: 44,
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Mode 1 — Local RF  ›',
+                  'Mode $selectedMode — ${_labels[selectedMode] ?? ''}  ›',
                   style: GoogleFonts.montserrat(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -530,7 +557,7 @@ class _VersionStrip extends StatelessWidget {
                 child: Text(
                   'GPS STAFF · PCB v1.0 · fw 0.1.0  ›',
                   style: GoogleFonts.montserrat(
-                      fontSize: 13, color: kTextVersion, letterSpacing: 0.6),
+                      fontSize: 13, color: Colors.white, letterSpacing: 0.6),
                 ),
               ),
             ),
