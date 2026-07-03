@@ -12,32 +12,34 @@ class AppHeaderBar extends StatelessWidget {
     return Container(
       height: 52,
       color: kLightHeaderBg,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          GestureDetector(
-            onTap: onBack,
-            behavior: HitTestBehavior.opaque,
-            child: SizedBox(
-              width: 64,
-              height: 52,
-              child: Center(
-                child: Text('←',
+          Center(
+            child: Text(title,
+                style: GoogleFonts.montserrat(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white)),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: GestureDetector(
+              onTap: onBack,
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                height: 52,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                alignment: Alignment.center,
+                child: Text('← Back',
                     style: GoogleFonts.montserrat(
-                        fontSize: 24, color: Colors.white, height: 1)),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        height: 1)),
               ),
             ),
           ),
-          Expanded(
-            child: Center(
-              child: Text(title,
-                  style: GoogleFonts.montserrat(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white)),
-            ),
-          ),
-          const SizedBox(width: 64),
         ],
       ),
     );

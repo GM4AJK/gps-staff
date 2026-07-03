@@ -116,14 +116,16 @@ class _RoverHeader extends StatelessWidget {
 					GestureDetector(
 						onTap: onBack,
 						behavior: HitTestBehavior.opaque,
-						child: SizedBox(
-							width: 64,
+						child: Container(
 							height: 52,
-							child: Center(
-								child: Text('←',
-										style: GoogleFonts.montserrat(
-												fontSize: 24, color: Colors.white, height: 1)),
-							),
+							padding: const EdgeInsets.symmetric(horizontal: 16),
+							alignment: Alignment.center,
+							child: Text('← Back',
+									style: GoogleFonts.montserrat(
+											fontSize: 15,
+											fontWeight: FontWeight.w600,
+											color: Colors.white,
+											height: 1)),
 						),
 					),
 					Expanded(
