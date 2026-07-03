@@ -499,26 +499,40 @@ class _VersionStrip extends StatelessWidget {
       child: Row(
         children: [
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(
                     builder: (_) => const OperatingModeScreen())),
-            child: Text(
-              'Mode 1 — Local RF  ›',
-              style: GoogleFonts.montserrat(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF546E7A),
-                  letterSpacing: 0.4),
+            child: SizedBox(
+              height: 44,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Mode 1 — Local RF  ›',
+                  style: GoogleFonts.montserrat(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF546E7A),
+                      letterSpacing: 0.4),
+                ),
+              ),
             ),
           ),
           const Spacer(),
           GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => const AboutScreen())),
-            child: Text(
-              'GPS STAFF · PCB v1.0 · fw 0.1.0  ›',
-              style: GoogleFonts.montserrat(
-                  fontSize: 13, color: kTextVersion, letterSpacing: 0.6),
+            child: SizedBox(
+              height: 44,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'GPS STAFF · PCB v1.0 · fw 0.1.0  ›',
+                  style: GoogleFonts.montserrat(
+                      fontSize: 13, color: kTextVersion, letterSpacing: 0.6),
+                ),
+              ),
             ),
           ),
         ],
