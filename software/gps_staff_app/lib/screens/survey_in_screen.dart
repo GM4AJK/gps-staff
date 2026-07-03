@@ -501,7 +501,42 @@ class _RightPanel extends StatelessWidget {
           SizedBox(
             height: 56,
             child: ElevatedButton(
-              onPressed: onCancel,
+              onPressed: state == SurveyState.complete
+                  ? onCancel
+                  : () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: kLightBg,
+                          title: Text('Cancel Survey-in?',
+                              style: GoogleFonts.montserrat(
+                                  fontWeight: FontWeight.w700,
+                                  color: kLightText)),
+                          content: Text(
+                              'Are you sure you want to cancel? All survey progress will be lost.',
+                              style: GoogleFonts.montserrat(
+                                  color: kLightTextMuted)),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: Text('Keep Going',
+                                  style: GoogleFonts.montserrat(
+                                      color: kLightTextMuted)),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFD32F2F),
+                                  foregroundColor: Colors.white),
+                              child: Text('Cancel Survey-in',
+                                  style: GoogleFonts.montserrat(
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) onCancel();
+                    },
               style: ElevatedButton.styleFrom(
                 backgroundColor: state == SurveyState.complete
                     ? const Color(0xFF43A047)
