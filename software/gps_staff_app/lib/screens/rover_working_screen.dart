@@ -844,9 +844,7 @@ class _PointsHeader extends StatelessWidget {
 					SizedBox(width: 52, child: _HeaderCell('ID')),
 					Expanded(child: _HeaderCell('Latitude')),
 					Expanded(child: _HeaderCell('Longitude')),
-					SizedBox(width: 88, child: _HeaderCell('Height', right: true)),
-					SizedBox(width: 64, child: _HeaderCell('hAcc', right: true)),
-					SizedBox(width: 64, child: _HeaderCell('vAcc', right: true)),
+					SizedBox(width: 104, child: _HeaderCell('Height', right: true)),
 				],
 			),
 		);
@@ -894,18 +892,8 @@ class _PointRow extends StatelessWidget {
 					Expanded(child: _MonoCell(p.lat)),
 					Expanded(child: _MonoCell(p.lon)),
 					SizedBox(
-						width: 88,
+						width: 104,
 						child: _MonoCell(p.height, right: true),
-					),
-					SizedBox(
-						width: 64,
-						child: _MonoCell('${p.hacc} mm',
-								color: const Color(0xFF66BB6A), right: true),
-					),
-					SizedBox(
-						width: 64,
-						child: _MonoCell('${p.vacc} mm',
-								color: const Color(0xFF66BB6A), right: true),
 					),
 				],
 			),
@@ -926,7 +914,7 @@ class _MonoCell extends StatelessWidget {
 			textAlign: right ? TextAlign.right : TextAlign.left,
 			style: TextStyle(
 				fontFamily: 'monospace',
-				fontSize: 15,
+				fontSize: 20,
 				color: color ?? const Color(0xFF546E7A),
 			),
 		);
