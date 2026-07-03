@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
-import '../widgets/status_bar.dart';
 
 class UsbStorageActiveScreen extends StatefulWidget {
 	const UsbStorageActiveScreen({super.key});

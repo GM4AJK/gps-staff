@@ -299,11 +299,9 @@ class _CardHeader extends StatelessWidget {
     required this.iconFg,
     required this.icon,
     required this.title,
-    this.titleColor = kTextPrimary,
     required this.subtitle,
-    this.subtitleColor = kTextMuted,
     required this.trailing,
-  });
+  }) : titleColor = kTextPrimary : subtitleColor = kTextMuted;
 
   final Color iconBg;
   final Color iconFg;

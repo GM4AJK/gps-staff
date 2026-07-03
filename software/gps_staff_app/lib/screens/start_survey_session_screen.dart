@@ -538,8 +538,7 @@ class _FieldWrap extends StatelessWidget {
 		required this.label,
 		required this.sublabel,
 		required this.child,
-		this.expand = false,
-	});
+	}) : expand = false;
 
 	final String label;
 	final String sublabel;

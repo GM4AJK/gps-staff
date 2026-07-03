@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
-import '../widgets/app_header_bar.dart';
 import 'start_survey_session_screen.dart';
 
 class RoverConfigScreen extends StatefulWidget {
