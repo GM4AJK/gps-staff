@@ -134,13 +134,14 @@ class _Header extends StatelessWidget {
 											fontSize: 24, color: Colors.white, height: 1)),
 						),
 					),
-					const SizedBox(width: 16),
 					Expanded(
-						child: Text('Base Config',
-								style: GoogleFonts.montserrat(
-										fontSize: 20,
-										fontWeight: FontWeight.w700,
-										color: Colors.white)),
+						child: Center(
+							child: Text('Base Config',
+									style: GoogleFonts.montserrat(
+											fontSize: 20,
+											fontWeight: FontWeight.w700,
+											color: Colors.white)),
+						),
 					),
 					Container(
 						padding:

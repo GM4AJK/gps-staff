@@ -174,13 +174,15 @@ class _Header extends StatelessWidget {
 							),
 						),
 					),
-					const SizedBox(width: 14),
-					Text('New Survey Session',
-							style: GoogleFonts.montserrat(
-								fontSize: 20,
-								fontWeight: FontWeight.w700,
-								color: const Color(0xFF222222),
-							)),
+					Expanded(child: Center(
+						child: Text('New Survey Session',
+								style: GoogleFonts.montserrat(
+									fontSize: 20,
+									fontWeight: FontWeight.w700,
+									color: const Color(0xFF222222),
+								)),
+					)),
+					const SizedBox(width: 64),
 				],
 			),
 		);

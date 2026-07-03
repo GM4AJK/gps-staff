@@ -126,13 +126,14 @@ class _RoverHeader extends StatelessWidget {
 							),
 						),
 					),
-					const SizedBox(width: 16),
 					Expanded(
-						child: Text('Rover Config',
-								style: GoogleFonts.montserrat(
-										fontSize: 20,
-										fontWeight: FontWeight.w700,
-										color: Colors.white)),
+						child: Center(
+							child: Text('Rover Config',
+									style: GoogleFonts.montserrat(
+											fontSize: 20,
+											fontWeight: FontWeight.w700,
+											color: Colors.white)),
+						),
 					),
 					Container(
 						padding: const EdgeInsets.symmetric(

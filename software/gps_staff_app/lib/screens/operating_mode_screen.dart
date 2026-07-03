@@ -131,13 +131,14 @@ class _Header extends StatelessWidget {
 											fontSize: 24, color: kTextMuted, height: 1)),
 						),
 					),
-					const SizedBox(width: 14),
 					Expanded(
-						child: Text('Operating Mode',
-								style: GoogleFonts.montserrat(
-										fontSize: 18,
-										fontWeight: FontWeight.w700,
-										color: kTextPrimary)),
+						child: Center(
+							child: Text('Operating Mode',
+									style: GoogleFonts.montserrat(
+											fontSize: 18,
+											fontWeight: FontWeight.w700,
+											color: kTextPrimary)),
+						),
 					),
 					Container(
 						padding: const EdgeInsets.symmetric(
