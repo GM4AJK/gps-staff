@@ -510,33 +510,32 @@ class _RightPanel extends StatelessWidget {
 						),
 					),
 
-					Row(
-						children: [
-							Expanded(
-								child: ElevatedButton(
-									onPressed: onStart,
-									style: ElevatedButton.styleFrom(
-										backgroundColor: onStart != null
-												? const Color(0xFF2E7D32)
-												: const Color(0xFFBDBDBD),
-										foregroundColor: Colors.white,
-										elevation: 0,
-										minimumSize: const Size(double.infinity, 52),
-										tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-										shape: RoundedRectangleBorder(
-												borderRadius: BorderRadius.circular(8)),
-									),
-									child: Text(
-										onStart != null
-												? 'Start Session →'
-												: 'SD Card Required',
-										style: GoogleFonts.montserrat(
-												fontSize: 16,
-												fontWeight: FontWeight.w700),
+					GestureDetector(
+						onTap: onStart,
+						behavior: HitTestBehavior.opaque,
+						child: SizedBox(
+							height: 80,
+							child: AnimatedContainer(
+								duration: const Duration(milliseconds: 150),
+								decoration: BoxDecoration(
+									color: onStart != null
+											? const Color(0xFF2E7D32)
+											: const Color(0xFFBDBDBD),
+									borderRadius: BorderRadius.circular(8),
+								),
+								alignment: Alignment.center,
+								child: Text(
+									onStart != null
+											? 'Start Session →'
+											: 'SD Card Required',
+									style: GoogleFonts.montserrat(
+										fontSize: 22,
+										fontWeight: FontWeight.w700,
+										color: Colors.white,
 									),
 								),
 							),
-						],
+						),
 					),
 				],
 			),

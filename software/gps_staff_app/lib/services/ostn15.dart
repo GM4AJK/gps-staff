@@ -2,6 +2,9 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 /// ETRS89 (lat°, lon°, h m) → OSGB36 easting/northing + ODN height.
 class Ostn15Result {
   final double osgbEasting;
@@ -49,15 +52,26 @@ class Ostn15Service {
   bool get isAvailable => _grid != null;
 
   /// Scan storage volumes for the grid binary and load it into memory.
-  /// Returns true on success. Safe to call multiple times; only loads once.
+  /// Returns true on success. Retries until permission is granted; caches
+  /// once the binary is successfully loaded.
   Future<bool> load() async {
     if (_attempted) return isAvailable;
+
+    // Android 11+ requires MANAGE_EXTERNAL_STORAGE (All Files Access) to be
+    // granted at runtime before arbitrary /storage/ paths are readable.
+    // request() opens the system settings page and resolves when the user
+    // returns — so we only mark _attempted once we actually have permission.
+    if (!await Permission.manageExternalStorage.isGranted) {
+      final status = await Permission.manageExternalStorage.request();
+      if (!status.isGranted) return false;
+    }
+
     _attempted = true;
 
-    final file = await _findFile();
-    if (file == null) return false;
-
     try {
+      final file = await _findFile();
+      if (file == null) return false;
+
       final bytes = await file.readAsBytes();
       if (bytes.length < 16) return false;
       if (String.fromCharCodes(bytes.sublist(0, 8)) != _magic) return false;
@@ -168,16 +182,30 @@ class Ostn15Service {
   }
 
   Future<File?> _findFile() async {
-    final candidates = <String>['/storage/emulated/0/$_sdFile'];
-
-    final storageDir = Directory('/storage');
-    if (await storageDir.exists()) {
-      await for (final entity in storageDir.list()) {
-        final name = entity.path.split('/').last;
-        if (name != 'emulated' && name != 'self' && entity is Directory) {
-          candidates.add('${entity.path}/$_sdFile');
+    // getExternalStorageDirectories() calls Android's getExternalFilesDirs(null)
+    // which returns app-specific paths for every mounted storage volume —
+    // including physical SD cards — without requiring MANAGE_EXTERNAL_STORAGE.
+    // Path form: /storage/<UUID>/Android/data/<pkg>/files
+    // We extract the volume root (/storage/<UUID>/) and look for our file there.
+    final candidates = <String>[];
+    try {
+      final dirs = await getExternalStorageDirectories();
+      for (final dir in dirs ?? []) {
+        // Path form: /storage/<UUID>/Android/data/<pkg>/files
+        // For emulated storage: /storage/emulated/0/Android/...
+        final parts = dir.path.split('/'); // ['', 'storage', vol, ...]
+        if (parts.length >= 3 && parts[1] == 'storage') {
+          if (parts[2] == 'emulated' && parts.length >= 4) {
+            candidates.add('/storage/emulated/${parts[3]}/$_sdFile');
+          } else if (parts[2].isNotEmpty) {
+            candidates.add('/storage/${parts[2]}/$_sdFile');
+          }
         }
       }
+    } catch (_) {}
+
+    if (candidates.isEmpty) {
+      candidates.add('/storage/emulated/0/$_sdFile');
     }
 
     for (final p in candidates) {

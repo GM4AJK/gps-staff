@@ -176,6 +176,7 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 												setState(() => _fixState = s),
 										points: _points,
 										canCapture: canCapture,
+										ostn15Avail: _ostn15Avail,
 										onCapture: () => setState(() {
 								final id = 'P${_points.length.toString().padLeft(3, '0')}';
 								_points.insert(0, _CapturedPoint(
@@ -186,6 +187,9 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 									height: '111.163 m',
 									hacc: '8',
 									vacc: '12',
+									rawLat: 56.32413974,
+									rawLon: -2.75431468,
+									rawHeight: 111.163,
 								));
 							}),
 									),
@@ -378,6 +382,31 @@ class _LeftPanel extends StatelessWidget {
 											fontSize: 15, fontWeight: FontWeight.w700)),
 						),
 					),
+					const SizedBox(height: 14),
+					// TRF / OSTN15 availability
+					Column(
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+							Text(
+								'TRF',
+								style: GoogleFonts.montserrat(
+									fontSize: 10,
+									fontWeight: FontWeight.w700,
+									letterSpacing: 1.2,
+									color: kTextDim,
+								),
+							),
+							const SizedBox(height: 4),
+							Row(
+								children: [
+									_TrfChip(trf),
+									const SizedBox(width: 6),
+									_Osgb36Chip(available: ostn15Avail),
+								],
+							),
+						],
+					),
+					const SizedBox(height: 14),
 					Expanded(
 						child: Column(
 							crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,32 +416,6 @@ class _LeftPanel extends StatelessWidget {
 								const SizedBox(height: 14),
 								_CoordBlock(label: 'Pole height', value: '1.80 m', large: false),
 								const SizedBox(height: 14),
-								// TRF / OSTN15 availability
-								Column(
-									crossAxisAlignment: CrossAxisAlignment.start,
-									children: [
-										Text(
-											'TRF',
-											style: GoogleFonts.montserrat(
-												fontSize: 10,
-												fontWeight: FontWeight.w700,
-												letterSpacing: 1.2,
-												color: kTextDim,
-											),
-										),
-										const SizedBox(height: 4),
-										Row(
-											children: [
-												_TrfChip(trf),
-												if (ostn15Avail) ...[
-													const SizedBox(width: 6),
-													const _Ostn15Chip(),
-												],
-											],
-										),
-									],
-								),
-								const SizedBox(height: 18),
 								_CoordBlock(label: 'Latitude', value: pos.lat),
 								const SizedBox(height: 14),
 								_CoordBlock(label: 'Longitude', value: pos.lon),
@@ -483,6 +486,32 @@ class _Ostn15Chip extends StatelessWidget {
 					fontSize: 12,
 					fontWeight: FontWeight.w700,
 					color: const Color(0xFF66BB6A),
+				),
+			),
+		);
+	}
+}
+
+class _Osgb36Chip extends StatelessWidget {
+	const _Osgb36Chip({required this.available});
+	final bool available;
+
+	@override
+	Widget build(BuildContext context) {
+		return Container(
+			padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+			decoration: BoxDecoration(
+				color: available ? const Color(0xFF0A1F0A) : const Color(0xFF1A0000),
+				border: Border.all(
+					color: available ? const Color(0xFF2E7D32) : const Color(0xFFC62828)),
+				borderRadius: BorderRadius.circular(4),
+			),
+			child: Text(
+				'OSGB36',
+				style: GoogleFonts.montserrat(
+					fontSize: 12,
+					fontWeight: FontWeight.w700,
+					color: available ? const Color(0xFF66BB6A) : const Color(0xFFEF9A9A),
 				),
 			),
 		);
@@ -574,6 +603,7 @@ class _RightPanel extends StatelessWidget {
 		required this.points,
 		required this.canCapture,
 		required this.onCapture,
+		required this.ostn15Avail,
 	});
 
 	final ({Color bg, Color border, Color label, Color textColor, String text, String hacc, Color haccColor}) fix;
@@ -582,6 +612,7 @@ class _RightPanel extends StatelessWidget {
 	final List<_CapturedPoint> points;
 	final bool canCapture;
 	final VoidCallback onCapture;
+	final bool ostn15Avail;
 
 	@override
 	Widget build(BuildContext context) {
@@ -726,11 +757,11 @@ class _RightPanel extends StatelessWidget {
 								crossAxisAlignment: CrossAxisAlignment.stretch,
 								children: [
 									_PointsHeader(),
-									Expanded(child: _PointRow(point: points.isNotEmpty ? points[0] : null, alt: false)),
+									Expanded(child: _PointRow(point: points.isNotEmpty ? points[0] : null, alt: false, ostn15Avail: ostn15Avail)),
 									const Divider(height: 1, thickness: 1, color: Color(0xFF1E2D3D)),
-									Expanded(child: _PointRow(point: points.length > 1 ? points[1] : null, alt: true)),
+									Expanded(child: _PointRow(point: points.length > 1 ? points[1] : null, alt: true, ostn15Avail: ostn15Avail)),
 									const Divider(height: 1, thickness: 1, color: Color(0xFF1E2D3D)),
-									Expanded(child: _PointRow(point: points.length > 2 ? points[2] : null, alt: false)),
+									Expanded(child: _PointRow(point: points.length > 2 ? points[2] : null, alt: false, ostn15Avail: ostn15Avail)),
 								],
 							),
 						),
@@ -872,14 +903,15 @@ class _HeaderCell extends StatelessWidget {
 }
 
 class _PointRow extends StatelessWidget {
-	const _PointRow({required this.alt, this.point});
+	const _PointRow({required this.alt, required this.ostn15Avail, this.point});
 	final _CapturedPoint? point;
 	final bool alt;
+	final bool ostn15Avail;
 
 	@override
 	Widget build(BuildContext context) {
 		final p = point;
-		return Container(
+		final content = Container(
 			color: alt ? const Color(0xFF111820) : Colors.transparent,
 			padding: const EdgeInsets.symmetric(horizontal: 12),
 			alignment: Alignment.centerLeft,
@@ -895,6 +927,172 @@ class _PointRow extends StatelessWidget {
 						width: 104,
 						child: _MonoCell(p.height, right: true),
 					),
+					if (ostn15Avail)
+						const Padding(
+							padding: EdgeInsets.only(left: 8),
+							child: Icon(Icons.chevron_right, color: Color(0xFF2E7D32), size: 18),
+						),
+				],
+			),
+		);
+
+		if (p == null || !ostn15Avail) return content;
+
+		return GestureDetector(
+			behavior: HitTestBehavior.opaque,
+			onTap: () => _showPointDetailDialog(context, p),
+			child: content,
+		);
+	}
+}
+
+void _showPointDetailDialog(BuildContext context, _CapturedPoint point) {
+	final osgb36 = Ostn15Service.instance.transform(point.rawLat, point.rawLon, point.rawHeight);
+	showDialog(
+		context: context,
+		builder: (_) => _PointDetailDialog(point: point, osgb36: osgb36),
+	);
+}
+
+class _PointDetailDialog extends StatelessWidget {
+	const _PointDetailDialog({required this.point, this.osgb36});
+	final _CapturedPoint point;
+	final Ostn15Result? osgb36;
+
+	@override
+	Widget build(BuildContext context) {
+		return Dialog(
+			backgroundColor: const Color(0xFF0D1520),
+			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+			child: SizedBox(
+				width: 720,
+				child: Padding(
+					padding: const EdgeInsets.all(24),
+					child: Column(
+						mainAxisSize: MainAxisSize.min,
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+							Row(
+								children: [
+									Text(
+										point.id,
+										style: GoogleFonts.montserrat(
+											fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+									),
+									const Spacer(),
+									GestureDetector(
+										onTap: () => Navigator.pop(context),
+										child: const Icon(Icons.close, color: kTextDim, size: 22),
+									),
+								],
+							),
+							const SizedBox(height: 20),
+							IntrinsicHeight(
+								child: Row(
+									crossAxisAlignment: CrossAxisAlignment.stretch,
+									children: [
+										Expanded(
+											child: _DetailPanel(
+												title: 'ETRS89',
+												titleColor: const Color(0xFF64B5F6),
+												borderColor: const Color(0xFF1565C0),
+												entries: [
+													_DetailEntry('Latitude', point.lat),
+													_DetailEntry('Longitude', point.lon),
+													_DetailEntry('Ellipsoid Height', point.height),
+													_DetailEntry('hAcc', '${point.hacc} mm'),
+													_DetailEntry('vAcc', '${point.vacc} mm'),
+												],
+											),
+										),
+										const SizedBox(width: 16),
+										Expanded(
+											child: osgb36 == null
+												? _DetailPanel(
+													title: 'OSGB36 / ODN',
+													titleColor: const Color(0xFFEF9A9A),
+													borderColor: const Color(0xFFC62828),
+													entries: [_DetailEntry('', 'Outside grid coverage')],
+												  )
+												: _DetailPanel(
+													title: 'OSGB36 / ODN',
+													titleColor: const Color(0xFF66BB6A),
+													borderColor: const Color(0xFF2E7D32),
+													entries: [
+														_DetailEntry('Easting', '${osgb36!.osgbEasting.toStringAsFixed(3)} m'),
+														_DetailEntry('Northing', '${osgb36!.osgbNorthing.toStringAsFixed(3)} m'),
+														_DetailEntry('ODN Height', '${osgb36!.odnHeight.toStringAsFixed(3)} m'),
+													],
+												  ),
+										),
+									],
+								),
+							),
+						],
+					),
+				),
+			),
+		);
+	}
+}
+
+class _DetailEntry {
+	const _DetailEntry(this.label, this.value);
+	final String label;
+	final String value;
+}
+
+class _DetailPanel extends StatelessWidget {
+	const _DetailPanel({
+		required this.title,
+		required this.titleColor,
+		required this.borderColor,
+		required this.entries,
+	});
+	final String title;
+	final Color titleColor;
+	final Color borderColor;
+	final List<_DetailEntry> entries;
+
+	@override
+	Widget build(BuildContext context) {
+		return Container(
+			padding: const EdgeInsets.all(16),
+			decoration: BoxDecoration(
+				color: const Color(0xFF0A1520),
+				border: Border.all(color: borderColor),
+				borderRadius: BorderRadius.circular(8),
+			),
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					Text(
+						title,
+						style: GoogleFonts.montserrat(
+							fontSize: 13, fontWeight: FontWeight.w700, color: titleColor),
+					),
+					const SizedBox(height: 14),
+					...entries.map((e) => Padding(
+						padding: const EdgeInsets.only(bottom: 12),
+						child: Column(
+							crossAxisAlignment: CrossAxisAlignment.start,
+							children: [
+								if (e.label.isNotEmpty)
+									Text(
+										e.label.toUpperCase(),
+										style: GoogleFonts.montserrat(
+											fontSize: 9, fontWeight: FontWeight.w700,
+											letterSpacing: 1.0, color: kTextDim),
+									),
+								if (e.label.isNotEmpty) const SizedBox(height: 2),
+								Text(
+									e.value,
+									style: const TextStyle(
+										fontFamily: 'monospace', fontSize: 16, color: Colors.white),
+								),
+							],
+						),
+					)),
 				],
 			),
 		);
@@ -932,6 +1130,9 @@ class _CapturedPoint {
 		required this.height,
 		required this.hacc,
 		required this.vacc,
+		required this.rawLat,
+		required this.rawLon,
+		required this.rawHeight,
 		this.labelHighlight = false,
 	});
 
@@ -942,5 +1143,8 @@ class _CapturedPoint {
 	final String height;
 	final String hacc;
 	final String vacc;
+	final double rawLat;
+	final double rawLon;
+	final double rawHeight;
 	final bool labelHighlight;
 }
