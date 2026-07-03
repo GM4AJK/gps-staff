@@ -162,13 +162,16 @@ class _Header extends StatelessWidget {
 					GestureDetector(
 						onTap: onBack,
 						behavior: HitTestBehavior.opaque,
-						child: Padding(
-							padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-							child: Text('←',
-									style: GoogleFonts.montserrat(
-											fontSize: 24,
-											color: const Color(0xFFAAAAAA),
-											height: 1)),
+						child: SizedBox(
+							width: 64,
+							height: 52,
+							child: Center(
+								child: Text('←',
+										style: GoogleFonts.montserrat(
+												fontSize: 24,
+												color: const Color(0xFFAAAAAA),
+												height: 1)),
+							),
 						),
 					),
 					const SizedBox(width: 14),
