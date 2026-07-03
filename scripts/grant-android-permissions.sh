@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Grant all permissions to the GPS Staff app on a connected Android device.
 # Run once after each fresh install: bash scripts/grant-android-permissions.sh
-# Requires adb in PATH (Android Studio installs it in ~/AppData/Local/Android/Sdk/platform-tools/).
+# Requires adb in PATH. On this machine:
+#   export PATH="$PATH:/mnt/c/Users/kirkh/Local Settings/Android/Sdk/platform-tools"
 
 PKG="com.example.gps_staff_app"
 
