@@ -8,6 +8,12 @@ A catalog of reference documents kept in this repo.
 |---|---|
 | [OSGB36_OSTN15_OSGM15.md](OSGB36_OSTN15_OSGM15.md) | How to generate the OSTN15/OSGM15 binary grid, verify it against OS test vectors, deploy it to the tablet SD card, and use `Ostn15Service` to convert ETRS89 → OSGB36/ODN at runtime |
 
+## Future goals
+
+| Document | Contents |
+|---|---|
+| [TEC.md](TEC.md) | Ionospheric TEC monitoring using the permanent base F9P — dual-frequency geometry-free combination, pierce point calculation, multipath separation, and real-time Three.js globe visualisation. Prerequisite checklist included. |
+
 ## Architecture (`arch/`)
 
 System and firmware architecture documentation, with PlantUML diagrams.
