@@ -525,22 +525,28 @@ class _RightPanel extends StatelessWidget {
 					),
 					const SizedBox(height: 12),
 
-					SizedBox(
-						width: double.infinity,
-						height: 48,
-						child: ElevatedButton(
-							onPressed: onSave,
-							style: ElevatedButton.styleFrom(
-								backgroundColor: kBlueButton,
-								foregroundColor: Colors.white,
-								elevation: 0,
-								shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(8)),
-							),
-							child: Text('Save Settings',
+					GestureDetector(
+						onTap: onSave,
+						behavior: HitTestBehavior.opaque,
+						child: SizedBox(
+							width: double.infinity,
+							height: 80,
+							child: AnimatedContainer(
+								duration: const Duration(milliseconds: 150),
+								decoration: BoxDecoration(
+									color: kBlueButton,
+									borderRadius: BorderRadius.circular(8),
+								),
+								alignment: Alignment.center,
+								child: Text(
+									'Save Settings',
 									style: GoogleFonts.montserrat(
-											fontSize: 15,
-											fontWeight: FontWeight.w700)),
+										fontSize: 22,
+										fontWeight: FontWeight.w700,
+										color: Colors.white,
+									),
+								),
+							),
 						),
 					),
 				],

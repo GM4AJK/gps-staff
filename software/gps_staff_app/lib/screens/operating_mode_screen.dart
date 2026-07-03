@@ -15,14 +15,15 @@ const _modeNames = {
 };
 
 class OperatingModeScreen extends StatefulWidget {
-	const OperatingModeScreen({super.key});
+	const OperatingModeScreen({super.key, this.initialMode = 1});
+	final int initialMode;
 
 	@override
 	State<OperatingModeScreen> createState() => _OperatingModeScreenState();
 }
 
 class _OperatingModeScreenState extends State<OperatingModeScreen> {
-	int _selected = 1;
+	late int _selected = widget.initialMode;
 
 	@override
 	Widget build(BuildContext context) {
@@ -35,7 +36,7 @@ class _OperatingModeScreenState extends State<OperatingModeScreen> {
 					const StatusBar(),
 					_Header(
 						selected: _selected,
-						onBack: () => Navigator.pop(context),
+						onBack: () => Navigator.pop(context, _selected),
 					),
 					Expanded(
 						child: SingleChildScrollView(
@@ -237,7 +238,7 @@ class _ModeCard extends StatelessWidget {
 												child: Text(
 													name,
 													style: GoogleFonts.montserrat(
-														fontSize: 14,
+														fontSize: 16,
 														fontWeight: FontWeight.w700,
 														color: selected
 																? const Color(0xFF90CAF9)
@@ -257,8 +258,8 @@ class _ModeCard extends StatelessWidget {
 										child: Text(
 											desc,
 											style: GoogleFonts.montserrat(
-												fontSize: 11,
-												color: selected ? kTextMuted : const Color(0xFF37474F),
+												fontSize: 13,
+												color: Colors.white,
 												height: 1.5,
 											),
 										),
@@ -417,7 +418,7 @@ class _ConfirmBar extends StatelessWidget {
 
 	Future<void> _confirm(BuildContext context) async {
 		if (selected != 5) {
-			Navigator.pop(context);
+			Navigator.pop(context, selected);
 			return;
 		}
 		// Mode 5 — ask which role this device plays

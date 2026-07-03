@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
+import 'links_screen.dart';
 import 'usb_storage_active_screen.dart';
 
 class AboutScreen extends StatelessWidget {
@@ -16,7 +17,7 @@ class AboutScreen extends StatelessWidget {
 				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
 					const StatusBar(),
-					_DarkHeaderBar(
+					DarkHeaderBar(
 						title: 'About',
 						onBack: () => Navigator.pop(context),
 					),
@@ -27,8 +28,8 @@ class AboutScreen extends StatelessWidget {
 	}
 }
 
-class _DarkHeaderBar extends StatelessWidget {
-	const _DarkHeaderBar({required this.title, required this.onBack});
+class DarkHeaderBar extends StatelessWidget {
+	const DarkHeaderBar({required this.title, required this.onBack});
 	final String title;
 	final VoidCallback onBack;
 
@@ -37,26 +38,32 @@ class _DarkHeaderBar extends StatelessWidget {
 		return Container(
 			height: 52,
 			color: kBgStatus,
-			padding: const EdgeInsets.symmetric(horizontal: 16),
-			child: Row(
+			child: Stack(
+				alignment: Alignment.center,
 				children: [
-					GestureDetector(
-						onTap: onBack,
-						behavior: HitTestBehavior.opaque,
-						child: Padding(
-							padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-							child: Text('←',
+					Text(title,
+						style: GoogleFonts.montserrat(
+							fontSize: 18,
+							fontWeight: FontWeight.w700,
+							color: kTextPrimary)),
+					Positioned(
+						left: 0,
+						top: 0,
+						bottom: 0,
+						child: GestureDetector(
+							onTap: onBack,
+							behavior: HitTestBehavior.opaque,
+							child: Container(
+								padding: const EdgeInsets.symmetric(horizontal: 20),
+								alignment: Alignment.center,
+								child: Text('← Back',
 									style: GoogleFonts.montserrat(
-											fontSize: 24, color: kTextMuted, height: 1)),
+										fontSize: 15,
+										fontWeight: FontWeight.w600,
+										color: kTextMuted,
+										height: 1)),
+							),
 						),
-					),
-					const SizedBox(width: 16),
-					Expanded(
-						child: Text(title,
-								style: GoogleFonts.montserrat(
-										fontSize: 18,
-										fontWeight: FontWeight.w700,
-										color: kTextPrimary)),
 					),
 				],
 			),
@@ -198,28 +205,23 @@ class _Body extends StatelessWidget {
 
 					const Spacer(),
 
-					// Transfer files button
-					GestureDetector(
-						onTap: () => Navigator.push(context,
-								MaterialPageRoute(
-										builder: (_) => const UsbStorageActiveScreen())),
-						child: Container(
-							padding: const EdgeInsets.symmetric(
-									horizontal: 16, vertical: 10),
-							decoration: BoxDecoration(
-								border: Border.all(
-										color: Colors.white.withValues(alpha: 0.08)),
-								borderRadius: BorderRadius.circular(6),
+					// Bottom buttons
+					Row(
+						children: [
+							_BottomButton(
+								label: 'Links →',
+								onTap: () => Navigator.push(context,
+										MaterialPageRoute(
+												builder: (_) => const LinksScreen())),
 							),
-							child: Text(
-								'Transfer Files (USB) →',
-								style: GoogleFonts.montserrat(
-									fontSize: 13,
-									fontWeight: FontWeight.w700,
-									color: kTextMuted,
-								),
+							const SizedBox(width: 10),
+							_BottomButton(
+								label: 'Transfer Files (USB) →',
+								onTap: () => Navigator.push(context,
+										MaterialPageRoute(
+												builder: (_) => const UsbStorageActiveScreen())),
 							),
-						),
+						],
 					),
 					const SizedBox(height: 12),
 
@@ -244,6 +246,35 @@ class _Body extends StatelessWidget {
 						],
 					),
 				],
+			),
+		);
+	}
+}
+
+class _BottomButton extends StatelessWidget {
+	const _BottomButton({required this.label, required this.onTap});
+	final String label;
+	final VoidCallback onTap;
+
+	@override
+	Widget build(BuildContext context) {
+		return GestureDetector(
+			onTap: onTap,
+			behavior: HitTestBehavior.opaque,
+			child: Container(
+				padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+				decoration: BoxDecoration(
+					border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+					borderRadius: BorderRadius.circular(6),
+				),
+				child: Text(
+					label,
+					style: GoogleFonts.montserrat(
+						fontSize: 13,
+						fontWeight: FontWeight.w700,
+						color: kTextMuted,
+					),
+				),
 			),
 		);
 	}
