@@ -887,7 +887,7 @@ class _PointRow extends StatelessWidget {
 				children: [
 					SizedBox(
 						width: 52,
-						child: _MonoCell(p.id, color: kTextDim),
+						child: _MonoCell(p.id, color: Colors.white),
 					),
 					Expanded(child: _MonoCell(p.lat)),
 					Expanded(child: _MonoCell(p.lon)),
@@ -914,8 +914,8 @@ class _MonoCell extends StatelessWidget {
 			textAlign: right ? TextAlign.right : TextAlign.left,
 			style: TextStyle(
 				fontFamily: 'monospace',
-				fontSize: 20,
-				color: color ?? const Color(0xFF546E7A),
+				fontSize: 15,
+				color: color ?? Colors.white,
 			),
 		);
 	}
