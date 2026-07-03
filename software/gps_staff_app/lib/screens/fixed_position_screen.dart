@@ -4,7 +4,7 @@ import '../theme.dart';
 import '../widgets/status_bar.dart';
 import '../widgets/app_header_bar.dart';
 
-enum _CoordSystem { osgb36, wgs84 }
+enum _CoordSystem { osgb36, wgs84, etrs89 }
 
 class FixedPositionScreen extends StatefulWidget {
   const FixedPositionScreen({super.key});
@@ -277,7 +277,7 @@ class _FormPanel extends StatelessWidget {
                 ])),
               ],
             )
-          else
+          else if (cs == _CoordSystem.wgs84)
             Row(
               children: [
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -294,6 +294,28 @@ class _FormPanel extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _FormLabel('Height (m)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: heightCtrl, hint: 'e.g. 63.180', numeric: true, signed: true),
+                ])),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _FormLabel('Latitude (°)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: latCtrl, hint: 'e.g. 52.657570', numeric: true, signed: true),
+                ])),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _FormLabel('Longitude (°)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: lonCtrl, hint: 'e.g. 1.716573', numeric: true, signed: true),
+                ])),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _FormLabel('Ellipsoidal Height (m)'),
                   const SizedBox(height: 6),
                   _FormField(controller: heightCtrl, hint: 'e.g. 63.180', numeric: true, signed: true),
                 ])),
@@ -436,14 +458,20 @@ class _CsToggle extends StatelessWidget {
           Expanded(child: _CsBtn(
             label: 'OSGB36 (National Grid)',
             active: selected == _CoordSystem.osgb36,
-            isLeft: true,
+            position: 0,
             onTap: () => onChanged(_CoordSystem.osgb36),
           )),
           Expanded(child: _CsBtn(
             label: 'WGS84 (GPS)',
             active: selected == _CoordSystem.wgs84,
-            isLeft: false,
+            position: 1,
             onTap: () => onChanged(_CoordSystem.wgs84),
+          )),
+          Expanded(child: _CsBtn(
+            label: 'ETRS89',
+            active: selected == _CoordSystem.etrs89,
+            position: 2,
+            onTap: () => onChanged(_CoordSystem.etrs89),
           )),
         ],
       ),
@@ -455,32 +483,33 @@ class _CsBtn extends StatelessWidget {
   const _CsBtn({
     required this.label,
     required this.active,
-    required this.isLeft,
+    required this.position,
     required this.onTap,
   });
 
   final String label;
   final bool active;
-  final bool isLeft;
+  final int position; // 0=first, 1=middle, 2=last
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: active ? kBlueAccent : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.horizontal(
-            left: isLeft ? const Radius.circular(6) : Radius.zero,
-            right: isLeft ? Radius.zero : const Radius.circular(6),
+            left: position == 0 ? const Radius.circular(6) : Radius.zero,
+            right: position == 2 ? const Radius.circular(6) : Radius.zero,
           ),
         ),
         child: Text(
           label,
           style: GoogleFonts.montserrat(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
             color: active ? Colors.white : const Color(0xFF888888),
           ),
