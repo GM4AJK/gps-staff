@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
 import '../widgets/app_header_bar.dart';
 
-enum _CoordSystem { osgb36, wgs84 }
+enum _CoordSystem { osgb36, wgs84, etrs89 }
 
 class FixedPositionScreen extends StatefulWidget {
   const FixedPositionScreen({super.key});
@@ -16,6 +17,7 @@ class FixedPositionScreen extends StatefulWidget {
 class _FixedPositionScreenState extends State<FixedPositionScreen> {
   _CoordSystem _cs = _CoordSystem.osgb36;
 
+  final _nameCtrl     = TextEditingController();
   final _idCtrl       = TextEditingController(text: 'OS-BM-TP-1234');
   final _eastCtrl     = TextEditingController(text: '651409.903');
   final _northCtrl    = TextEditingController(text: '313177.270');
@@ -26,7 +28,7 @@ class _FixedPositionScreenState extends State<FixedPositionScreen> {
 
   @override
   void dispose() {
-    for (final c in [_idCtrl, _eastCtrl, _northCtrl, _heightOdnCtrl,
+    for (final c in [_nameCtrl, _idCtrl, _eastCtrl, _northCtrl, _heightOdnCtrl,
                      _latCtrl, _lonCtrl, _heightCtrl]) {
       c.dispose();
     }
@@ -54,6 +56,7 @@ class _FixedPositionScreenState extends State<FixedPositionScreen> {
                 Expanded(child: _FormPanel(
                   cs: _cs,
                   onCsChange: (v) => setState(() => _cs = v),
+                  nameCtrl: _nameCtrl,
                   idCtrl: _idCtrl,
                   eastCtrl: _eastCtrl,
                   northCtrl: _northCtrl,
@@ -204,6 +207,7 @@ class _FormPanel extends StatelessWidget {
   const _FormPanel({
     required this.cs,
     required this.onCsChange,
+    required this.nameCtrl,
     required this.idCtrl,
     required this.eastCtrl,
     required this.northCtrl,
@@ -218,6 +222,7 @@ class _FormPanel extends StatelessWidget {
 
   final _CoordSystem cs;
   final ValueChanged<_CoordSystem> onCsChange;
+  final TextEditingController nameCtrl;
   final TextEditingController idCtrl;
   final TextEditingController eastCtrl;
   final TextEditingController northCtrl;
@@ -242,14 +247,51 @@ class _FormPanel extends StatelessWidget {
                   color: const Color(0xFF222222))),
           const SizedBox(height: 16),
 
-          // Monument ID
-          _FormLabel('Monument / Benchmark ID (optional)'),
+          // Monument Name
+          _FormLabel('Monument / Benchmark Name'),
           const SizedBox(height: 6),
-          _FormField(controller: idCtrl, hint: 'e.g. OS-BM-TP-1234 or Site datum A'),
+          _FormField(controller: nameCtrl, hint: 'e.g. Triangulation Pillar or Site datum A'),
+          const SizedBox(height: 10),
+
+          // Monument ID + UK Passive Stations
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _FormLabel('Monument / Benchmark ID (optional)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: idCtrl, hint: 'e.g. OS-BM-TP-1234'),
+                ],
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: OutlinedButton.icon(
+                onPressed: () async {
+                  final uri = Uri.parse(
+                      'https://www.ordnancesurvey.co.uk/geodesy-positioning/legacy-data/passive-search');
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: Text('UK Passive Stations',
+                    style: GoogleFonts.montserrat(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kBlueAccent,
+                  side: const BorderSide(color: kBlueAccent),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6)),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              )),
+            ],
+          ),
           const SizedBox(height: 14),
 
           // Coordinate system toggle
-          _FormLabel('Coordinate System'),
+          _FormLabel('Coordinate System (Terrestrial Reference Frame)'),
           const SizedBox(height: 6),
           _CsToggle(selected: cs, onChanged: onCsChange),
           const SizedBox(height: 14),
@@ -277,7 +319,7 @@ class _FormPanel extends StatelessWidget {
                 ])),
               ],
             )
-          else
+          else if (cs == _CoordSystem.wgs84)
             Row(
               children: [
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -294,6 +336,28 @@ class _FormPanel extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   _FormLabel('Height (m)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: heightCtrl, hint: 'e.g. 63.180', numeric: true, signed: true),
+                ])),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _FormLabel('Latitude (°)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: latCtrl, hint: 'e.g. 52.657570', numeric: true, signed: true),
+                ])),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _FormLabel('Longitude (°)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: lonCtrl, hint: 'e.g. 1.716573', numeric: true, signed: true),
+                ])),
+                const SizedBox(width: 12),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  _FormLabel('Ellipsoidal Height (m)'),
                   const SizedBox(height: 6),
                   _FormField(controller: heightCtrl, hint: 'e.g. 63.180', numeric: true, signed: true),
                 ])),
@@ -436,14 +500,20 @@ class _CsToggle extends StatelessWidget {
           Expanded(child: _CsBtn(
             label: 'OSGB36 (National Grid)',
             active: selected == _CoordSystem.osgb36,
-            isLeft: true,
+            position: 0,
             onTap: () => onChanged(_CoordSystem.osgb36),
           )),
           Expanded(child: _CsBtn(
             label: 'WGS84 (GPS)',
             active: selected == _CoordSystem.wgs84,
-            isLeft: false,
+            position: 1,
             onTap: () => onChanged(_CoordSystem.wgs84),
+          )),
+          Expanded(child: _CsBtn(
+            label: 'ETRS89',
+            active: selected == _CoordSystem.etrs89,
+            position: 2,
+            onTap: () => onChanged(_CoordSystem.etrs89),
           )),
         ],
       ),
@@ -455,32 +525,33 @@ class _CsBtn extends StatelessWidget {
   const _CsBtn({
     required this.label,
     required this.active,
-    required this.isLeft,
+    required this.position,
     required this.onTap,
   });
 
   final String label;
   final bool active;
-  final bool isLeft;
+  final int position; // 0=first, 1=middle, 2=last
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: Container(
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: active ? kBlueAccent : const Color(0xFFF5F5F5),
           borderRadius: BorderRadius.horizontal(
-            left: isLeft ? const Radius.circular(6) : Radius.zero,
-            right: isLeft ? Radius.zero : const Radius.circular(6),
+            left: position == 0 ? const Radius.circular(6) : Radius.zero,
+            right: position == 2 ? const Radius.circular(6) : Radius.zero,
           ),
         ),
         child: Text(
           label,
           style: GoogleFonts.montserrat(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.w700,
             color: active ? Colors.white : const Color(0xFF888888),
           ),
