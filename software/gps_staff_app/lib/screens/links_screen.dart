@@ -34,6 +34,11 @@ const _sections = [
 				url: 'https://trigpointing.uk/',
 			),
 			_Link(
+				title: 'Trig Point Trivia',
+				desc: 'OS blog on trig pillar history, construction and the original retriangulation survey',
+				url: 'https://www.ordnancesurvey.co.uk/blog/trig-pillar-trivia',
+			),
+			_Link(
 				title: 'OS National Coordinate Transformation',
 				desc: 'Verify ETRS89 → OSGB36/ODN conversions against the OS reference tool',
 				url: 'https://www.ordnancesurvey.co.uk/geodesy-positioning/transformation-information/coordinate-transformation',
