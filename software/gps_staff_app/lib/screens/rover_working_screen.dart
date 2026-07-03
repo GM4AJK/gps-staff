@@ -914,7 +914,7 @@ class _MonoCell extends StatelessWidget {
 			textAlign: right ? TextAlign.right : TextAlign.left,
 			style: TextStyle(
 				fontFamily: 'monospace',
-				fontSize: 15,
+				fontSize: 16,
 				color: color ?? Colors.white,
 			),
 		);
