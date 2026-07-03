@@ -152,7 +152,6 @@ class _Header extends StatelessWidget {
 	Widget build(BuildContext context) {
 		return Container(
 			height: 52,
-			padding: const EdgeInsets.symmetric(horizontal: 16),
 			decoration: const BoxDecoration(
 				color: kLightBg,
 				border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
@@ -163,24 +162,29 @@ class _Header extends StatelessWidget {
 						onTap: onBack,
 						behavior: HitTestBehavior.opaque,
 						child: SizedBox(
-							width: 64,
+							width: 110,
 							height: 52,
 							child: Center(
-								child: Text('←',
+								child: Text('← Back',
 										style: GoogleFonts.montserrat(
-												fontSize: 24,
+												fontSize: 15,
+												fontWeight: FontWeight.w600,
 												color: const Color(0xFFAAAAAA),
 												height: 1)),
 							),
 						),
 					),
-					const SizedBox(width: 14),
-					Text('New Survey Session',
-							style: GoogleFonts.montserrat(
-								fontSize: 20,
-								fontWeight: FontWeight.w700,
-								color: const Color(0xFF222222),
-							)),
+					Expanded(
+						child: Center(
+							child: Text('New Survey Session',
+									style: GoogleFonts.montserrat(
+										fontSize: 20,
+										fontWeight: FontWeight.w700,
+										color: const Color(0xFF222222),
+									)),
+						),
+					),
+					const SizedBox(width: 110),
 				],
 			),
 		);
