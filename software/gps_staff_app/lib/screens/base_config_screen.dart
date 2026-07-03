@@ -53,10 +53,17 @@ class _HeaderBar extends StatelessWidget {
         children: [
           GestureDetector(
             onTap: onBack,
-            child: Text(
-              '←',
-              style: GoogleFonts.montserrat(
-                  fontSize: 24, color: Colors.white, height: 1),
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 64,
+              height: 52,
+              child: Center(
+                child: Text(
+                  '←',
+                  style: GoogleFonts.montserrat(
+                      fontSize: 24, color: Colors.white, height: 1),
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 16),
