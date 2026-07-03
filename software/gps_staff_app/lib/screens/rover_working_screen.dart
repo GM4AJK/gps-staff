@@ -5,10 +5,6 @@ import '../theme.dart';
 
 enum _FixState { noFix, rtkFloat, rtkFix }
 
-// Mock RTK-Fix position (N 56° 19′ 26.903072″, W 2° 45′ 15.532837″, h 111.163 m)
-const _kMockLat = 56.0 + 19.0 / 60.0 + 26.903072 / 3600.0;
-const _kMockLon = -(2.0 + 45.0 / 60.0 + 15.532837 / 3600.0);
-const _kMockH   = 111.163;
 
 class RoverWorkingScreen extends StatefulWidget {
 	const RoverWorkingScreen({
@@ -42,9 +38,6 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 			if (mounted) setState(() => _ostn15Avail = ok);
 		});
 	}
-
-	String get _nextPointId =>
-			'P${(_points.length + 1).toString().padLeft(3, '0')}';
 
 	({Color bg, Color border, Color label, Color textColor, String text,
 		String hacc, Color haccColor}) get _fixData => switch (_fixState) {
@@ -144,27 +137,6 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 		if (confirmed == true && context.mounted) Navigator.pop(context);
 	}
 
-	Future<void> _showCaptureDialog(BuildContext context) async {
-		final osgb = _ostn15Avail
-				? Ostn15Service.instance.transform(_kMockLat, _kMockLon, _kMockH)
-				: null;
-
-		if (!context.mounted) return;
-
-		final confirmed = await showDialog<bool>(
-			context: context,
-			builder: (_) => _CaptureDialog(
-				pointId:     _nextPointId,
-				trf:         _trf,
-				osgb:        osgb,
-			),
-		);
-
-		if (confirmed == true) {
-			// TODO: write point to session log on SD card
-		}
-	}
-
 	@override
 	Widget build(BuildContext context) {
 		final fix = _fixData;
@@ -208,7 +180,7 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 												setState(() => _fixState = s),
 										points: _points,
 										canCapture: canCapture,
-										onCapture: () => _showCaptureDialog(context),
+										onCapture: () {},
 									),
 								),
 							],
@@ -963,186 +935,6 @@ class _MonoCell extends StatelessWidget {
 				fontSize: 12,
 				color: color ?? const Color(0xFF546E7A),
 			),
-		);
-	}
-}
-
-// ── Capture confirmation dialog ───────────────────────────────────────────────
-
-class _CaptureDialog extends StatelessWidget {
-	const _CaptureDialog({
-		required this.pointId,
-		required this.trf,
-		required this.osgb,
-	});
-
-	final String pointId;
-	final String trf;
-	final Ostn15Result? osgb;
-
-	@override
-	Widget build(BuildContext context) {
-		return AlertDialog(
-			backgroundColor: kBgStatus,
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-			titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-			contentPadding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-			actionsPadding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-			title: Row(
-				mainAxisAlignment: MainAxisAlignment.spaceBetween,
-				children: [
-					Text(
-						'Capture Point',
-						style: GoogleFonts.montserrat(
-							fontSize: 18,
-							fontWeight: FontWeight.w700,
-							color: const Color(0xFFECEFF1),
-						),
-					),
-					Container(
-						padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-						decoration: BoxDecoration(
-							color: const Color(0xFF1A2640),
-							border: Border.all(color: const Color(0xFF1E2D3D)),
-							borderRadius: BorderRadius.circular(4),
-						),
-						child: Text(
-							pointId,
-							style: const TextStyle(
-								fontFamily: 'monospace',
-								fontSize: 14,
-								fontWeight: FontWeight.w700,
-								color: Color(0xFF64B5F6),
-							),
-						),
-					),
-				],
-			),
-			content: SizedBox(
-				width: 460,
-				child: Column(
-					mainAxisSize: MainAxisSize.min,
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						_DialogSection(
-							header: trf,
-							headerColor: const Color(0xFF64B5F6),
-							rows: const [
-								('LATITUDE',         'N 56° 19′ 26.903072″'),
-								('LONGITUDE',        'W  2° 45′ 15.532837″'),
-								('ELLIPSOID HEIGHT', '111.163 m'),
-							],
-						),
-						if (osgb != null) ...[
-							const SizedBox(height: 14),
-							_DialogSection(
-								header: 'OSGB36 / ODN  ·  OSTN15·OSGM15',
-								headerColor: const Color(0xFF66BB6A),
-								rows: [
-									('EASTING',      '${osgb!.osgbEasting.toStringAsFixed(3)} m'),
-									('NORTHING',     '${osgb!.osgbNorthing.toStringAsFixed(3)} m'),
-									('HEIGHT (ODN)', '${osgb!.odnHeight.toStringAsFixed(3)} m'),
-								],
-							),
-						],
-					],
-				),
-			),
-			actions: [
-				TextButton(
-					onPressed: () => Navigator.pop(context, false),
-					child: Text(
-						'Cancel',
-						style: GoogleFonts.montserrat(color: kTextMuted),
-					),
-				),
-				const SizedBox(width: 8),
-				ElevatedButton(
-					onPressed: () => Navigator.pop(context, true),
-					style: ElevatedButton.styleFrom(
-						backgroundColor: const Color(0xFF2E7D32),
-						foregroundColor: Colors.white,
-						elevation: 0,
-						shape: RoundedRectangleBorder(
-								borderRadius: BorderRadius.circular(6)),
-					),
-					child: Text(
-						'Capture →',
-						style: GoogleFonts.montserrat(fontWeight: FontWeight.w700),
-					),
-				),
-			],
-		);
-	}
-}
-
-class _DialogSection extends StatelessWidget {
-	const _DialogSection({
-		required this.header,
-		required this.headerColor,
-		required this.rows,
-	});
-
-	final String header;
-	final Color headerColor;
-	final List<(String, String)> rows;
-
-	@override
-	Widget build(BuildContext context) {
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			children: [
-				Text(
-					header,
-					style: GoogleFonts.montserrat(
-						fontSize: 10,
-						fontWeight: FontWeight.w700,
-						letterSpacing: 1.2,
-						color: headerColor,
-					),
-				),
-				const SizedBox(height: 6),
-				Container(
-					padding: const EdgeInsets.fromLTRB(14, 10, 14, 2),
-					decoration: BoxDecoration(
-						color: const Color(0xFF0D1B2A),
-						border: Border.all(color: const Color(0xFF1E2D3D)),
-						borderRadius: BorderRadius.circular(6),
-					),
-					child: Column(
-						children: [
-							for (final (i, row) in rows.indexed)
-								Padding(
-									padding: EdgeInsets.only(
-											bottom: i < rows.length - 1 ? 10 : 8),
-									child: Row(
-										mainAxisAlignment: MainAxisAlignment.spaceBetween,
-										children: [
-											Text(
-												row.$1,
-												style: GoogleFonts.montserrat(
-													fontSize: 10,
-													fontWeight: FontWeight.w700,
-													letterSpacing: 1.0,
-													color: kTextDim,
-												),
-											),
-											Text(
-												row.$2,
-												style: const TextStyle(
-													fontFamily: 'monospace',
-													fontSize: 15,
-													fontWeight: FontWeight.w700,
-													color: Color(0xFFECEFF1),
-												),
-											),
-										],
-									),
-								),
-						],
-					),
-				),
-			],
 		);
 	}
 }
