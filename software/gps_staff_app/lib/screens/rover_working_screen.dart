@@ -747,26 +747,28 @@ class _RightPanel extends StatelessWidget {
 					const SizedBox(height: 10),
 
 					// Capture button
-					SizedBox(
-						height: 52,
-						child: ElevatedButton(
-							onPressed: canCapture ? onCapture : null,
-							style: ElevatedButton.styleFrom(
-								backgroundColor: canCapture
-										? const Color(0xFF2E7D32)
-										: const Color(0xFF1A1A1A),
-								foregroundColor:
-										canCapture ? Colors.white : kTextDim,
-								disabledBackgroundColor: const Color(0xFF1A1A1A),
-								disabledForegroundColor: kTextDim,
-								elevation: 0,
-								shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(8)),
-							),
-							child: Text(
-								canCapture ? 'Capture Point →' : 'RTK Fix Required',
-								style: GoogleFonts.montserrat(
-										fontSize: 18, fontWeight: FontWeight.w700),
+					GestureDetector(
+						onTap: canCapture ? onCapture : null,
+						behavior: HitTestBehavior.opaque,
+						child: SizedBox(
+							height: 80,
+							child: AnimatedContainer(
+								duration: const Duration(milliseconds: 150),
+								decoration: BoxDecoration(
+									color: canCapture
+											? const Color(0xFF2E7D32)
+											: const Color(0xFF1A1A1A),
+									borderRadius: BorderRadius.circular(8),
+								),
+								alignment: Alignment.center,
+								child: Text(
+									canCapture ? 'Capture Point →' : 'RTK Fix Required',
+									style: GoogleFonts.montserrat(
+										fontSize: 22,
+										fontWeight: FontWeight.w700,
+										color: canCapture ? Colors.white : kTextDim,
+									),
+								),
 							),
 						),
 					),
