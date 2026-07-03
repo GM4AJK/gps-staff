@@ -25,11 +25,7 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 	final String _trf = 'ETRS89';
 	bool _ostn15Avail = false;
 
-	final List<_CapturedPoint> _points = const [
-		_CapturedPoint(id: 'P001', label: 'P001', lat: '57.1234562°', lon: '−2.3456784°', height: '143.418 m', hacc: '9', vacc: '13'),
-		_CapturedPoint(id: 'P002', label: 'BM-A', lat: '57.1234455°', lon: '−2.3456901°', height: '143.409 m', hacc: '7', vacc: '11', labelHighlight: true),
-		_CapturedPoint(id: 'P003', label: 'P003', lat: '57.1234678°', lon: '−2.3456712°', height: '143.424 m', hacc: '8', vacc: '12'),
-	];
+	final List<_CapturedPoint> _points = [];
 
 	@override
 	void initState() {
@@ -180,7 +176,18 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 												setState(() => _fixState = s),
 										points: _points,
 										canCapture: canCapture,
-										onCapture: () {},
+										onCapture: () => setState(() {
+								final id = 'P${_points.length.toString().padLeft(3, '0')}';
+								_points.add(_CapturedPoint(
+									id: id,
+									label: id,
+									lat: 'N 56° 19′ 26.903072″',
+									lon: 'W  2° 45′ 15.532837″',
+									height: '111.163 m',
+									hacc: '8',
+									vacc: '12',
+								));
+							}),
 									),
 								),
 							],
