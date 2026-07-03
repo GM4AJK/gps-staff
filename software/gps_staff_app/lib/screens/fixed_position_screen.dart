@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../theme.dart';
 import '../widgets/status_bar.dart';
 import '../widgets/app_header_bar.dart';
@@ -246,6 +247,27 @@ class _FormPanel extends StatelessWidget {
           _FormLabel('Monument / Benchmark ID (optional)'),
           const SizedBox(height: 6),
           _FormField(controller: idCtrl, hint: 'e.g. OS-BM-TP-1234 or Site datum A'),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () async {
+              final uri = Uri.parse(
+                  'https://www.ordnancesurvey.co.uk/geodesy-positioning/legacy-data/passive-search');
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            },
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: Text('UK Passive Stations',
+                style: GoogleFonts.montserrat(
+                    fontSize: 14, fontWeight: FontWeight.w600)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: kBlueAccent,
+              side: const BorderSide(color: kBlueAccent),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6)),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
           const SizedBox(height: 14),
 
           // Coordinate system toggle
