@@ -249,7 +249,7 @@ class _FormPanel extends StatelessWidget {
           const SizedBox(height: 14),
 
           // Coordinate system toggle
-          _FormLabel('Coordinate System'),
+          _FormLabel('Coordinate System (Terrestrial Reference Frame)'),
           const SizedBox(height: 6),
           _CsToggle(selected: cs, onChanged: onCsChange),
           const SizedBox(height: 14),
