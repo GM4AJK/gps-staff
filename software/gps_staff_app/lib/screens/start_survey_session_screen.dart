@@ -156,26 +156,15 @@ class _Header extends StatelessWidget {
 				color: kLightBg,
 				border: Border(bottom: BorderSide(color: Color(0xFFE0E0E0))),
 			),
-			child: Stack(
-				alignment: Alignment.center,
+			child: Row(
 				children: [
-					Center(
-						child: Text('New Survey Session',
-								style: GoogleFonts.montserrat(
-									fontSize: 20,
-									fontWeight: FontWeight.w700,
-									color: const Color(0xFF222222),
-								)),
-					),
-					Align(
-						alignment: Alignment.centerLeft,
-						child: GestureDetector(
-							onTap: onBack,
-							behavior: HitTestBehavior.opaque,
-							child: Container(
-								height: 52,
-								padding: const EdgeInsets.symmetric(horizontal: 16),
-								alignment: Alignment.center,
+					GestureDetector(
+						onTap: onBack,
+						behavior: HitTestBehavior.opaque,
+						child: SizedBox(
+							width: 110,
+							height: 52,
+							child: Center(
 								child: Text('← Back',
 										style: GoogleFonts.montserrat(
 												fontSize: 15,
@@ -185,6 +174,17 @@ class _Header extends StatelessWidget {
 							),
 						),
 					),
+					Expanded(
+						child: Center(
+							child: Text('New Survey Session',
+									style: GoogleFonts.montserrat(
+										fontSize: 20,
+										fontWeight: FontWeight.w700,
+										color: const Color(0xFF222222),
+									)),
+						),
+					),
+					const SizedBox(width: 110),
 				],
 			),
 		);

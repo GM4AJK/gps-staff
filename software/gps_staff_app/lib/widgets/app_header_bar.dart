@@ -12,25 +12,15 @@ class AppHeaderBar extends StatelessWidget {
     return Container(
       height: 52,
       color: kLightHeaderBg,
-      child: Stack(
-        alignment: Alignment.center,
+      child: Row(
         children: [
-          Center(
-            child: Text(title,
-                style: GoogleFonts.montserrat(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white)),
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: GestureDetector(
-              onTap: onBack,
-              behavior: HitTestBehavior.opaque,
-              child: Container(
-                height: 52,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.center,
+          GestureDetector(
+            onTap: onBack,
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox(
+              width: 110,
+              height: 52,
+              child: Center(
                 child: Text('← Back',
                     style: GoogleFonts.montserrat(
                         fontSize: 15,
@@ -40,6 +30,16 @@ class AppHeaderBar extends StatelessWidget {
               ),
             ),
           ),
+          Expanded(
+            child: Center(
+              child: Text(title,
+                  style: GoogleFonts.montserrat(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white)),
+            ),
+          ),
+          const SizedBox(width: 110),
         ],
       ),
     );
