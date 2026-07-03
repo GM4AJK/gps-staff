@@ -692,58 +692,50 @@ class _RightPanel extends StatelessWidget {
 					const SizedBox(height: 8),
 
 					// Captured points
-					Expanded(
-						child: Column(
-							crossAxisAlignment: CrossAxisAlignment.start,
-							children: [
-								Row(
-									children: [
-										Text(
-											'CAPTURED POINTS',
-											style: GoogleFonts.montserrat(
-												fontSize: 10,
-												fontWeight: FontWeight.w700,
-												letterSpacing: 1.0,
-												color: kTextVersion,
-											),
-										),
-										const SizedBox(width: 8),
-										Text(
-											'${points.length}',
-											style: GoogleFonts.montserrat(
-												fontSize: 10,
-												fontWeight: FontWeight.w700,
-												color: kBlueButton,
-											),
-										),
-									],
+					Row(
+						children: [
+							Text(
+								'CAPTURED POINTS',
+								style: GoogleFonts.montserrat(
+									fontSize: 10,
+									fontWeight: FontWeight.w700,
+									letterSpacing: 1.0,
+									color: kTextVersion,
 								),
-								const SizedBox(height: 6),
-								Expanded(
-									child: Container(
-										decoration: BoxDecoration(
-											color: kBgStatus,
-											border: Border.all(color: const Color(0xFF1E2D3D)),
-											borderRadius: BorderRadius.circular(8),
-										),
-										child: Column(
-											children: [
-												_PointsHeader(),
-												Expanded(
-													child: ListView.builder(
-														itemCount: points.length,
-														itemBuilder: (_, i) => _PointRow(
-																point: points[i],
-																alt: i.isOdd),
-													),
-												),
-											],
-										),
-									),
+							),
+							const SizedBox(width: 8),
+							Text(
+								'${points.length}',
+								style: GoogleFonts.montserrat(
+									fontSize: 10,
+									fontWeight: FontWeight.w700,
+									color: kBlueButton,
+								),
+							),
+						],
+					),
+					const SizedBox(height: 6),
+					Container(
+						decoration: BoxDecoration(
+							color: kBgStatus,
+							border: Border.all(color: const Color(0xFF1E2D3D)),
+							borderRadius: BorderRadius.circular(8),
+						),
+						child: Column(
+							children: [
+								_PointsHeader(),
+								ListView.builder(
+									shrinkWrap: true,
+									physics: const NeverScrollableScrollPhysics(),
+									itemCount: points.length.clamp(0, 3),
+									itemBuilder: (_, i) => _PointRow(
+											point: points[i],
+											alt: i.isOdd),
 								),
 							],
 						),
 					),
+					const Spacer(),
 					const SizedBox(height: 10),
 
 					// Capture button
@@ -851,12 +843,11 @@ class _PointsHeader extends StatelessWidget {
 			child: Row(
 				children: const [
 					SizedBox(width: 52, child: _HeaderCell('ID')),
-					SizedBox(width: 72, child: _HeaderCell('Label')),
 					Expanded(child: _HeaderCell('Latitude')),
 					Expanded(child: _HeaderCell('Longitude')),
-					SizedBox(width: 80, child: _HeaderCell('Height', right: true)),
-					SizedBox(width: 60, child: _HeaderCell('hAcc', right: true)),
-					SizedBox(width: 60, child: _HeaderCell('vAcc', right: true)),
+					SizedBox(width: 88, child: _HeaderCell('Height', right: true)),
+					SizedBox(width: 64, child: _HeaderCell('hAcc', right: true)),
+					SizedBox(width: 64, child: _HeaderCell('vAcc', right: true)),
 				],
 			),
 		);
@@ -892,33 +883,26 @@ class _PointRow extends StatelessWidget {
 	Widget build(BuildContext context) {
 		return Container(
 			color: alt ? const Color(0xFF111820) : Colors.transparent,
-			padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+			padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
 			child: Row(
 				children: [
 					SizedBox(
 						width: 52,
 						child: _MonoCell(point.id, color: kTextDim),
 					),
-					SizedBox(
-						width: 72,
-						child: _MonoCell(point.label,
-								color: point.labelHighlight
-										? const Color(0xFF64B5F6)
-										: const Color(0xFF546E7A)),
-					),
 					Expanded(child: _MonoCell(point.lat)),
 					Expanded(child: _MonoCell(point.lon)),
 					SizedBox(
-						width: 80,
+						width: 88,
 						child: _MonoCell(point.height, right: true),
 					),
 					SizedBox(
-						width: 60,
+						width: 64,
 						child: _MonoCell('${point.hacc} mm',
 								color: const Color(0xFF66BB6A), right: true),
 					),
 					SizedBox(
-						width: 60,
+						width: 64,
 						child: _MonoCell('${point.vacc} mm',
 								color: const Color(0xFF66BB6A), right: true),
 					),
@@ -941,7 +925,7 @@ class _MonoCell extends StatelessWidget {
 			textAlign: right ? TextAlign.right : TextAlign.left,
 			style: TextStyle(
 				fontFamily: 'monospace',
-				fontSize: 12,
+				fontSize: 15,
 				color: color ?? const Color(0xFF546E7A),
 			),
 		);
