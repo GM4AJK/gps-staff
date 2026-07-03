@@ -178,7 +178,7 @@ class _RoverWorkingScreenState extends State<RoverWorkingScreen> {
 										canCapture: canCapture,
 										onCapture: () => setState(() {
 								final id = 'P${_points.length.toString().padLeft(3, '0')}';
-								_points.add(_CapturedPoint(
+								_points.insert(0, _CapturedPoint(
 									id: id,
 									label: id,
 									lat: 'N 56° 19′ 26.903072″',
