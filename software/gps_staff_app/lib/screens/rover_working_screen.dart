@@ -715,27 +715,26 @@ class _RightPanel extends StatelessWidget {
 						],
 					),
 					const SizedBox(height: 6),
-					Container(
-						decoration: BoxDecoration(
-							color: kBgStatus,
-							border: Border.all(color: const Color(0xFF1E2D3D)),
-							borderRadius: BorderRadius.circular(8),
-						),
-						child: Column(
-							children: [
-								_PointsHeader(),
-								ListView.builder(
-									shrinkWrap: true,
-									physics: const NeverScrollableScrollPhysics(),
-									itemCount: points.length.clamp(0, 3),
-									itemBuilder: (_, i) => _PointRow(
-											point: points[i],
-											alt: i.isOdd),
-								),
-							],
+					Expanded(
+						child: Container(
+							decoration: BoxDecoration(
+								color: kBgStatus,
+								border: Border.all(color: const Color(0xFF1E2D3D)),
+								borderRadius: BorderRadius.circular(8),
+							),
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.stretch,
+								children: [
+									_PointsHeader(),
+									Expanded(child: _PointRow(point: points.isNotEmpty ? points[0] : null, alt: false)),
+									const Divider(height: 1, thickness: 1, color: Color(0xFF1E2D3D)),
+									Expanded(child: _PointRow(point: points.length > 1 ? points[1] : null, alt: true)),
+									const Divider(height: 1, thickness: 1, color: Color(0xFF1E2D3D)),
+									Expanded(child: _PointRow(point: points.length > 2 ? points[2] : null, alt: false)),
+								],
+							),
 						),
 					),
-					const Spacer(),
 					const SizedBox(height: 10),
 
 					// Capture button
@@ -875,35 +874,37 @@ class _HeaderCell extends StatelessWidget {
 }
 
 class _PointRow extends StatelessWidget {
-	const _PointRow({required this.point, required this.alt});
-	final _CapturedPoint point;
+	const _PointRow({required this.alt, this.point});
+	final _CapturedPoint? point;
 	final bool alt;
 
 	@override
 	Widget build(BuildContext context) {
+		final p = point;
 		return Container(
 			color: alt ? const Color(0xFF111820) : Colors.transparent,
-			padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
-			child: Row(
+			padding: const EdgeInsets.symmetric(horizontal: 12),
+			alignment: Alignment.centerLeft,
+			child: p == null ? const SizedBox.shrink() : Row(
 				children: [
 					SizedBox(
 						width: 52,
-						child: _MonoCell(point.id, color: kTextDim),
+						child: _MonoCell(p.id, color: kTextDim),
 					),
-					Expanded(child: _MonoCell(point.lat)),
-					Expanded(child: _MonoCell(point.lon)),
+					Expanded(child: _MonoCell(p.lat)),
+					Expanded(child: _MonoCell(p.lon)),
 					SizedBox(
 						width: 88,
-						child: _MonoCell(point.height, right: true),
+						child: _MonoCell(p.height, right: true),
 					),
 					SizedBox(
 						width: 64,
-						child: _MonoCell('${point.hacc} mm',
+						child: _MonoCell('${p.hacc} mm',
 								color: const Color(0xFF66BB6A), right: true),
 					),
 					SizedBox(
 						width: 64,
-						child: _MonoCell('${point.vacc} mm',
+						child: _MonoCell('${p.vacc} mm',
 								color: const Color(0xFF66BB6A), right: true),
 					),
 				],
