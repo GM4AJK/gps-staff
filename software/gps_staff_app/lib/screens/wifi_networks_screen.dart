@@ -205,7 +205,7 @@ class _SectionHeader extends StatelessWidget {
                 letterSpacing: 1.0,
                 color: const Color(0xFFAAAAAA)),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );
