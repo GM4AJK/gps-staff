@@ -17,6 +17,7 @@ class FixedPositionScreen extends StatefulWidget {
 class _FixedPositionScreenState extends State<FixedPositionScreen> {
   _CoordSystem _cs = _CoordSystem.osgb36;
 
+  final _nameCtrl     = TextEditingController();
   final _idCtrl       = TextEditingController(text: 'OS-BM-TP-1234');
   final _eastCtrl     = TextEditingController(text: '651409.903');
   final _northCtrl    = TextEditingController(text: '313177.270');
@@ -27,7 +28,7 @@ class _FixedPositionScreenState extends State<FixedPositionScreen> {
 
   @override
   void dispose() {
-    for (final c in [_idCtrl, _eastCtrl, _northCtrl, _heightOdnCtrl,
+    for (final c in [_nameCtrl, _idCtrl, _eastCtrl, _northCtrl, _heightOdnCtrl,
                      _latCtrl, _lonCtrl, _heightCtrl]) {
       c.dispose();
     }
@@ -55,6 +56,7 @@ class _FixedPositionScreenState extends State<FixedPositionScreen> {
                 Expanded(child: _FormPanel(
                   cs: _cs,
                   onCsChange: (v) => setState(() => _cs = v),
+                  nameCtrl: _nameCtrl,
                   idCtrl: _idCtrl,
                   eastCtrl: _eastCtrl,
                   northCtrl: _northCtrl,
@@ -205,6 +207,7 @@ class _FormPanel extends StatelessWidget {
   const _FormPanel({
     required this.cs,
     required this.onCsChange,
+    required this.nameCtrl,
     required this.idCtrl,
     required this.eastCtrl,
     required this.northCtrl,
@@ -219,6 +222,7 @@ class _FormPanel extends StatelessWidget {
 
   final _CoordSystem cs;
   final ValueChanged<_CoordSystem> onCsChange;
+  final TextEditingController nameCtrl;
   final TextEditingController idCtrl;
   final TextEditingController eastCtrl;
   final TextEditingController northCtrl;
@@ -243,30 +247,46 @@ class _FormPanel extends StatelessWidget {
                   color: const Color(0xFF222222))),
           const SizedBox(height: 16),
 
-          // Monument ID
-          _FormLabel('Monument / Benchmark ID (optional)'),
+          // Monument Name
+          _FormLabel('Monument / Benchmark Name'),
           const SizedBox(height: 6),
-          _FormField(controller: idCtrl, hint: 'e.g. OS-BM-TP-1234 or Site datum A'),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final uri = Uri.parse(
-                  'https://www.ordnancesurvey.co.uk/geodesy-positioning/legacy-data/passive-search');
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            },
-            icon: const Icon(Icons.open_in_new, size: 16),
-            label: Text('UK Passive Stations',
-                style: GoogleFonts.montserrat(
-                    fontSize: 14, fontWeight: FontWeight.w600)),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: kBlueAccent,
-              side: const BorderSide(color: kBlueAccent),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6)),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
+          _FormField(controller: nameCtrl, hint: 'e.g. Triangulation Pillar or Site datum A'),
+          const SizedBox(height: 10),
+
+          // Monument ID + UK Passive Stations
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _FormLabel('Monument / Benchmark ID (optional)'),
+                  const SizedBox(height: 6),
+                  _FormField(controller: idCtrl, hint: 'e.g. OS-BM-TP-1234'),
+                ],
+              )),
+              const SizedBox(width: 12),
+              Expanded(child: OutlinedButton.icon(
+                onPressed: () async {
+                  final uri = Uri.parse(
+                      'https://www.ordnancesurvey.co.uk/geodesy-positioning/legacy-data/passive-search');
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: Text('UK Passive Stations',
+                    style: GoogleFonts.montserrat(
+                        fontSize: 14, fontWeight: FontWeight.w600)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kBlueAccent,
+                  side: const BorderSide(color: kBlueAccent),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6)),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              )),
+            ],
           ),
           const SizedBox(height: 14),
 
