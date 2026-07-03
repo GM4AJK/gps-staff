@@ -493,7 +493,7 @@ class _VersionStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 28,
+      height: 44,
       color: kBgStatus,
       padding: const EdgeInsets.symmetric(horizontal: 18),
       child: Row(
@@ -505,7 +505,8 @@ class _VersionStrip extends StatelessWidget {
             child: Text(
               'Mode 1 — Local RF  ›',
               style: GoogleFonts.montserrat(
-                  fontSize: 10,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
                   color: const Color(0xFF546E7A),
                   letterSpacing: 0.4),
             ),
@@ -517,7 +518,7 @@ class _VersionStrip extends StatelessWidget {
             child: Text(
               'GPS STAFF · PCB v1.0 · fw 0.1.0  ›',
               style: GoogleFonts.montserrat(
-                  fontSize: 10, color: kTextVersion, letterSpacing: 0.6),
+                  fontSize: 13, color: kTextVersion, letterSpacing: 0.6),
             ),
           ),
         ],
